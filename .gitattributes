@@ -1,0 +1,12 @@
+# 텍스트 파일은 저장소에 LF로 통일해서 저장하고,
+# 체크아웃 시에는 각자 OS 기본값(Windows는 CRLF)으로 변환한다.
+* text=auto eol=lf
+
+# 이미지/폰트 등 바이너리는 줄바꿈 변환 대상에서 제외
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
