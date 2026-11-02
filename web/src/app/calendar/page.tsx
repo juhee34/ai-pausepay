@@ -1,31 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { addDeadlines } from "@/lib/deadline-store";
 import {
   ACCEPTED_TYPES,
   MAX_UPLOAD_BYTES,
   isAcceptedType,
   type Deadline,
 } from "@/lib/syllabus";
+import ReviewList, { type Draft } from "./review-list";
+import SavedList from "./saved-list";
 
 function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
-function formatDate(ymd: string) {
-  const [y, m, d] = ymd.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("ko-KR", {
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
-}
-
 export default function CalendarPage() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [deadlines, setDeadlines] = useState<Deadline[] | null>(null);
+  const [drafts, setDrafts] = useState<Draft[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0];
@@ -33,7 +28,8 @@ export default function CalendarPage() {
     e.target.value = "";
     if (!picked) return;
 
-    setDeadlines(null);
+    setDrafts(null);
+    setNotice(null);
     if (!isAcceptedType(picked.type)) {
       setFile(null);
       setError("PDF나 PNG·JPG 이미지만 올릴 수 있어요.");
@@ -54,7 +50,8 @@ export default function CalendarPage() {
     if (!file) return;
     setLoading(true);
     setError(null);
-    setDeadlines(null);
+    setNotice(null);
+    setDrafts(null);
     try {
       const body = new FormData();
       body.append("file", file);
@@ -64,12 +61,36 @@ export default function CalendarPage() {
         setError(data?.error ?? "일정을 찾지 못했어요. 잠시 뒤에 다시 해 주세요.");
         return;
       }
-      setDeadlines(data.deadlines);
+      setDrafts(
+        (data.deadlines as Deadline[]).map((d, i) => ({ ...d, key: `${Date.now()}-${i}` })),
+      );
     } catch {
       setError("인터넷 연결을 확인하고 다시 해 주세요.");
     } finally {
       setLoading(false);
     }
+  }
+
+  function saveDrafts() {
+    if (!drafts) return;
+    const added = addDeadlines(
+      drafts
+        .filter((d): d is Draft & { date: string } => Boolean(d.date))
+        .map((d) => ({
+          course: d.course,
+          title: d.title.trim() || d.kind,
+          date: d.date,
+          when: d.when,
+          kind: d.kind,
+        })),
+    );
+    setDrafts(null);
+    setFile(null);
+    setNotice(
+      added === drafts.length
+        ? `${added}개를 내 일정에 저장했어요.`
+        : `${added}개를 저장했어요. 이미 있던 ${drafts.length - added}개는 건너뛰었어요.`,
+    );
   }
 
   return (
@@ -132,46 +153,23 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {deadlines && (
-          <div className="mt-8">
-            <h2 className="text-sm font-semibold">찾은 일정 {deadlines.length}개</h2>
-            <p className="mt-1 text-xs text-foreground/50">
-              {deadlines.length === 0
-                ? "챙길 일정을 찾지 못했어요. 다른 쪽이나 캡쳐로 다시 해 보세요."
-                : "AI가 찾은 결과라 틀릴 수 있어요. 원본과 날짜를 꼭 비교해 주세요."}
-            </p>
-            {deadlines.some((d) => !d.date) && (
-              <p className="mt-1 text-xs text-accent">
-                주차만 적힌 일정은 날짜를 직접 넣어야 캘린더에 들어가요.
-              </p>
-            )}
-            <ul className="mt-4 space-y-3">
-              {deadlines.map((d, i) => (
-                <li
-                  key={`${i}-${d.date}-${d.title}`}
-                  className="flex items-center gap-4 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4"
-                >
-                  <span className="shrink-0 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
-                    {d.kind}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{d.title}</p>
-                    <p className="mt-0.5 text-xs text-foreground/60">
-                      {[d.course, d.date ? formatDate(d.date) : null]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    {!d.date && (
-                      <p className="mt-0.5 text-xs font-semibold text-accent">
-                        {d.when} · 날짜를 넣어 주세요
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {drafts && drafts.length === 0 && (
+          <p className="mt-8 rounded-2xl bg-foreground/[0.04] p-4 text-sm text-foreground/70">
+            챙길 일정을 찾지 못했어요. 다른 쪽이나 캡쳐로 다시 해 보세요.
+          </p>
         )}
+
+        {drafts && drafts.length > 0 && (
+          <ReviewList drafts={drafts} onChange={setDrafts} onSave={saveDrafts} />
+        )}
+
+        {notice && (
+          <p role="status" className="mt-6 rounded-2xl bg-accent-soft/60 p-4 text-sm font-semibold text-accent">
+            {notice}
+          </p>
+        )}
+
+        <SavedList />
       </section>
     </main>
   );
