@@ -1,7 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import {
+  AI_LIMIT_MESSAGE,
+  DAILY_AI_LIMIT,
+  getAiUsageToday,
+  recordAiUse,
+} from "@/lib/ai-limit";
 import { getAnthropic } from "@/lib/claude";
 import {
   DEADLINE_KINDS,
@@ -49,7 +55,7 @@ function isValidYmd(value: string) {
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const form = await request.formData();
   const file = form.get("file");
 
@@ -67,6 +73,12 @@ export async function POST(request: Request) {
       { error: "파일이 4MB보다 커요. 필요한 쪽만 저장해서 올려 주세요." },
       { status: 413 },
     );
+  }
+
+  // 메일·시험 대비 팩과 하루 사용 횟수를 함께 쓴다.
+  const usedToday = getAiUsageToday(request);
+  if (usedToday >= DAILY_AI_LIMIT) {
+    return NextResponse.json({ error: AI_LIMIT_MESSAGE }, { status: 429 });
   }
 
   // 파일은 저장하지 않고, 이 요청 안에서만 Claude에게 보낸 뒤 버린다.
@@ -114,7 +126,10 @@ export async function POST(request: Request) {
         return a.date ? -1 : b.date ? 1 : 0;
       });
 
-    return NextResponse.json({ deadlines });
+    // 성공했을 때만 1회로 센다.
+    const result = NextResponse.json({ deadlines });
+    recordAiUse(result, usedToday);
+    return result;
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {
       return NextResponse.json(
