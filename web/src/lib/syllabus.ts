@@ -21,3 +21,13 @@ export type Deadline = {
 export function isAcceptedType(type: string): type is AcceptedType {
   return (ACCEPTED_TYPES as readonly string[]).includes(type);
 }
+
+// "2026-11-18" → "11월 18일 (수)"
+export function formatDate(ymd: string) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("ko-KR", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
+}
