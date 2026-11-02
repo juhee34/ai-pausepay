@@ -338,7 +338,7 @@ export default function MailPage() {
       {toast && (
         <div
           role="status"
-          className="fixed inset-x-5 bottom-6 mx-auto max-w-sm rounded-xl bg-foreground px-4 py-3 text-center text-sm font-semibold text-background"
+          className="fixed inset-x-5 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mx-auto max-w-sm rounded-xl bg-foreground px-4 py-3 text-center text-sm font-semibold text-background"
         >
           {toast}
         </div>
