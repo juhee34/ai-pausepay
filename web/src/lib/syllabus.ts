@@ -12,7 +12,9 @@ export type DeadlineKind = (typeof DEADLINE_KINDS)[number];
 export type Deadline = {
   course: string;
   title: string;
-  date: string; // YYYY-MM-DD
+  // YYYY-MM-DD. "8주차"처럼 날짜가 적혀 있지 않으면 null이고, 사용자가 직접 넣는다.
+  date: string | null;
+  when: string; // 자료에 적힌 그대로의 시기 (예: "8주차", "10월 21일(수) 18:00")
   kind: DeadlineKind;
 };
 

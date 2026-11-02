@@ -137,9 +137,14 @@ export default function CalendarPage() {
             <h2 className="text-sm font-semibold">찾은 일정 {deadlines.length}개</h2>
             <p className="mt-1 text-xs text-foreground/50">
               {deadlines.length === 0
-                ? "날짜가 적힌 일정을 찾지 못했어요. 다른 쪽이나 캡쳐로 다시 해 보세요."
+                ? "챙길 일정을 찾지 못했어요. 다른 쪽이나 캡쳐로 다시 해 보세요."
                 : "AI가 찾은 결과라 틀릴 수 있어요. 원본과 날짜를 꼭 비교해 주세요."}
             </p>
+            {deadlines.some((d) => !d.date) && (
+              <p className="mt-1 text-xs text-accent">
+                주차만 적힌 일정은 날짜를 직접 넣어야 캘린더에 들어가요.
+              </p>
+            )}
             <ul className="mt-4 space-y-3">
               {deadlines.map((d, i) => (
                 <li
@@ -152,8 +157,15 @@ export default function CalendarPage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{d.title}</p>
                     <p className="mt-0.5 text-xs text-foreground/60">
-                      {d.course} · {formatDate(d.date)}
+                      {[d.course, d.date ? formatDate(d.date) : null]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
+                    {!d.date && (
+                      <p className="mt-0.5 text-xs font-semibold text-accent">
+                        {d.when} · 날짜를 넣어 주세요
+                      </p>
+                    )}
                   </div>
                 </li>
               ))}
