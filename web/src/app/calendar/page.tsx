@@ -1,27 +1,12 @@
 "use client";
 
 import { useState } from "react";
-
-// Vercel은 요청 하나를 4.5MB까지만 받으므로, 여유를 두고 4MB에서 막는다.
-const MAX_BYTES = 4 * 1024 * 1024;
-const ACCEPT = "application/pdf,image/png,image/jpeg";
-const ACCEPT_TYPES = ACCEPT.split(",");
-
-type Kind = "과제" | "퀴즈" | "중간" | "기말" | "기타";
-
-type Deadline = {
-  course: string;
-  title: string;
-  date: string; // YYYY-MM-DD
-  kind: Kind;
-};
-
-// 1단계: AI 없이 화면 흐름만 확인하는 가짜 결과. 다음 단계에서 AI 결과로 바꾼다.
-const FAKE_DEADLINES: Deadline[] = [
-  { course: "경영학원론", title: "1차 보고서 제출", date: "2026-11-10", kind: "과제" },
-  { course: "경영학원론", title: "7~9주차 퀴즈", date: "2026-11-20", kind: "퀴즈" },
-  { course: "경영학원론", title: "기말고사", date: "2026-12-10", kind: "기말" },
-];
+import {
+  ACCEPTED_TYPES,
+  MAX_UPLOAD_BYTES,
+  isAcceptedType,
+  type Deadline,
+} from "@/lib/syllabus";
 
 function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
@@ -40,6 +25,7 @@ export default function CalendarPage() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deadlines, setDeadlines] = useState<Deadline[] | null>(null);
+  const [loading, setLoading] = useState(false);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0];
@@ -48,12 +34,12 @@ export default function CalendarPage() {
     if (!picked) return;
 
     setDeadlines(null);
-    if (!ACCEPT_TYPES.includes(picked.type)) {
+    if (!isAcceptedType(picked.type)) {
       setFile(null);
       setError("PDF나 PNG·JPG 이미지만 올릴 수 있어요.");
       return;
     }
-    if (picked.size > MAX_BYTES) {
+    if (picked.size > MAX_UPLOAD_BYTES) {
       setFile(null);
       setError(
         `파일이 너무 커요 (${formatSize(picked.size)}). 4MB 이하로 줄이거나, 필요한 쪽만 저장해서 올려 주세요.`,
@@ -62,6 +48,28 @@ export default function CalendarPage() {
     }
     setError(null);
     setFile(picked);
+  }
+
+  async function findDeadlines() {
+    if (!file) return;
+    setLoading(true);
+    setError(null);
+    setDeadlines(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/syllabus", { method: "POST", body });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setError(data?.error ?? "일정을 찾지 못했어요. 잠시 뒤에 다시 해 주세요.");
+        return;
+      }
+      setDeadlines(data.deadlines);
+    } catch {
+      setError("인터넷 연결을 확인하고 다시 해 주세요.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -87,7 +95,8 @@ export default function CalendarPage() {
           </span>
           <input
             type="file"
-            accept={ACCEPT}
+            accept={ACCEPTED_TYPES.join(",")}
+            disabled={loading}
             onChange={handleFile}
             className="sr-only"
           />
@@ -114,10 +123,11 @@ export default function CalendarPage() {
             </p>
             <button
               type="button"
-              onClick={() => setDeadlines(FAKE_DEADLINES)}
-              className="mt-4 w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white"
+              onClick={findDeadlines}
+              disabled={loading}
+              className="mt-4 w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              일정 찾기
+              {loading ? "일정 찾는 중… (10~30초)" : "일정 찾기"}
             </button>
           </div>
         )}
@@ -126,12 +136,19 @@ export default function CalendarPage() {
           <div className="mt-8">
             <h2 className="text-sm font-semibold">찾은 일정 {deadlines.length}개</h2>
             <p className="mt-1 text-xs text-foreground/50">
-              지금은 연습용 가짜 일정이에요. AI는 다음 단계에서 연결해요.
+              {deadlines.length === 0
+                ? "챙길 일정을 찾지 못했어요. 다른 쪽이나 캡쳐로 다시 해 보세요."
+                : "AI가 찾은 결과라 틀릴 수 있어요. 원본과 날짜를 꼭 비교해 주세요."}
             </p>
+            {deadlines.some((d) => !d.date) && (
+              <p className="mt-1 text-xs text-accent">
+                주차만 적힌 일정은 날짜를 직접 넣어야 캘린더에 들어가요.
+              </p>
+            )}
             <ul className="mt-4 space-y-3">
-              {deadlines.map((d) => (
+              {deadlines.map((d, i) => (
                 <li
-                  key={`${d.date}-${d.title}`}
+                  key={`${i}-${d.date}-${d.title}`}
                   className="flex items-center gap-4 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4"
                 >
                   <span className="shrink-0 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
@@ -140,8 +157,15 @@ export default function CalendarPage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{d.title}</p>
                     <p className="mt-0.5 text-xs text-foreground/60">
-                      {d.course} · {formatDate(d.date)}
+                      {[d.course, d.date ? formatDate(d.date) : null]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
+                    {!d.date && (
+                      <p className="mt-0.5 text-xs font-semibold text-accent">
+                        {d.when} · 날짜를 넣어 주세요
+                      </p>
+                    )}
                   </div>
                 </li>
               ))}
