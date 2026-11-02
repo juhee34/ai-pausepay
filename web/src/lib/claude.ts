@@ -4,7 +4,7 @@ let client: Anthropic | null = null;
 
 // 빌드 시점(환경변수가 아직 없을 수 있음)에는 생성하지 않고,
 // 실제로 호출되는 시점에만 초기화한다.
-function getAnthropic(): Anthropic {
+export function getAnthropic(): Anthropic {
   if (client) return client;
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
