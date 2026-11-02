@@ -26,7 +26,7 @@ export const MAIL_SITUATIONS = [
   {
     id: "extension",
     label: "과제 연장",
-    guide: "과제 제출 기한 연장을 부탁하는 메일. 어떤 과제인지, 이유, 언제까지 낼 수 있는지 적습니다.",
+    guide: "과제 제출 기한 연장을 부탁하는 메일. 어떤 과제인지, 이유, 얼마나 연장을 바라는지 적습니다.",
     attachmentHint: "사유를 보여 줄 서류나 지금까지 한 과제가 있으면 첨부했는지 확인해요.",
   },
 ] as const;
