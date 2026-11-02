@@ -25,7 +25,5 @@ cd web
 npm install
 # web/.env.local 파일을 만들고 아래 값을 채우기 (이 파일은 절대 커밋하지 않음)
 #   ANTHROPIC_API_KEY=...
-#   NEXT_PUBLIC_SUPABASE_URL=...        (사용 기록을 쓸 때만)
-#   NEXT_PUBLIC_SUPABASE_ANON_KEY=...   (사용 기록을 쓸 때만)
 npm run dev
 ```
