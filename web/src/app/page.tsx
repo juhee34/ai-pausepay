@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Activities from "./activities";
 import AddToHome from "./add-to-home";
 import TodayDate from "./today-date";
@@ -16,6 +17,13 @@ export default function Home() {
         <div className="mt-6">
           <TodayPick />
         </div>
+        {/* 홈을 새 디자인으로 바꿀 때 '다음 수업' 블록이 이 링크를 대신한다 */}
+        <Link
+          href="/timetable"
+          className="mt-3 block rounded-2xl bg-foreground/[0.04] px-4 py-3 text-sm font-semibold"
+        >
+          KLAS 시간표 올리기 →
+        </Link>
         <WeekDeadlines />
         <Activities />
         <AddToHome />
