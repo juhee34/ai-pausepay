@@ -4,6 +4,9 @@
 // 구조는 deadline-store.ts와 같다. 홈 달력·일정은 date(다음 마감)만 읽는다.
 
 import { useSyncExternalStore } from "react";
+import { ACTIVITY_KINDS, type ActivityKind } from "./activity-kinds";
+
+export { ACTIVITY_KINDS, type ActivityKind };
 
 export const ACTIVITY_STAGES = ["active", "applied", "done", "rejected"] as const;
 export type ActivityStage = (typeof ACTIVITY_STAGES)[number];
@@ -14,9 +17,6 @@ export const STAGE_LABEL: Record<ActivityStage, string> = {
   rejected: "불합격",
 };
 
-export const ACTIVITY_KINDS = ["대외활동", "공모전", "인턴", "자격증", "채용", "동아리"] as const;
-export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
-
 // 단계·기관 같은 칸은 나중에 더해서 모두 선택이다. 옛 카드에는 없다.
 export type ActivityDetails = {
   stage?: ActivityStage;
@@ -25,6 +25,7 @@ export type ActivityDetails = {
   role?: string;
   startDate?: string; // YYYY-MM-DD
   endDate?: string; // YYYY-MM-DD
+  fromPosting?: boolean; // 공고에서 만든 카드. 같은 날짜가 일정에도 있어 홈에는 일정만 띄운다.
 };
 
 export type Activity = ActivityDetails & {
@@ -68,7 +69,8 @@ export function hasValidActivityDetails(a: Record<string, unknown>) {
     (a.org === undefined || typeof a.org === "string") &&
     (a.role === undefined || typeof a.role === "string") &&
     (a.startDate === undefined || isYmdText(a.startDate)) &&
-    (a.endDate === undefined || isYmdText(a.endDate))
+    (a.endDate === undefined || isYmdText(a.endDate)) &&
+    (a.fromPosting === undefined || typeof a.fromPosting === "boolean")
   );
 }
 
@@ -78,10 +80,10 @@ function keepCard(a: Activity): Activity {
   return { id: a.id, title: a.title, date: a.date, ...(a.done ? { done: a.done } : {}) };
 }
 
-// 끝났거나 불합격한 활동의 마감은 홈 달력·일정·추천에 띄우지 않는다.
+// 끝났거나 불합격한 활동, 공고에서 만든 카드의 마감은 홈 달력·일정·추천에 띄우지 않는다.
 export function isHomeActivity(a: Activity) {
   const stage = stageOf(a);
-  return stage !== "done" && stage !== "rejected";
+  return !a.fromPosting && stage !== "done" && stage !== "rejected";
 }
 
 // 단계가 없는 옛 카드는 '진행 중'으로 읽는다.
@@ -137,6 +139,14 @@ export function addActivity(title: string, date: string) {
 
 export function addActivityCard(fields: ActivityFields) {
   write([...getSnapshot(), { ...fields, id: crypto.randomUUID() }]);
+}
+
+// 같은 공고를 다시 넣어도 카드가 늘지 않게 한다. 새로 만들었으면 true.
+export function addPostingCard(fields: ActivityFields) {
+  const exists = getSnapshot().some((a) => a.title === fields.title && a.org === fields.org);
+  if (exists) return false;
+  addActivityCard({ ...fields, fromPosting: true });
+  return true;
 }
 
 export function updateActivity(id: string, fields: ActivityFields) {

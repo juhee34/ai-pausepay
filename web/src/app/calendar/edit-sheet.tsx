@@ -14,11 +14,13 @@ const INPUT = "min-h-11 w-full rounded-button border border-line bg-surface px-3
 // 찾은 일정 하나를 고치는 창. 날짜가 없는 '확인 필요' 일정은 원문으로 날짜 후보 3개를 보여 준다.
 export default function EditSheet({
   draft,
+  sourceLabel = "계획서 원문",
   onSave,
   onRemove,
   onClose,
 }: {
   draft: Draft | null;
+  sourceLabel?: string;
   onSave: (patch: Pick<Draft, "title" | "kind" | "date">) => void;
   onRemove: () => void;
   onClose: () => void;
@@ -26,17 +28,19 @@ export default function EditSheet({
   return (
     <BottomSheet open={draft !== null} onClose={onClose} title={draft?.date ? "일정 고치기" : "날짜 고르기"}>
       {/* key로 일정이 바뀔 때마다 입력칸을 새로 채운다 */}
-      {draft && <EditForm key={draft.key} draft={draft} onSave={onSave} onRemove={onRemove} />}
+      {draft && <EditForm key={draft.key} draft={draft} sourceLabel={sourceLabel} onSave={onSave} onRemove={onRemove} />}
     </BottomSheet>
   );
 }
 
 function EditForm({
   draft,
+  sourceLabel,
   onSave,
   onRemove,
 }: {
   draft: Draft;
+  sourceLabel: string;
   onSave: (patch: Pick<Draft, "title" | "kind" | "date">) => void;
   onRemove: () => void;
 }) {
@@ -72,7 +76,7 @@ function EditForm({
         <p className="min-w-0 flex-1 self-center truncate text-sm text-muted">{draft.course}</p>
       </div>
       <p className="text-sm text-muted">
-        계획서 원문: <span className="text-ink">{draft.when || "없음"}</span>
+        {sourceLabel}: <span className="text-ink">{draft.when || "없음"}</span>
       </p>
 
       {candidates.length > 0 && (
