@@ -53,16 +53,25 @@ export default function DataBackup() {
         return;
       }
 
-      const { addedDeadlines, addedActivities, addedFocusRecords, changed } = importBackup(data);
+      const {
+        addedDeadlines,
+        addedActivities,
+        addedFocusRecords,
+        addedExamResults,
+        timetableAdded,
+        timetableKept,
+        changed,
+      } = importBackup(data);
+      const keptNote = timetableKept ? " 시간표는 이 폰에 있는 것을 그대로 뒀어요." : "";
       if (!changed) {
-        setNotice({ kind: "ok", text: "파일의 내용이 이미 모두 들어 있어요." });
+        setNotice({ kind: "ok", text: `파일의 내용이 이미 모두 들어 있어요.${keptNote}` });
         setBusy(false);
         return;
       }
 
       setNotice({
         kind: "ok",
-        text: `일정 ${addedDeadlines}개, 대외활동 ${addedActivities}개, 공부 기록 ${addedFocusRecords}개를 가져왔어요. 화면을 새로 고칠게요.`,
+        text: `일정 ${addedDeadlines}개, 대외활동 ${addedActivities}개, 공부 기록 ${addedFocusRecords}개, 시험 결과 ${addedExamResults}개${timetableAdded ? ", 시간표" : ""}를 가져왔어요.${keptNote} 화면을 새로 고칠게요.`,
       });
       setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
     } catch {
@@ -75,7 +84,7 @@ export default function DataBackup() {
     <section className="mt-5">
       <h3 className="text-[15px] font-bold">내 일정 옮기기</h3>
       <p className="mt-1 text-xs leading-relaxed text-muted">
-        일정, 대외활동, 공부 기록을 파일로 받아 두면 다른 폰에서 되살릴 수 있어요. 가져오면 지금 기록에 더해져요.
+        일정, 대외활동, 시간표, 공부 기록, 시험 결과를 파일로 받아 두면 다른 폰에서 되살릴 수 있어요. 가져오면 지금 기록에 더해져요.
       </p>
 
       <div className="mt-3 flex gap-2">
@@ -107,7 +116,7 @@ export default function DataBackup() {
       )}
 
       <p className="mt-2.5 text-xs leading-relaxed text-muted">
-        파일에 내 일정과 공부 기록이 들어 있어요. 서버로 보내지 않으니, 단톡방에 올리지 말고 나만 볼 수 있는 곳에 두세요.
+        파일에 내 일정과 시간표, 공부 기록이 들어 있어요. 서버로 보내지 않으니, 단톡방에 올리지 말고 나만 볼 수 있는 곳에 두세요.
       </p>
     </section>
   );
