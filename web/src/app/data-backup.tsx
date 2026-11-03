@@ -60,6 +60,7 @@ export default function DataBackup() {
         addedExamResults,
         addedGrades,
         addedGrading,
+        addedReceipts,
         timetableAdded,
         timetableKept,
         changed,
@@ -79,6 +80,7 @@ export default function DataBackup() {
         addedExamResults > 0 && `시험 결과 ${addedExamResults}개`,
         addedGrades > 0 && `점수 ${addedGrades}과목`,
         addedGrading > 0 && `평가 비율 ${addedGrading}과목`,
+        addedReceipts > 0 && `영수증 ${addedReceipts}장`,
         timetableAdded && "시간표",
       ].filter(Boolean);
       setNotice({
@@ -96,7 +98,7 @@ export default function DataBackup() {
     <section className="mt-5">
       <h3 className="text-[15px] font-bold">내 일정 옮기기</h3>
       <p className="mt-1 text-xs leading-relaxed text-muted">
-        일정, 대외활동, 시간표, 공부 기록, 시험 결과, 점수를 파일로 받아 두면 다른 폰에서 되살릴 수 있어요. 가져오면 지금 기록에 더해져요.
+        일정, 대외활동, 시간표, 공부 기록, 시험 결과, 점수, 영수증을 파일로 받아 두면 다른 폰에서 되살릴 수 있어요. 가져오면 지금 기록에 더해져요.
       </p>
 
       <div className="mt-3 flex gap-2">
@@ -128,7 +130,7 @@ export default function DataBackup() {
       )}
 
       <p className="mt-2.5 text-xs leading-relaxed text-muted">
-        파일에 내 일정과 시간표, 공부 기록, 점수가 들어 있어요. 서버로 보내지 않으니, 단톡방에 올리지 말고 나만 볼 수 있는 곳에 두세요.
+        파일에 내 일정과 시간표, 공부 기록, 점수, 영수증이 들어 있어요. 서버로 보내지 않으니, 단톡방에 올리지 말고 나만 볼 수 있는 곳에 두세요.
       </p>
     </section>
   );

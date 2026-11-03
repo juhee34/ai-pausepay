@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
@@ -218,7 +219,6 @@ export function ActivityDetailSheet({
   onStageChange: (stage: ActivityStage) => void;
 }) {
   const [askReceipt, setAskReceipt] = useState(false);
-  const [receiptSoon, setReceiptSoon] = useState(false);
   const stage = stageOf(activity);
   const period = formatPeriod(activity);
   const details = [
@@ -250,7 +250,6 @@ export function ActivityDetailSheet({
               if (value === stage) return;
               setActivityStage(activity.id, value);
               setAskReceipt(value === "done");
-              setReceiptSoon(false);
               onStageChange(value);
             }}
           >
@@ -263,10 +262,12 @@ export function ActivityDetailSheet({
         <div role="status" className="mt-3 rounded-callout bg-brand-soft p-3.5">
           <p className="text-[13px] font-bold">스펙 영수증 쓸까요?</p>
           <p className="mt-0.5 text-xs text-muted">끝난 활동은 잊기 전에 정리해 두면 좋아요.</p>
-          {/* 스펙 영수증(/career/receipts/new?activity=id)이 생기면 Link로 바꾼다. */}
-          <Button onClick={() => setReceiptSoon(true)} className="mt-2.5 w-full">
-            {receiptSoon ? "곧 열려요" : "영수증 쓰기"}
-          </Button>
+          <Link
+            href={`/career/receipts/new?activity=${encodeURIComponent(activity.id)}`}
+            className="mt-2.5 flex min-h-11 w-full items-center justify-center rounded-button bg-brand px-4 text-[15px] font-semibold text-white active:bg-brand-strong"
+          >
+            영수증 쓰기
+          </Link>
         </div>
       )}
 
