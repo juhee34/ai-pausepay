@@ -6,7 +6,7 @@
 // 가져온 뒤에는 페이지를 새로 고쳐야 화면에 반영된다.
 
 import type { FocusData } from "@/app/focus/store";
-import type { Activity } from "./activity-store";
+import { hasValidActivityDetails, type Activity } from "./activity-store";
 import type { SavedDeadline } from "./deadline-store";
 import {
   EXAM_RESULTS_KEY,
@@ -67,7 +67,12 @@ function isDeadline(value: unknown): value is SavedDeadline {
 function isActivity(value: unknown): value is Activity {
   if (!value || typeof value !== "object") return false;
   const a = value as Record<string, unknown>;
-  return typeof a.id === "string" && typeof a.title === "string" && isYmd(a.date);
+  return (
+    typeof a.id === "string" &&
+    typeof a.title === "string" &&
+    isYmd(a.date) &&
+    hasValidActivityDetails(a)
+  );
 }
 
 function isString(value: unknown): value is string {
