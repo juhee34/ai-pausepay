@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import AppShell from "@/components/ui/app-shell";
+import Block from "@/components/ui/block";
+import Button from "@/components/ui/button";
 import {
   ALARM_SECONDS,
   ALERT_WINDOW_MS,
@@ -90,76 +93,73 @@ function SubjectPicker({ data }: { data: FocusData }) {
   }
 
   return (
-    <div className="mt-8 space-y-6">
-      {data.subjects.length > 0 && (
-        <fieldset>
-          <legend className="text-sm font-semibold">어떤 과목을 공부할까요?</legend>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {data.subjects.map((s) => (
-              <label
-                key={s}
-                className={`max-w-full cursor-pointer break-words rounded-full border px-4 py-2 text-sm font-semibold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent ${
-                  subject === s
-                    ? "border-accent bg-accent-soft text-accent"
-                    : "border-foreground/15 text-foreground/70"
-                }`}
+    <div className="space-y-2.5">
+      <Block className="space-y-3.5">
+        {data.subjects.length > 0 && (
+          <fieldset>
+            <legend className="text-[15px] font-bold">어떤 과목을 공부할까요?</legend>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {data.subjects.map((s) => (
+                <label
+                  key={s}
+                  className={`flex min-h-11 max-w-full cursor-pointer items-center break-words rounded-button px-3.5 text-sm font-semibold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand ${
+                    subject === s ? "bg-brand-soft text-brand" : "bg-canvas text-muted"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="subject"
+                    value={s}
+                    checked={subject === s}
+                    onChange={() => setSelected(s)}
+                    className="sr-only"
+                  />
+                  {s}
+                </label>
+              ))}
+            </div>
+            {!hasRecord && (
+              <Button
+                variant="ghost"
+                onClick={() => removeSubject(subject)}
+                className="mt-1 -ml-2 px-2 text-[13px]"
               >
-                <input
-                  type="radio"
-                  name="subject"
-                  value={s}
-                  checked={subject === s}
-                  onChange={() => setSelected(s)}
-                  className="sr-only"
-                />
-                {s}
-              </label>
-            ))}
-          </div>
-          {!hasRecord && (
-            <button
-              type="button"
-              onClick={() => removeSubject(subject)}
-              className="mt-2 text-xs text-foreground/50 underline"
+                이 과목 지우기
+              </Button>
+            )}
+          </fieldset>
+        )}
+
+        <form onSubmit={handleAdd}>
+          <label className="block text-sm font-semibold" htmlFor="new-subject">
+            과목 추가
+          </label>
+          <div className="mt-1.5 flex gap-2">
+            {/* 글자가 16px보다 작으면 아이폰이 입력할 때 화면을 확대한다. */}
+            <input
+              id="new-subject"
+              value={newSubject}
+              onChange={(e) => setNewSubject(e.target.value)}
+              maxLength={MAX_SUBJECT_LENGTH}
+              placeholder="예: 재무관리"
+              className="min-h-11 min-w-0 flex-1 rounded-button border border-line bg-surface px-3.5 py-2.5 text-base text-ink outline-none placeholder:text-muted focus:border-brand"
+            />
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={!newSubject.trim()}
+              className="shrink-0"
             >
-              이 과목 지우기
-            </button>
-          )}
-        </fieldset>
-      )}
+              추가
+            </Button>
+          </div>
+        </form>
+      </Block>
 
-      <form onSubmit={handleAdd}>
-        <label className="block text-sm font-semibold" htmlFor="new-subject">
-          과목 추가
-        </label>
-        <div className="mt-2 flex gap-2">
-          <input
-            id="new-subject"
-            value={newSubject}
-            onChange={(e) => setNewSubject(e.target.value)}
-            maxLength={MAX_SUBJECT_LENGTH}
-            placeholder="예: 재무관리"
-            className="min-w-0 flex-1 rounded-xl border border-foreground/15 bg-transparent px-4 py-3 text-base outline-none focus:border-accent"
-          />
-          <button
-            type="submit"
-            disabled={!newSubject.trim()}
-            className="shrink-0 rounded-xl bg-accent-soft px-4 py-3 text-sm font-semibold text-accent disabled:opacity-60"
-          >
-            추가
-          </button>
-        </div>
-      </form>
-
-      <button
-        type="button"
-        disabled={!subject}
-        onClick={() => startFocus(subject)}
-        className="w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-      >
-        {FOCUS_MINUTES}분 집중 시작
-      </button>
-      <p className="text-xs leading-relaxed text-foreground/50">{ALERT_NOTICE}</p>
+      <Button disabled={!subject} onClick={() => startFocus(subject)} className="w-full">
+        <span className="font-mono">{FOCUS_MINUTES}</span>분 집중 시작
+      </Button>
+      <p className="px-1 text-xs leading-relaxed text-muted">{ALERT_NOTICE}</p>
     </div>
   );
 }
@@ -176,93 +176,72 @@ function RunningCard({ session, now }: { session: Session; now: number }) {
   const progress = ((totalSeconds - remaining) / totalSeconds) * 100;
 
   return (
-    <div className="mt-8 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-5 text-center">
-      <p className="text-sm font-semibold text-accent">
+    <Block className="text-center">
+      <p className="text-sm font-semibold text-brand">
         {isFocus ? "집중하는 중" : "쉬는 중"}
       </p>
-      <p className="mt-1 break-words text-sm text-foreground/70">{session.subject}</p>
-      <p role="timer" className="mt-4 font-mono text-6xl font-bold tabular-nums">
+      <p className="mt-0.5 break-words text-sm text-muted">{session.subject}</p>
+      <p role="timer" className="mt-3 font-mono text-6xl font-semibold tabular-nums">
         {formatClock(remaining)}
       </p>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-foreground/10">
-        <div className="h-full bg-accent" style={{ width: `${progress}%` }} />
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-divider">
+        <div className="h-full bg-brand" style={{ width: `${progress}%` }} />
       </div>
 
       {isFocus && (
-        <p className="mt-4 text-left text-xs leading-relaxed text-foreground/50">
-          {ALERT_NOTICE}
-        </p>
+        <p className="mt-3.5 text-left text-xs leading-relaxed text-muted">{ALERT_NOTICE}</p>
       )}
 
       {!isFocus && (
-        <button
-          type="button"
-          onClick={skipBreak}
-          className="mt-5 w-full rounded-xl bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent"
-        >
+        <Button variant="secondary" onClick={skipBreak} className="mt-3.5 w-full">
           휴식 건너뛰기
-        </button>
+        </Button>
       )}
 
       {isFocus && !confirmingStop && (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           onClick={() => setConfirmingStop(true)}
-          className="mt-5 w-full rounded-xl bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent"
+          className="mt-3.5 w-full"
         >
           그만두기
-        </button>
+        </Button>
       )}
 
       {isFocus && confirmingStop && (
-        <div className="mt-5">
-          <p className="text-sm text-foreground/70">
+        <div className="mt-3.5">
+          <p className="text-sm text-muted">
             {FOCUS_MINUTES}분을 채우지 않으면 이번 시간은 기록되지 않아요.
           </p>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setConfirmingStop(false)}
-              className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white"
-            >
+          <div className="mt-2.5 flex gap-2">
+            <Button onClick={() => setConfirmingStop(false)} className="flex-1">
               계속하기
-            </button>
-            <button
-              type="button"
-              onClick={endSession}
-              className="flex-1 rounded-xl bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent"
-            >
+            </Button>
+            <Button variant="secondary" onClick={endSession} className="flex-1">
               그만두기
-            </button>
+            </Button>
           </div>
         </div>
       )}
-    </div>
+    </Block>
   );
 }
 
 function DoneCard({ session }: { session: Session }) {
   return (
-    <div className="mt-8 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-5 text-center">
-      <p className="text-lg font-bold">수고했어요!</p>
-      <p className="mt-1 break-words text-sm text-foreground/70">
-        {session.subject} 공부 시간에 {FOCUS_MINUTES}분을 더했어요.
+    <Block className="text-center">
+      <p className="text-[17px] font-bold">수고했어요!</p>
+      <p className="mt-1 break-words text-sm text-muted">
+        {session.subject} 공부 시간에 <span className="font-mono">{FOCUS_MINUTES}</span>분을
+        더했어요.
       </p>
-      <button
-        type="button"
-        onClick={() => startFocus(session.subject)}
-        className="mt-5 w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white"
-      >
+      <Button onClick={() => startFocus(session.subject)} className="mt-3.5 w-full">
         한 번 더 집중
-      </button>
-      <button
-        type="button"
-        onClick={endSession}
-        className="mt-2 w-full rounded-xl bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent"
-      >
+      </Button>
+      <Button variant="secondary" onClick={endSession} className="mt-2 w-full">
         다른 과목 고르기
-      </button>
-    </div>
+      </Button>
+    </Block>
   );
 }
 
@@ -301,37 +280,33 @@ export default function FocusPage() {
   const { rows, today } = summarize(records, now);
 
   return (
-    <main className="flex-1">
-      <section className="mx-auto max-w-md px-5 pt-12 pb-20">
-        <p className="text-accent text-xs font-semibold tracking-widest">집중 모드</p>
-        <h1 className="mt-3 text-2xl font-bold leading-snug">
-          {FOCUS_MINUTES}분만
-          <br />
-          우니스에게 맡겨 보세요
+    <AppShell>
+      <header className="mb-4 px-1">
+        <p className="text-xs font-medium text-muted">집중 모드</p>
+        <h1 className="text-[22px] font-bold">
+          <span className="font-mono font-semibold">{FOCUS_MINUTES}</span>분 집중,{" "}
+          <span className="font-mono font-semibold">{BREAK_MINUTES}</span>분 휴식
         </h1>
-        <p className="mt-3 text-sm text-foreground/70">
-          과목을 고르고 시작하면 {FOCUS_MINUTES}분 집중하고 {BREAK_MINUTES}분 쉬어요.{" "}
-          {FOCUS_MINUTES}분을 채우면 공부 시간이 기록돼요.
+        <p className="mt-1 text-sm text-muted">
+          과목을 고르고 시작하세요. {FOCUS_MINUTES}분을 채우면 공부 시간이 기록돼요.
         </p>
+      </header>
 
+      <div className="space-y-2.5">
         {!persisted && (
           <div
             role="alert"
-            className="mt-6 rounded-2xl bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300"
+            className="rounded-callout border border-review-line bg-review-soft p-3.5 text-sm text-review"
           >
-            이 브라우저에서는 저장을 할 수 없어요. 타이머는 쓸 수 있지만 창을 닫으면
-            기록이 사라져요.
+            이 브라우저에서는 저장을 할 수 없어요. 타이머는 쓸 수 있지만 창을 닫으면 기록이
+            사라져요.
           </div>
         )}
 
         {ringing && (
-          <button
-            type="button"
-            onClick={stopAlarm}
-            className="mt-8 w-full rounded-xl bg-accent px-5 py-4 text-base font-bold text-white"
-          >
+          <Button onClick={stopAlarm} className="min-h-14 w-full text-base font-bold">
             알람 끄기
-          </button>
+          </Button>
         )}
 
         {!session && <SubjectPicker data={data} />}
@@ -339,36 +314,38 @@ export default function FocusPage() {
           <RunningCard key={session.endsAt} session={session} now={now} />
         )}
         {session?.phase === "done" && <DoneCard session={session} />}
+      </div>
 
-        <div className="mt-8">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-sm font-semibold">과목별 공부 시간</h2>
-            {rows.length > 0 && (
-              <p className="shrink-0 text-xs text-foreground/50">
-                오늘 {formatMinutes(today)}
-              </p>
-            )}
-          </div>
-          {rows.length === 0 ? (
-            <p className="mt-3 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-5 text-sm text-foreground/60">
-              아직 기록이 없어요. {FOCUS_MINUTES}분 집중을 마치면 여기에 쌓여요.
+      <section className="mt-5">
+        <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
+          <h2 className="text-[15px] font-bold">과목별 공부 시간</h2>
+          {rows.length > 0 && (
+            <p className="shrink-0 font-mono text-xs font-medium text-muted">
+              오늘 {formatMinutes(today)}
             </p>
-          ) : (
-            <ul className="mt-3 space-y-3">
+          )}
+        </div>
+        {rows.length === 0 ? (
+          <Block className="text-sm text-muted">
+            아직 기록이 없어요. {FOCUS_MINUTES}분 집중을 마치면 여기에 쌓여요.
+          </Block>
+        ) : (
+          <Block padded={false}>
+            <ul className="divide-y divide-divider">
               {rows.map((row) => (
                 <li
                   key={row.subject}
-                  className="flex items-center justify-between gap-4 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4"
+                  className="flex min-h-11 items-center justify-between gap-4 px-3.5 py-2.5"
                 >
-                  <span className="min-w-0 break-words text-sm font-semibold">
+                  <span className="min-w-0 break-words text-[15px] font-medium">
                     {row.subject}
                   </span>
-                  <span className="shrink-0 text-right">
+                  <span className="shrink-0 text-right font-mono">
                     <span className="block text-sm font-semibold">
                       {formatMinutes(row.total)}
                     </span>
                     {row.today > 0 && (
-                      <span className="block text-xs text-foreground/50">
+                      <span className="block text-xs font-medium text-muted">
                         오늘 {formatMinutes(row.today)}
                       </span>
                     )}
@@ -376,12 +353,12 @@ export default function FocusPage() {
                 </li>
               ))}
             </ul>
-          )}
-          <p className="mt-3 text-xs text-foreground/50">
-            기록은 이 브라우저에만 저장돼요. 브라우저 데이터를 지우면 함께 사라져요.
-          </p>
-        </div>
+          </Block>
+        )}
+        <p className="mt-2 px-1 text-xs text-muted">
+          기록은 이 브라우저에만 저장돼요. 브라우저 데이터를 지우면 함께 사라져요.
+        </p>
       </section>
-    </main>
+    </AppShell>
   );
 }
