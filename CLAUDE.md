@@ -32,9 +32,10 @@
 - AI는 Claude API. **호출은 `web/src/app/api/` 안의 서버 코드에서만** 하고, Claude 연결은 `web/src/lib/claude.ts`의 `getAnthropic()`을 재사용합니다. 키는 `web/.env.local`의 `ANTHROPIC_API_KEY`, 배포 때는 Vercel 환경 변수에 넣습니다.
 - 웹앱 AI 비용은 API 크레딧으로 나갑니다. 빠르고 가벼운 모델을 기본으로, 답변은 스트리밍으로 보여 줍니다.
 - 개인 데이터(일정·성적·기록)는 브라우저 `localStorage`에만 저장합니다. 서버로는 보내지 않습니다.
-- 이미 설치된 것: `@anthropic-ai/sdk`, `zod`, `ics`, `unpdf`. 필요할 때 추가할 부품: `date-fns`, `lucide-react`, `sonner` (`docs/개발가이드.md`의 참고 자료 참고). 새 패키지는 설치 전에 이유를 설명합니다.
+- 이미 설치된 것: `@anthropic-ai/sdk`, `zod`, `ics`, `unpdf`, `lucide-react`(아이콘). 필요할 때 추가할 부품: `date-fns`, `sonner` (`docs/개발가이드.md`의 참고 자료 참고). 새 패키지는 설치 전에 이유를 설명합니다.
 
 ## 디자인
+- 모든 화면은 `docs/DESIGN.md`를 따른다
 - 폰 화면(폭 375px) 먼저, 하단 탭바, 포인트 색 1개, 둥근 카드, 넓은 여백
 
 ## 꼭 지킬 것

@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Noto_Sans_KR } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from "next/font/google";
 import "./globals.css";
 import TabBar from "./tab-bar";
 
-const notoSansKr = Noto_Sans_KR({
-  variable: "--font-noto-sans-kr",
+// 글꼴은 docs/DESIGN.md: 본문은 Plex Sans KR, 숫자·시간·날짜는 Plex Mono
+const plexSansKr = IBM_Plex_Sans_KR({
+  variable: "--font-plex-sans-kr",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
+  weight: ["500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -23,7 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ko"
-      className={`${notoSansKr.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plexSansKr.variable} ${plexMono.variable} h-full antialiased`}
     >
       {/* 아래 여백은 고정된 탭바가 마지막 내용을 가리지 않게 한다 */}
       <body className="min-h-full flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
