@@ -38,6 +38,7 @@
 - 본문: **IBM Plex Sans KR** (400·500·600·700) → `font-sans` (기본값이라 따로 안 써도 됨)
 - 숫자·시간·날짜·D-day: **IBM Plex Mono** (500·600) → `font-mono`
 - 둘 다 `web/src/app/layout.tsx`에서 `next/font/google`로 불러옵니다.
+- 홈의 UNIS 로고만: **Unbounded** (900), 36px, 포인트색 → `web/src/app/home-header.tsx`에서 불러옵니다. 다른 글자에는 쓰지 않습니다.
 
 | 쓰임 | 크기 / 굵기 | Tailwind |
 |---|---|---|
