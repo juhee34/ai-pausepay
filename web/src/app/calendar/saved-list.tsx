@@ -6,20 +6,16 @@ import Badge from "@/components/ui/badge";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import CheckRow from "@/components/ui/check-row";
-import SegmentedTabs from "@/components/ui/segmented-tabs";
 import { useToday } from "@/lib/briefing";
 import { downloadCalendarFile } from "@/lib/calendar-file";
 import { BADGE_OF } from "@/lib/day-plan";
 import { removeDeadline, useSavedDeadlines } from "@/lib/deadline-store";
-import MonthCalendar from "./month-calendar";
 import { shortDate } from "./review-list";
 
-// 이 기기에 저장된 일정: 달력 또는 목록, 지우기, 캘린더 파일(.ics) 다시 받기.
+// 홈에 보이는 저장된 일정 전체: 목록, 지우기, 캘린더 파일(.ics) 다시 받기.
 export default function SavedList() {
   const today = useToday();
   const saved = useSavedDeadlines();
-  const [view, setView] = useState<"list" | "month">("list");
-  const [month, setMonth] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +23,6 @@ export default function SavedList() {
 
   const upcoming = saved.filter((d) => d.date >= today);
   const past = saved.filter((d) => d.date < today);
-  const shownMonth = month ?? (upcoming[0]?.date ?? today).slice(0, 7);
 
   function download() {
     try {
@@ -41,7 +36,7 @@ export default function SavedList() {
   const row = (d: (typeof saved)[number]) => {
     const badge = BADGE_OF[d.kind];
     return (
-      <div key={d.id} id={`saved-${d.id}`} className="scroll-mt-24">
+      <div key={d.id}>
         <CheckRow
           time={shortDate(d.date)}
           title={d.title}
@@ -66,40 +61,11 @@ export default function SavedList() {
   };
 
   return (
-    <section className="mt-6">
-      <div className="mb-2 flex items-center justify-between px-1">
-        <div>
-          <h2 className="text-[15px] font-bold">내 일정 {saved.length}개</h2>
-          <p className="text-xs text-muted">이 폰 브라우저에만 저장돼요</p>
-        </div>
-        <SegmentedTabs
-          label="보기 방식"
-          options={[
-            { value: "list", label: "목록" },
-            { value: "month", label: "달력" },
-          ]}
-          value={view}
-          onChange={setView}
-        />
+    <section id="saved-deadlines" className="mt-6 scroll-mt-4">
+      <div className="mb-2 px-1">
+        <h2 className="text-[15px] font-bold">내 일정 {saved.length}개</h2>
+        <p className="text-xs text-muted">이 폰 브라우저에만 저장돼요</p>
       </div>
-
-      {view === "month" && (
-        <div className="mb-2.5">
-          <MonthCalendar
-            month={shownMonth}
-            today={today}
-            marks={saved.map((d) => ({ date: d.date, kind: d.kind }))}
-            onMonthChange={setMonth}
-            onSelectDate={(date) => {
-              const target = saved.find((d) => d.date === date);
-              if (target && target.date < today) setShowPast(true);
-              requestAnimationFrame(() =>
-                document.getElementById(`saved-${target?.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
-              );
-            }}
-          />
-        </div>
-      )}
 
       <Block padded={false} className="divide-y divide-divider">
         {past.length > 0 && (
