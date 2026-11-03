@@ -29,7 +29,9 @@ function writeCache(cache: Cache) {
   }
 }
 
-export default function TodayPick() {
+// '지금 시작할 일' 한 줄 (AI, 안 되면 정해진 문장). 2주 안에 일정이 없으면 null.
+// 끝낸 일정은 추천하지 않는다.
+export function useTodayPick() {
   const today = useToday();
   const deadlines = useSavedDeadlines();
   const activities = useActivities();
@@ -41,10 +43,10 @@ export default function TodayPick() {
     const inRange = (date: string) => date >= today && date <= until;
     return [
       ...deadlines
-        .filter((d) => inRange(d.date))
+        .filter((d) => !d.done && inRange(d.date))
         .map((d) => ({ type: "일정" as const, title: d.title, course: d.course, date: d.date, kind: d.kind })),
       ...activities
-        .filter((a) => inRange(a.date))
+        .filter((a) => !a.done && inRange(a.date))
         .map((a) => ({ type: "대외활동" as const, title: a.title, course: "", date: a.date, kind: "대외활동" as const })),
     ]
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -86,17 +88,6 @@ export default function TodayPick() {
     };
   }, [today, signature, items]);
 
-  if (!today) return <div className="h-24" />;
-
-  const fallback = ruleBasedPick(today, items);
-  const text = aiText?.signature === signature ? aiText.text : fallback;
-
-  return (
-    <div className="rounded-2xl bg-accent px-5 py-5 text-white">
-      <p className="text-xs font-semibold opacity-80">지금 시작할 일</p>
-      <p className="mt-2 text-base font-bold leading-snug">
-        {text ?? "2주 안에 다가오는 일정이 없어요. 강의계획서를 올려 일정을 채워 보세요."}
-      </p>
-    </div>
-  );
+  if (!today) return null;
+  return aiText?.signature === signature ? aiText.text : ruleBasedPick(today, items);
 }

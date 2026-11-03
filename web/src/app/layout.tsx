@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from "next/font/google";
 import "./globals.css";
-import TabBar from "./tab-bar";
+import BottomTabBar from "@/components/ui/bottom-tab-bar";
 
 // 글꼴은 docs/DESIGN.md: 본문은 Plex Sans KR, 숫자·시간·날짜는 Plex Mono
 const plexSansKr = IBM_Plex_Sans_KR({
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       {/* 아래 여백은 고정된 탭바가 마지막 내용을 가리지 않게 한다 */}
       <body className="min-h-full flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
         {children}
-        <TabBar />
+        <BottomTabBar />
       </body>
     </html>
   );

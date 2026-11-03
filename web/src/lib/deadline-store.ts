@@ -9,6 +9,7 @@ import { DEADLINE_KINDS, type Deadline } from "./syllabus";
 export type SavedDeadline = Omit<Deadline, "date"> & {
   id: string;
   date: string; // 저장할 때는 날짜가 꼭 있어야 한다 (YYYY-MM-DD)
+  done?: boolean; // 홈에서 체크한 일정
 };
 
 const STORAGE_KEY = "unis.deadlines.v1";
@@ -80,6 +81,10 @@ export function addDeadlines(items: Omit<SavedDeadline, "id">[]) {
     .map((d) => ({ ...d, id: crypto.randomUUID() }));
   write([...current, ...fresh]);
   return fresh.length;
+}
+
+export function setDeadlineDone(id: string, done: boolean) {
+  write(getSnapshot().map((d) => (d.id === id ? { ...d, done } : d)));
 }
 
 export function removeDeadline(id: string) {

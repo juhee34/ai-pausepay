@@ -1,20 +1,24 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState } from "react";
+import Button from "@/components/ui/button";
 import {
   MAX_ACTIVITY_TITLE,
   addActivity,
   removeActivity,
   useActivities,
 } from "@/lib/activity-store";
-import { dDayLabel, daysUntil, useToday } from "@/lib/briefing";
-import { formatDate } from "@/lib/syllabus";
+import { useToday } from "@/lib/briefing";
+import { dDay, formatKoreanDate } from "@/lib/day-plan";
 
-// 동아리·공모전처럼 강의계획서에 없는 일정을 직접 적는 카드. 지난 일정은 숨긴다.
+const INPUT = "min-h-11 w-full rounded-button border border-line bg-surface px-3 text-[15px] text-ink";
+
+// 동아리·공모전처럼 강의계획서에 없는 일정을 직접 적는 곳. 홈의 '+ 대외활동' 창 안에 들어간다.
+// 적은 일정은 홈의 그날 목록에 같이 보인다. 지난 일정은 숨긴다.
 export default function Activities() {
   const today = useToday();
   const activities = useActivities();
-  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
 
@@ -28,84 +32,53 @@ export default function Activities() {
     addActivity(title, date);
     setTitle("");
     setDate("");
-    setOpen(false);
   }
 
   return (
-    <section className="mt-8">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">대외활동</h2>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="text-xs font-semibold text-accent"
-        >
-          {open ? "닫기" : "+ 추가"}
-        </button>
-      </div>
+    <div>
+      <form onSubmit={submit} className="space-y-2">
+        <input
+          aria-label="활동 이름"
+          placeholder="예: 동아리 정기 회의"
+          value={title}
+          maxLength={MAX_ACTIVITY_TITLE}
+          onChange={(e) => setTitle(e.target.value)}
+          className={INPUT}
+        />
+        <input
+          type="date"
+          aria-label="날짜"
+          value={date}
+          min={today}
+          onChange={(e) => setDate(e.target.value)}
+          className={INPUT}
+        />
+        <Button type="submit" className="w-full" disabled={!title.trim() || !date}>
+          추가
+        </Button>
+      </form>
 
-      {open && (
-        <form
-          onSubmit={submit}
-          className="mt-3 space-y-2 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4"
-        >
-          <input
-            aria-label="활동 이름"
-            placeholder="예: 동아리 정기 회의"
-            value={title}
-            maxLength={MAX_ACTIVITY_TITLE}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm"
-          />
-          <input
-            type="date"
-            aria-label="날짜"
-            value={date}
-            min={today}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={!title.trim() || !date}
-            className="w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
-          >
-            저장
-          </button>
-        </form>
-      )}
-
-      {upcoming.length === 0 ? (
-        !open && (
-          <p className="mt-3 rounded-2xl bg-foreground/[0.04] px-4 py-4 text-sm text-foreground/70">
-            동아리·공모전 일정을 적어 두면 브리핑에 같이 보여요.
-          </p>
-        )
-      ) : (
-        <ul className="mt-3 space-y-2">
+      {upcoming.length > 0 && (
+        <ul className="mt-4 divide-y divide-divider border-t border-divider">
           {upcoming.map((a) => (
-            <li
-              key={a.id}
-              className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.02] px-4 py-3"
-            >
-              <span className="w-14 shrink-0 text-center text-sm font-bold text-foreground/70">
-                {dDayLabel(daysUntil(today, a.date))}
-              </span>
+            <li key={a.id} className="flex min-h-11 items-center gap-3 py-2">
+              <span className="w-12 shrink-0 font-mono text-[13px] font-semibold text-brand">{dDay(today, a.date)}</span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{a.title}</p>
-                <p className="text-xs text-foreground/60">{formatDate(a.date)}</p>
+                <p className="truncate text-[15px] font-medium">{a.title}</p>
+                <p className="text-xs text-muted">{formatKoreanDate(a.date)}</p>
               </div>
               <button
                 type="button"
+                aria-label={`${a.title} 지우기`}
                 onClick={() => removeActivity(a.id)}
-                className="shrink-0 px-1 text-xs text-foreground/40"
+                className="flex h-11 w-11 shrink-0 items-center justify-center text-muted"
               >
-                지우기
+                <X size={18} strokeWidth={1.8} aria-hidden="true" />
               </button>
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </div>
   );
 }
