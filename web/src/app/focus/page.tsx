@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { ALERT_WINDOW_MS, playEndAlert, prepareAlert } from "./alert";
 import {
   BREAK_MINUTES,
   FOCUS_MINUTES,
@@ -23,6 +24,9 @@ import {
 } from "./store";
 
 type Session = NonNullable<FocusData["session"]>;
+
+const ALERT_NOTICE =
+  "폰 화면을 켜 두고 이 화면을 열어 두면 끝날 때 소리와 진동으로 알려 드려요. 화면이 꺼지면 울리지 않을 수 있고, 아이폰은 진동이 없고 무음 모드에서는 소리도 나지 않아요. 기록은 그대로 저장돼요.";
 
 function formatClock(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -147,6 +151,7 @@ function SubjectPicker({ data }: { data: FocusData }) {
       >
         {FOCUS_MINUTES}분 집중 시작
       </button>
+      <p className="text-xs leading-relaxed text-foreground/50">{ALERT_NOTICE}</p>
     </div>
   );
 }
@@ -174,6 +179,12 @@ function RunningCard({ session, now }: { session: Session; now: number }) {
       <div className="mt-5 h-2 overflow-hidden rounded-full bg-foreground/10">
         <div className="h-full bg-accent" style={{ width: `${progress}%` }} />
       </div>
+
+      {isFocus && (
+        <p className="mt-4 text-left text-xs leading-relaxed text-foreground/50">
+          {ALERT_NOTICE}
+        </p>
+      )}
 
       {!isFocus && (
         <button
@@ -256,9 +267,19 @@ export default function FocusPage() {
 
   useEffect(() => {
     if (session && session.phase !== "done" && now >= session.endsAt) {
-      settleSession(Date.now());
+      const current = Date.now();
+      const focusEndedAt = settleSession(current);
+      if (focusEndedAt !== null && current - focusEndedAt <= ALERT_WINDOW_MS) {
+        playEndAlert();
+      }
     }
   }, [session, now]);
+
+  // 새로 고친 뒤에도 소리가 나도록, 시작 버튼만이 아니라 화면을 누를 때마다 준비한다.
+  useEffect(() => {
+    window.addEventListener("click", prepareAlert);
+    return () => window.removeEventListener("click", prepareAlert);
+  }, []);
 
   const { rows, today } = summarize(records, now);
 

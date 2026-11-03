@@ -107,12 +107,15 @@ export const getNow = () => Math.floor(Date.now() / 1000) * 1000;
 export const getServerNow = () => 0;
 
 // 지난 시간을 따라잡는다. 저장소의 최신 값을 읽고 한 번에 쓰므로 탭이 여러 개여도 기록은 한 번만 남는다.
+// 이번 호출로 집중이 끝났으면 끝난 시각을 돌려준다. 다른 탭이 먼저 처리했으면 null이다.
 export function settleSession(now: number) {
   const data = readData();
   let { session, records } = data;
-  if (!session) return;
+  if (!session) return null;
 
+  let focusEndedAt: number | null = null;
   if (session.phase === "focus" && now >= session.endsAt) {
+    focusEndedAt = session.endsAt;
     records = [
       ...records,
       { subject: session.subject, minutes: FOCUS_MINUTES, finishedAt: session.endsAt },
@@ -128,6 +131,7 @@ export function settleSession(now: number) {
     session = { ...session, phase: "done" };
   }
   if (session !== data.session) writeData({ ...data, records, session });
+  return focusEndedAt;
 }
 
 export function startFocus(subject: string) {
