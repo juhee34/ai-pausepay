@@ -252,6 +252,9 @@ function PickCallout({ today, freeMinutes }: { today: string; freeMinutes: numbe
             </Button>
           )}
         </div>
+        <Link href="/today" className="mt-2.5 block text-center text-xs font-semibold text-brand underline-offset-2 active:underline">
+          공부할 시간으로 하나 고르기 →
+        </Link>
       </div>
     </div>
   );

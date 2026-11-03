@@ -240,9 +240,8 @@ export default function RiskPage() {
         </>
       )}
 
-      {/* 오늘의 한 가지 화면(/today)이 생기면 주소를 바꾼다. 지금은 홈의 추천 블록이 그 자리다. */}
       <Link
-        href="/"
+        href="/today"
         className="mt-4 flex min-h-11 w-full items-center justify-between rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
       >
         오늘의 한 가지로 돌아가기
