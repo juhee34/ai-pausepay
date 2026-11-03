@@ -28,7 +28,7 @@
 
 ### 포인트색 아껴 쓰기
 - 포인트색으로 **꽉 채운 블록은 화면당 하나**만.
-- 그 밖의 포인트색은 **홈의 UNIS 로고, 오늘 날짜, 현재 시각 선, D-day 숫자, 주요 버튼**에만.
+- 그 밖의 포인트색은 **홈의 UNIS 로고 강조, 오늘 날짜, 현재 시각 선, D-day 숫자, 주요 버튼**에만.
 
 ### 다크 모드
 이번 학기에는 만들지 않습니다. 새 화면은 밝은 화면만 만듭니다.
@@ -38,7 +38,7 @@
 - 본문: **IBM Plex Sans KR** (400·500·600·700) → `font-sans` (기본값이라 따로 안 써도 됨)
 - 숫자·시간·날짜·D-day: **IBM Plex Mono** (500·600) → `font-mono`
 - 둘 다 `web/src/app/layout.tsx`에서 `next/font/google`로 불러옵니다.
-- 홈의 UNIS 로고만: **Unbounded** (900), 36px, 포인트색 → `web/src/app/home-header.tsx`에서 불러옵니다. 다른 글자에는 쓰지 않습니다.
+- 홈의 UNIS 로고만: **Noto Serif Bold Italic**. 윗줄 `UNIfied Student` 11px(`UNI`·`S`는 포인트색, 나머지 `muted`), 아랫줄 `UNIS` 28px `ink` + 포인트색 동그란 점 6px → `web/src/app/home-header.tsx`에서 불러옵니다. 다른 글자에는 쓰지 않습니다.
 
 | 쓰임 | 크기 / 굵기 | Tailwind |
 |---|---|---|
