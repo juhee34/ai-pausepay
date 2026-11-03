@@ -5,6 +5,9 @@ import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import SegmentedTabs from "@/components/ui/segmented-tabs";
+import { useSavedDeadlines } from "@/lib/deadline-store";
+import { saveExamResult } from "@/lib/exam-results";
+import { useTimetable } from "@/lib/timetable-store";
 import {
   MAX_SOURCE_LENGTH,
   MIN_SOURCE_LENGTH,
@@ -40,6 +43,8 @@ const inputClass =
 
 const warningClass = "text-xs font-semibold text-review";
 
+const MAX_COURSE_LENGTH = 50;
+
 function scrollToTop() {
   requestAnimationFrame(() => window.scrollTo({ top: 0 }));
 }
@@ -47,6 +52,13 @@ function scrollToTop() {
 export default function ExamPage() {
   const [mode, setMode] = useState<SourceMode>("pdf");
   const [pastedText, setPastedText] = useState("");
+  const [course, setCourse] = useState("");
+
+  const deadlines = useSavedDeadlines();
+  const timetable = useTimetable();
+  const courseOptions = [
+    ...new Set([...timetable, ...deadlines].map((item) => item.course.trim())),
+  ].filter(Boolean);
 
   const [fileName, setFileName] = useState<string | null>(null);
   const [pages, setPages] = useState<string[]>([]);
@@ -281,6 +293,41 @@ export default function ExamPage() {
               </Block>
             )}
 
+            <Block>
+              <label className="block text-[15px] font-bold" htmlFor="exam-course">
+                어떤 과목인가요? <span className="text-xs font-medium text-muted">(선택)</span>
+              </label>
+              {courseOptions.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {courseOptions.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      aria-pressed={course.trim() === name}
+                      onClick={() => setCourse(course.trim() === name ? "" : name)}
+                      className={`min-h-11 max-w-full break-words rounded-button px-3.5 text-sm font-semibold ${
+                        course.trim() === name ? "bg-brand-soft text-brand" : "bg-canvas text-muted"
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <input
+                id="exam-course"
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+                maxLength={MAX_COURSE_LENGTH}
+                placeholder="예: 재무관리"
+                className={`${inputClass} ${courseOptions.length > 0 ? "mt-2.5" : ""}`}
+              />
+              <p className="mt-1.5 text-xs text-muted">
+                고르면 채점 결과를 이 기기에 저장해서 공부 순서를 정할 때 참고해요. AI에게는 보내지
+                않아요.
+              </p>
+            </Block>
+
             {(mode === "text" || (fileName && isRangeValid)) && (
               <div className="px-1">
                 <p
@@ -490,6 +537,16 @@ export default function ExamPage() {
             <Button
               disabled={answeredCount < round.length}
               onClick={() => {
+                // 틀린 문제만 다시 푼 결과는 정답률을 왜곡하므로 전체를 풀었을 때만 저장한다.
+                const name = course.trim();
+                if (name && round.length === pack.questions.length) {
+                  saveExamResult({
+                    course: name,
+                    correct: round.length - wrong.length,
+                    total: round.length,
+                    finishedAt: Date.now(),
+                  });
+                }
                 setGraded(true);
                 scrollToTop();
               }}
