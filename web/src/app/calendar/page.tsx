@@ -1,5 +1,7 @@
 "use client";
 
+import { aiFetch } from "@/lib/ai-fetch";
+
 import { ChevronLeft, FileUp } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -84,7 +86,7 @@ function SyllabusFlow() {
     try {
       const body = new FormData();
       body.append("file", file);
-      const res = await fetch("/api/syllabus", { method: "POST", body });
+      const res = await aiFetch("/api/syllabus", { method: "POST", body });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data) {
         setError(data?.error ?? "일정을 찾지 못했어요. 잠시 뒤에 다시 해 주세요.");

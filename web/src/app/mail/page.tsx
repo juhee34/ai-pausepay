@@ -1,5 +1,7 @@
 "use client";
 
+import { aiFetch } from "@/lib/ai-fetch";
+
 import { useRef, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
@@ -78,7 +80,7 @@ export default function MailPage() {
 
     try {
       // 학번은 보내지 않는다. 화면에서 빈칸에 채워 넣는다.
-      const res = await fetch("/api/mail", {
+      const res = await aiFetch("/api/mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ situation, course, message }),

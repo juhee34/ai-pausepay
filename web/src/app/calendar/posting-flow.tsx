@@ -1,5 +1,7 @@
 "use client";
 
+import { aiFetch } from "@/lib/ai-fetch";
+
 import { ChevronLeft, FileUp, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -104,9 +106,9 @@ export default function PostingFlow() {
       if (source === "image" && file) {
         const body = new FormData();
         body.append("file", file);
-        res = await fetch("/api/posting", { method: "POST", body });
+        res = await aiFetch("/api/posting", { method: "POST", body });
       } else {
-        res = await fetch("/api/posting", {
+        res = await aiFetch("/api/posting", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text }),

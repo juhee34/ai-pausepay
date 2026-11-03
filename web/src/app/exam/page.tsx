@@ -1,5 +1,7 @@
 "use client";
 
+import { aiFetch } from "@/lib/ai-fetch";
+
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
@@ -143,7 +145,7 @@ export default function ExamPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/exam", {
+      const res = await aiFetch("/api/exam", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source }),

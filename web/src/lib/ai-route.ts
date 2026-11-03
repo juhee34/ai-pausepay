@@ -1,20 +1,76 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse, type NextRequest } from "next/server";
-import { AI_LIMIT_MESSAGE, DAILY_AI_LIMIT, getAiUsageToday } from "./ai-limit";
+import { AI_LIMIT_MESSAGE, DAILY_AI_LIMIT, getAiUsageToday, recordAiUse } from "./ai-limit";
+import { AccountApiError, getAdminDb, verifiedUid } from "./firebase-admin";
+import { reserveUsage, settleUsage } from "./ai-usage-store";
+import type { AiFeature } from "./ai-usage";
+
+type UsageContext = { feature: AiFeature; usedToday?: number; lease?: Awaited<ReturnType<typeof reserveUsage>>; settled?: boolean };
+const contexts = new WeakMap<NextRequest, UsageContext>();
+
+function usageError(error: unknown) {
+  return NextResponse.json({ error: error instanceof AccountApiError ? error.message : "계정별 사용량을 확인하지 못했어요. 잠시 뒤에 다시 해 주세요." }, { status: error instanceof AccountApiError ? error.status : 503 });
+}
+
+// 오류 응답·예외에서는 예약을 돌려준다. 서버가 강제 종료되면 예약은 2분 뒤 만료된다.
+export function withAiUsage(feature: AiFeature, handler: (request: NextRequest) => Promise<NextResponse>) {
+  return async (request: NextRequest) => {
+    const context: UsageContext = { feature };
+    contexts.set(request, context);
+    try {
+      return await handler(request);
+    } finally {
+      if (context.lease && !context.settled) {
+        try { await settleUsage(getAdminDb(), context.lease, false); }
+        catch { console.error("usage: reservation release failed"); }
+      }
+      contexts.delete(request);
+    }
+  };
+}
+
+export async function completeAiUse(response: NextResponse, request: NextRequest) {
+  const context = contexts.get(request);
+  if (!context) throw new Error("AI usage context missing");
+  if (context.lease) {
+    try {
+      await settleUsage(getAdminDb(), context.lease, true);
+      context.settled = true;
+    } catch (error) {
+      // 쓰기 결과가 불명확하면 실패 취소로 덮지 않는다. 미확정 예약은 만료된다.
+      context.settled = true;
+      await response.body?.cancel().catch(() => {});
+      return usageError(error);
+    }
+  } else {
+    recordAiUse(response, context.usedToday ?? 0);
+  }
+  return response;
+}
 
 // AI를 부르는 서버 코드(app/api/*/route.ts)가 같이 쓰는 도우미.
-// 하루 사용 횟수 확인과 Claude 오류 처리를 한곳에 모아, 나중에 사용자별 사용량을 붙일 때 여기만 고치면 되게 한다.
+// 로그인 계정은 Firestore 트랜잭션, 비로그인은 기존 서명 쿠키로 제한한다.
 
 // 서버는 maxDuration(60초)에 끊긴다. 한 번에 25초, 실패하면 1번만 다시 시도해서 그 안에 안내 문구를 돌려준다.
 // (시험 대비 팩은 자기 시간 계산이 있어서 이 값을 쓰지 않는다.)
 export const CLAUDE_REQUEST_OPTIONS = { timeout: 25_000, maxRetries: 1 };
 
 // 오늘 횟수를 다 썼으면 안내 응답을, 아니면 오늘 쓴 횟수를 돌려준다.
-export function checkAiLimit(request: NextRequest): { usedToday: number } | NextResponse {
+export async function checkAiLimit(request: NextRequest): Promise<{ usedToday: number } | NextResponse> {
+  const context = contexts.get(request);
+  if (!context) throw new Error("AI usage context missing");
+  try {
+    const uid = await verifiedUid(request);
+    if (uid) {
+      context.lease = await reserveUsage(getAdminDb(), uid, context.feature);
+      return { usedToday: 0 };
+    }
+  } catch (error) { return usageError(error); }
   const usedToday = getAiUsageToday(request);
   if (usedToday >= DAILY_AI_LIMIT) {
     return NextResponse.json({ error: AI_LIMIT_MESSAGE }, { status: 429 });
   }
+  context.usedToday = usedToday;
   return { usedToday };
 }
 

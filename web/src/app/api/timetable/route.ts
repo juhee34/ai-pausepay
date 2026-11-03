@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { recordAiUse } from "@/lib/ai-limit";
+import { completeAiUse, withAiUsage } from "@/lib/ai-route";
 import {
   CLAUDE_REQUEST_OPTIONS,
   checkAiLimit,
@@ -52,7 +52,7 @@ function clip(text: string) {
   return text.trim().slice(0, MAX_TEXT_LENGTH);
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAiUsage("timetable", async (request: NextRequest) => {
   const file = await readFormFile(request);
   if (!file) {
     return NextResponse.json({ error: "파일이 없어요." }, { status: 400 });
@@ -71,9 +71,8 @@ export async function POST(request: NextRequest) {
   }
 
   // 다른 AI 기능과 하루 사용 횟수를 함께 쓴다.
-  const limit = checkAiLimit(request);
+  const limit = await checkAiLimit(request);
   if (limit instanceof NextResponse) return limit;
-  const { usedToday } = limit;
 
   // 파일은 저장하지 않고, 이 요청 안에서만 Claude에게 보낸 뒤 버린다.
   const data = Buffer.from(await file.arrayBuffer()).toString("base64");
@@ -120,9 +119,8 @@ export async function POST(request: NextRequest) {
 
     // 성공했을 때만 1회로 센다.
     const result = NextResponse.json({ slots });
-    recordAiUse(result, usedToday);
-    return result;
+    return await completeAiUse(result, request);
   } catch (error) {
     return claudeErrorResponse(error, "timetable");
   }
-}
+});

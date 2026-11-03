@@ -1,5 +1,7 @@
 "use client";
 
+import { aiFetch } from "@/lib/ai-fetch";
+
 import { useEffect, useMemo, useState } from "react";
 import { isHomeActivity, useActivities } from "@/lib/activity-store";
 import { addDays, ruleBasedPick, useToday, type BriefingItem } from "@/lib/briefing";
@@ -68,7 +70,7 @@ export function useTodayPick() {
       }
       if (callsToday >= MAX_CALLS_PER_DAY) return; // 규칙 문장을 그대로 둔다
       try {
-        const res = await fetch("/api/briefing", {
+        const res = await aiFetch("/api/briefing", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ items }),
