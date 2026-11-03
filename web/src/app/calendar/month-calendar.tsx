@@ -31,7 +31,7 @@ export function shiftMonth(month: string, delta: number) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// 한 달 달력 블록. 오늘은 포인트색 테두리 원, 일정 있는 날은 숫자 아래 종류별 색 점(최대 3개).
+// 한 달 달력 블록. 오늘은 포인트색 원, 일정 있는 날은 숫자 아래 종류별 색 점(최대 3개).
 // selected를 주면(홈) 모든 날을 고를 수 있고 고른 날을 표시한다. 없으면 일정 있는 날만 누를 수 있다.
 export default function MonthCalendar({
   month,
@@ -110,8 +110,12 @@ export default function MonthCalendar({
             >
               <span
                 className={`flex h-7 w-7 items-center justify-center rounded-full font-mono text-[13px] font-medium ${
-                  isToday ? "border-[1.5px] border-brand font-semibold text-brand" : "text-ink"
-                } ${isSelected ? "bg-brand-soft font-semibold text-brand" : ""}`}
+                  isToday
+                    ? "bg-brand font-semibold text-white"
+                    : isSelected
+                      ? "bg-brand-soft font-semibold text-brand"
+                      : "text-ink"
+                }`}
               >
                 {Number(date.slice(8))}
               </span>

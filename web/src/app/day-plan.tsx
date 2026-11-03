@@ -92,7 +92,16 @@ export default function DayPlan() {
     <Block padded={false} className="mt-2.5">
       <div className="flex min-h-11 items-center justify-between gap-2 px-3.5 pt-2">
         <h2 className="text-[15px] font-bold">
-          {isToday ? "오늘 일정" : `${Number(selected.slice(5, 7))}/${Number(selected.slice(8))} ${weekdayOf(selected)}요일 일정`}
+          {isToday ? (
+            <>
+              오늘 일정
+              <span className="ml-1.5 font-mono text-xs font-medium text-muted">
+                {Number(today.slice(5, 7))}/{Number(today.slice(8))} {weekdayOf(today)}
+              </span>
+            </>
+          ) : (
+            `${Number(selected.slice(5, 7))}/${Number(selected.slice(8))} ${weekdayOf(selected)}요일 일정`
+          )}
         </h2>
         {!isToday ? (
           <button
