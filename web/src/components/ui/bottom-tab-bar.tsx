@@ -17,17 +17,18 @@ import {
   Radar,
   Sparkles,
   Timer,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import BottomSheet from "./bottom-sheet";
 
 const LEFT_TABS = [
   { href: "/", label: "홈", Icon: House },
-  { href: "/focus", label: "집중", Icon: Timer },
+  { href: "/mail", label: "메일", Icon: Mail },
 ];
 const RIGHT_TABS = [
   { href: "/exam", label: "시험 대비", Icon: NotebookPen },
-  { href: "/mail", label: "메일", Icon: Mail },
+  { href: "/my", label: "마이페이지", Icon: UserRound },
 ];
 
 type FeatureTile = {
@@ -47,6 +48,7 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
       { href: "/today", label: "오늘의 한 가지", sub: "지금 할 공부 하나", Icon: Sparkles, ready: false },
       { href: "/grades", label: "기말 필요 점수", sub: "목표까지 몇 점?", Icon: Calculator, ready: true },
       { href: "/risk", label: "학기 리스크 지도", sub: "몰리는 주 미리 보기", Icon: MapIcon, ready: false },
+      { href: "/focus", label: "집중 모드", sub: "25분 집중 + 5분 휴식", Icon: Timer, ready: true },
     ],
   },
   {
