@@ -8,7 +8,7 @@ import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
 import CheckRow, { Checkbox } from "@/components/ui/check-row";
-import { setActivityDone, useActivities } from "@/lib/activity-store";
+import { isHomeActivity, setActivityDone, useActivities } from "@/lib/activity-store";
 import { useNowMinutes, useToday } from "@/lib/briefing";
 import {
   BADGE_OF,
@@ -40,7 +40,7 @@ export default function DayPlan() {
   const now = useNowMinutes();
   const timetable = useTimetable();
   const deadlines = useSavedDeadlines();
-  const activities = useActivities();
+  const activities = useActivities().filter(isHomeActivity);
   const [picked, setPicked] = useState<string | null>(null);
   const [month, setMonth] = useState<string | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);

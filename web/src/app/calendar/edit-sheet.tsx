@@ -9,7 +9,7 @@ import { DEADLINE_KINDS, type DeadlineKind } from "@/lib/syllabus";
 import { useTimetable } from "@/lib/timetable-store";
 import { shortDate, type Draft } from "./review-list";
 
-const INPUT = "min-h-11 w-full rounded-button border border-line bg-surface px-3 text-[15px] text-ink";
+const INPUT = "min-h-11 w-full rounded-button border border-line bg-surface px-3 text-[16px] text-ink";
 
 // 찾은 일정 하나를 고치는 창. 날짜가 없는 '확인 필요' 일정은 원문으로 날짜 후보 3개를 보여 준다.
 export default function EditSheet({
