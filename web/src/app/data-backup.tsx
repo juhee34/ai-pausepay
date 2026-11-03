@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Button from "@/components/ui/button";
 import {
   MAX_BACKUP_BYTES,
   exportBackup,
@@ -71,24 +72,19 @@ export default function DataBackup() {
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-5">
-      <h2 className="text-sm font-semibold">내 일정 옮기기</h2>
-      <p className="mt-1 text-xs leading-relaxed text-foreground/60">
+    <section className="mt-5">
+      <h3 className="text-[15px] font-bold">내 일정 옮기기</h3>
+      <p className="mt-1 text-xs leading-relaxed text-muted">
         일정과 대외활동을 파일로 받아 두면 다른 폰에서 되살릴 수 있어요. 가져오면 지금 일정에 더해져요.
       </p>
 
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          onClick={handleExport}
-          disabled={busy}
-          className="flex-1 rounded-xl bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent disabled:opacity-60"
-        >
+      <div className="mt-3 flex gap-2">
+        <Button variant="secondary" onClick={handleExport} disabled={busy} className="flex-1">
           내보내기
-        </button>
+        </Button>
         <label
-          className={`flex-1 rounded-xl bg-accent-soft px-4 py-2.5 text-center text-sm font-semibold text-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent ${
-            busy ? "opacity-60" : "cursor-pointer"
+          className={`inline-flex min-h-11 flex-1 items-center justify-center rounded-button bg-canvas px-4 text-[15px] font-semibold text-ink active:bg-divider has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand ${
+            busy ? "opacity-40" : "cursor-pointer"
           }`}
         >
           가져오기
@@ -100,15 +96,17 @@ export default function DataBackup() {
       {notice && (
         <p
           role={notice.kind === "error" ? "alert" : "status"}
-          className={`mt-3 text-xs leading-relaxed ${
-            notice.kind === "error" ? "text-red-700 dark:text-red-300" : "text-foreground/70"
+          className={`mt-2.5 text-xs leading-relaxed ${
+            notice.kind === "error"
+              ? "rounded-button border border-review-line bg-review-soft px-3 py-2 text-review"
+              : "text-muted"
           }`}
         >
           {notice.text}
         </p>
       )}
 
-      <p className="mt-3 text-xs leading-relaxed text-foreground/50">
+      <p className="mt-2.5 text-xs leading-relaxed text-muted">
         파일에 내 일정이 들어 있어요. 서버로 보내지 않으니, 단톡방에 올리지 말고 나만 볼 수 있는 곳에 두세요.
       </p>
     </section>

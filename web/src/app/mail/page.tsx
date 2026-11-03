@@ -1,6 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
+import AppShell from "@/components/ui/app-shell";
+import Block from "@/components/ui/block";
+import Button from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/check-row";
 import {
   MAIL_SITUATIONS,
   MAX_COURSE_LENGTH,
@@ -57,8 +61,9 @@ async function copyText(text: string) {
   return copied;
 }
 
+// 글자가 16px보다 작으면 아이폰이 입력할 때 화면을 확대한다.
 const inputClass =
-  "mt-2 w-full rounded-xl border border-foreground/15 bg-transparent px-4 py-3 text-base outline-none focus:border-accent";
+  "mt-1.5 block min-h-11 w-full rounded-button border border-line bg-surface px-3.5 py-2.5 text-base font-normal text-ink outline-none placeholder:text-muted focus:border-brand";
 
 export default function MailPage() {
   const [situation, setSituation] = useState<MailSituationId>(MAIL_SITUATIONS[0].id);
@@ -166,32 +171,25 @@ export default function MailPage() {
     : [];
 
   return (
-    <main className="flex-1">
-      <section className="mx-auto max-w-md px-5 pt-12 pb-20">
-        <p className="text-accent text-xs font-semibold tracking-widest">
-          교수님 메일 작성기
+    <AppShell>
+      <header className="mb-4 px-1">
+        <p className="text-xs font-medium text-muted">교수님 메일</p>
+        <h1 className="text-[22px] font-bold">교수님께 보낼 메일 초안</h1>
+        <p className="mt-1 text-sm text-muted">
+          상황을 고르고 내용을 적으면 예의 바른 초안과 보내기 전 체크리스트가 나와요.
         </p>
-        <h1 className="mt-3 text-2xl font-bold leading-snug">
-          교수님께 보낼 메일,
-          <br />
-          초안부터 써 드릴게요
-        </h1>
-        <p className="mt-3 text-sm text-foreground/70">
-          상황을 고르고 내용을 적으면 예의 바른 초안과 보내기 전 체크리스트가
-          나와요.
-        </p>
+      </header>
 
-        <form onSubmit={writeDraft} className="mt-8 space-y-6">
+      <form onSubmit={writeDraft} className="space-y-2.5">
+        <Block>
           <fieldset>
-            <legend className="text-sm font-semibold">어떤 상황인가요?</legend>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <legend className="text-[15px] font-bold">어떤 상황인가요?</legend>
+            <div className="mt-2.5 flex flex-wrap gap-2">
               {MAIL_SITUATIONS.map((s) => (
                 <label
                   key={s.id}
-                  className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent ${
-                    situation === s.id
-                      ? "border-accent bg-accent-soft text-accent"
-                      : "border-foreground/15 text-foreground/70"
+                  className={`flex min-h-11 cursor-pointer items-center rounded-button px-3.5 text-sm font-semibold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand ${
+                    situation === s.id ? "bg-brand-soft text-brand" : "bg-canvas text-muted"
                   }`}
                 >
                   <input
@@ -207,7 +205,9 @@ export default function MailPage() {
               ))}
             </div>
           </fieldset>
+        </Block>
 
+        <Block className="space-y-3.5">
           <label className="block text-sm font-semibold">
             과목명
             <input
@@ -215,7 +215,7 @@ export default function MailPage() {
               onChange={(e) => setCourse(e.target.value)}
               maxLength={MAX_COURSE_LENGTH}
               placeholder="예: 재무관리"
-              className={`${inputClass} font-normal`}
+              className={inputClass}
             />
           </label>
 
@@ -228,9 +228,9 @@ export default function MailPage() {
               inputMode="numeric"
               autoComplete="off"
               placeholder="예: 2024123456"
-              className={`${inputClass} font-normal`}
+              className={`${inputClass} font-mono`}
             />
-            <span className="mt-1 block text-xs font-normal text-foreground/50">
+            <span className="mt-1 block text-xs font-normal text-muted">
               학번은 AI에게 보내지 않고, 이 화면에서 초안에 넣어요.
             </span>
           </label>
@@ -243,106 +243,111 @@ export default function MailPage() {
               maxLength={MAX_MESSAGE_LENGTH}
               rows={4}
               placeholder="예: 11월 5일에 병원에 가느라 결석했어요. 진단서가 있어요."
-              className={`${inputClass} resize-none font-normal`}
+              className={`${inputClass} resize-none`}
             />
-            <span className="mt-1 block text-right text-xs font-normal text-foreground/50">
+            <span className="mt-1 block text-right font-mono text-xs font-medium text-muted">
               {message.length} / {MAX_MESSAGE_LENGTH}
             </span>
           </label>
+        </Block>
 
-          <button
-            type="submit"
-            disabled={!canSubmit || loading}
-            className="w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? "초안 쓰는 중…" : "초안 쓰기"}
-          </button>
-        </form>
+        <Button type="submit" disabled={!canSubmit || loading} className="w-full">
+          {loading ? "초안 쓰는 중…" : "초안 만들기"}
+        </Button>
+      </form>
 
-        {error && (
-          <div
-            role="alert"
-            className="mt-6 rounded-2xl bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300"
-          >
-            {error}
-          </div>
-        )}
+      {error && (
+        <div
+          role="alert"
+          className="mt-2.5 rounded-callout border border-review-line bg-review-soft p-3.5 text-sm text-review"
+        >
+          {error}
+        </div>
+      )}
 
-        {draft && (
-          <div className="mt-8">
-            <h2 className="text-sm font-semibold">초안</h2>
-            <p className="mt-1 text-xs text-foreground/50">
-              AI가 쓴 초안이라 틀릴 수 있어요. 대괄호 [ ] 빈칸을 채우고 내용을
-              꼭 확인한 뒤 보내 주세요.
+      {draft && (
+        <section className="mt-5">
+          <div className="mb-2 px-1">
+            <h2 className="text-[15px] font-bold">초안</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted">
+              AI가 쓴 초안이라 틀릴 수 있어요. 대괄호 [ ] 빈칸을 채우고 내용을 꼭 확인한 뒤 보내
+              주세요.
             </p>
+          </div>
 
-            <div className="mt-4 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-5">
-              <p className="text-xs font-semibold text-foreground/50">제목</p>
-              <p className="mt-1 text-sm font-semibold break-words">{subject}</p>
+          <Block padded={false} className="divide-y divide-divider">
+            <div className="p-3.5">
+              <p className="text-xs font-medium text-muted">제목</p>
+              <p className="mt-1 text-[15px] font-semibold break-words">{subject}</p>
               {done && subject && (
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
                   onClick={() => handleCopy(subject)}
-                  className="mt-3 w-full rounded-xl bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent"
+                  className="mt-3 w-full"
                 >
                   제목 복사
-                </button>
+                </Button>
               )}
             </div>
 
-            <div className="mt-3 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-5">
-              <p className="text-xs font-semibold text-foreground/50">본문</p>
+            <div className="p-3.5">
+              <p className="text-xs font-medium text-muted">본문</p>
               <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
                 {body}
               </p>
               {done && body && (
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
                   onClick={() => handleCopy(body)}
-                  className="mt-3 w-full rounded-xl bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent"
+                  className="mt-3 w-full"
                 >
                   본문 복사
-                </button>
+                </Button>
               )}
             </div>
-          </div>
-        )}
+          </Block>
+        </section>
+      )}
 
-        {done && (
-          <div className="mt-8">
-            <h2 className="text-sm font-semibold">보내기 전 체크리스트</h2>
-            <ul className="mt-3 space-y-3">
+      {done && (
+        <section className="mt-5">
+          <h2 className="mb-2 px-1 text-[15px] font-bold">보내기 전 체크리스트</h2>
+          <Block padded={false}>
+            <ul className="divide-y divide-divider">
               {checklist.map((item) => (
-                <li key={item.id}>
-                  <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4">
-                    <input
-                      type="checkbox"
-                      checked={checked.includes(item.id)}
-                      onChange={() => toggleChecked(item.id)}
-                      className="mt-0.5 size-5 shrink-0 accent-[var(--accent)]"
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold">{item.label}</span>
-                      <span className="mt-0.5 block text-xs text-foreground/60">
-                        {item.hint}
-                      </span>
+                <li key={item.id} className="flex items-start gap-3 px-3.5 py-3">
+                  <Checkbox
+                    checked={checked.includes(item.id)}
+                    onChange={() => toggleChecked(item.id)}
+                    label={item.label}
+                  />
+                  {/* CheckRow는 긴 글을 잘라서, 안내가 다 보이도록 줄을 직접 만든다. 글자를 눌러도 체크된다. */}
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => toggleChecked(item.id)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <span className="block text-[15px] font-medium">{item.label}</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted">
+                      {item.hint}
                     </span>
-                  </label>
+                  </button>
                 </li>
               ))}
             </ul>
-          </div>
-        )}
-      </section>
+          </Block>
+        </section>
+      )}
 
       {toast && (
         <div
           role="status"
-          className="fixed inset-x-5 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mx-auto max-w-sm rounded-xl bg-foreground px-4 py-3 text-center text-sm font-semibold text-background"
+          className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mx-auto max-w-sm rounded-button bg-ink px-4 py-3 text-center text-sm font-semibold text-white"
         >
           {toast}
         </div>
       )}
-    </main>
+    </AppShell>
   );
 }
