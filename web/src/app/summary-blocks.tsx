@@ -59,7 +59,7 @@ export default function SummaryBlocks() {
         )}
       </SummaryLink>
 
-      <SummaryLink href="/calendar">
+      <SummaryLink href="/#saved-deadlines">
         <span className="text-[11px] font-medium text-muted">이번 주 마감</span>
         {thisWeek.length > 0 ? (
           <>

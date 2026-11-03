@@ -8,7 +8,6 @@ import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
 import CheckRow, { Checkbox } from "@/components/ui/check-row";
-import WeekStrip from "@/components/ui/week-strip";
 import { setActivityDone, useActivities } from "@/lib/activity-store";
 import { useNowMinutes, useToday } from "@/lib/briefing";
 import {
@@ -17,7 +16,6 @@ import {
   dDay,
   formatDuration,
   freeMinutesUntilNextClass,
-  mondayOf,
   pickCandidates,
   toMinutes,
   weekdayOf,
@@ -26,6 +24,7 @@ import {
 import { setDeadlineDone, useSavedDeadlines, type SavedDeadline } from "@/lib/deadline-store";
 import { useTimetable } from "@/lib/timetable-store";
 import Activities from "./activities";
+import MonthCalendar, { type DotKind } from "./calendar/month-calendar";
 import { useTodayPick } from "./today-pick";
 
 const MIN_FREE_MINUTES = 30;
@@ -34,7 +33,8 @@ function formatHm(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-// 홈의 큰 흰 블록: 이번 주 요일 줄 → 그날 일정 목록. 오늘이면 현재 시각 선과 지금 할 일 추천이 끼어든다.
+// 홈의 큰 달력 → 고른 날의 일정 목록. 강의계획서에서 저장한 일정이 달력에 바로 점으로 찍힌다.
+// 오늘이면 현재 시각 선과 지금 할 일 추천이 끼어든다.
 export default function DayPlan() {
   const today = useToday();
   const now = useNowMinutes();
@@ -42,6 +42,7 @@ export default function DayPlan() {
   const deadlines = useSavedDeadlines();
   const activities = useActivities();
   const [picked, setPicked] = useState<string | null>(null);
+  const [month, setMonth] = useState<string | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
 
   if (!today || now === null) return <Block className="mt-2.5 min-h-64" />;
@@ -58,8 +59,11 @@ export default function DayPlan() {
     (item.type === "class" && isPastClass(item.slot.end));
   const doneCount = [...untimed, ...timed].filter(isDone).length;
 
-  // 이번 주 요일 줄의 점: 마감·대외활동이 있는 날
-  const markedDates = [...deadlines.map((d) => d.date), ...activities.map((a) => a.date)];
+  // 달력의 점: 마감·대외활동이 있는 날
+  const marks: { date: string; kind: DotKind }[] = [
+    ...deadlines.map((d) => ({ date: d.date, kind: d.kind })),
+    ...activities.map((a) => ({ date: a.date, kind: "기타" as const })),
+  ];
 
   // 현재 시각 선은 아직 시작하지 않은 첫 수업 앞에 둔다.
   const nowIndex = isToday ? timed.findIndex((c) => toMinutes(c.slot.start) > now) : -1;
@@ -73,23 +77,36 @@ export default function DayPlan() {
   );
 
   return (
-    <Block padded={false} className="mt-2.5">
-      <div className="border-b border-divider px-2 py-2">
-        <WeekStrip
-          weekStart={mondayOf(today)}
-          today={today}
-          selected={selected}
-          markedDates={markedDates}
-          onSelect={setPicked}
-        />
-      </div>
+    <>
+    <div className="mt-2.5">
+      <MonthCalendar
+        month={month ?? today.slice(0, 7)}
+        today={today}
+        marks={marks}
+        selected={selected}
+        onMonthChange={setMonth}
+        onSelectDate={setPicked}
+      />
+    </div>
 
-      <div className="flex items-baseline justify-between px-3.5 pt-3 pb-1">
+    <Block padded={false} className="mt-2.5">
+      <div className="flex min-h-11 items-center justify-between gap-2 px-3.5 pt-2">
         <h2 className="text-[15px] font-bold">
           {isToday ? "오늘 일정" : `${Number(selected.slice(5, 7))}/${Number(selected.slice(8))} ${weekdayOf(selected)}요일 일정`}
         </h2>
-        {total > 0 && (
-          <span className="text-xs text-muted">{isToday ? `${total}개 중 ${doneCount}개 지남` : `${total}개`}</span>
+        {!isToday ? (
+          <button
+            type="button"
+            onClick={() => {
+              setPicked(null);
+              setMonth(null);
+            }}
+            className="-mr-1 min-h-11 shrink-0 px-1 text-xs font-semibold text-brand"
+          >
+            오늘 보기
+          </button>
+        ) : (
+          total > 0 && <span className="text-xs text-muted">{`${total}개 중 ${doneCount}개 지남`}</span>
         )}
       </div>
 
@@ -139,6 +156,7 @@ export default function DayPlan() {
         <Activities />
       </BottomSheet>
     </Block>
+    </>
   );
 }
 
