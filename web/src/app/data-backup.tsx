@@ -21,7 +21,7 @@ export default function DataBackup() {
 
   function handleExport() {
     if (!hasBackupData()) {
-      setNotice({ kind: "error", text: "아직 내보낼 일정이 없어요." });
+      setNotice({ kind: "error", text: "아직 내보낼 기록이 없어요." });
       return;
     }
     try {
@@ -39,7 +39,7 @@ export default function DataBackup() {
     if (!file) return;
 
     if (file.size > MAX_BACKUP_BYTES) {
-      setNotice({ kind: "error", text: "우니스에서 내보낸 파일이 아니에요. 일정은 그대로예요." });
+      setNotice({ kind: "error", text: "우니스에서 내보낸 파일이 아니에요. 기록은 그대로예요." });
       return;
     }
 
@@ -47,25 +47,25 @@ export default function DataBackup() {
     try {
       const data = parseBackup(await file.text());
       if (!data) {
-        setNotice({ kind: "error", text: "우니스에서 내보낸 파일이 아니에요. 일정은 그대로예요." });
+        setNotice({ kind: "error", text: "우니스에서 내보낸 파일이 아니에요. 기록은 그대로예요." });
         setBusy(false);
         return;
       }
 
-      const { addedDeadlines, addedActivities } = importBackup(data);
-      if (addedDeadlines === 0 && addedActivities === 0) {
-        setNotice({ kind: "ok", text: "파일의 일정이 이미 모두 들어 있어요." });
+      const { addedDeadlines, addedActivities, addedFocusRecords, changed } = importBackup(data);
+      if (!changed) {
+        setNotice({ kind: "ok", text: "파일의 내용이 이미 모두 들어 있어요." });
         setBusy(false);
         return;
       }
 
       setNotice({
         kind: "ok",
-        text: `일정 ${addedDeadlines}개, 대외활동 ${addedActivities}개를 가져왔어요. 화면을 새로 고칠게요.`,
+        text: `일정 ${addedDeadlines}개, 대외활동 ${addedActivities}개, 공부 기록 ${addedFocusRecords}개를 가져왔어요. 화면을 새로 고칠게요.`,
       });
       setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
     } catch {
-      setNotice({ kind: "error", text: "가져오지 못했어요. 일정은 그대로예요." });
+      setNotice({ kind: "error", text: "가져오지 못했어요. 기록은 그대로예요." });
       setBusy(false);
     }
   }
@@ -74,7 +74,7 @@ export default function DataBackup() {
     <section className="mt-8 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-5">
       <h2 className="text-sm font-semibold">내 일정 옮기기</h2>
       <p className="mt-1 text-xs leading-relaxed text-foreground/60">
-        일정과 대외활동을 파일로 받아 두면 다른 폰에서 되살릴 수 있어요. 가져오면 지금 일정에 더해져요.
+        일정, 대외활동, 공부 기록을 파일로 받아 두면 다른 폰에서 되살릴 수 있어요. 가져오면 지금 기록에 더해져요.
       </p>
 
       <div className="mt-4 flex gap-2">
@@ -109,7 +109,7 @@ export default function DataBackup() {
       )}
 
       <p className="mt-3 text-xs leading-relaxed text-foreground/50">
-        파일에 내 일정이 들어 있어요. 서버로 보내지 않으니, 단톡방에 올리지 말고 나만 볼 수 있는 곳에 두세요.
+        파일에 내 일정과 공부 기록이 들어 있어요. 서버로 보내지 않으니, 단톡방에 올리지 말고 나만 볼 수 있는 곳에 두세요.
       </p>
     </section>
   );

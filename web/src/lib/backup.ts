@@ -1,15 +1,18 @@
 "use client";
 
-// 일정과 대외활동을 파일로 내보내고 다시 불러온다. 파일은 이 기기 안에서만 만들고 읽으며 서버로 보내지 않는다.
+// 일정, 대외활동, 집중 모드 공부 기록을 파일로 내보내고 다시 불러온다.
+// 파일은 이 기기 안에서만 만들고 읽으며 서버로 보내지 않는다.
 // 저장소 파일(deadline-store.ts, activity-store.ts)은 화면 안에 사본을 들고 있으므로,
 // 가져온 뒤에는 페이지를 새로 고쳐야 화면에 반영된다.
 
+import type { FocusData } from "@/app/focus/store";
 import type { Activity } from "./activity-store";
 import type { SavedDeadline } from "./deadline-store";
 import { DEADLINE_KINDS } from "./syllabus";
 
 const DEADLINES_KEY = "unis.deadlines.v1";
 const ACTIVITIES_KEY = "unis.activities.v1";
+const FOCUS_KEY = "unis-focus";
 
 const BACKUP_APP = "unis";
 const BACKUP_VERSION = 1;
@@ -17,7 +20,11 @@ const BACKUP_VERSION = 1;
 // 일정 파일은 작다. 엉뚱한 큰 파일을 고르면 읽기 전에 막는다.
 export const MAX_BACKUP_BYTES = 1024 * 1024;
 
-type BackupData = { deadlines: SavedDeadline[]; activities: Activity[] };
+// 진행 중인 타이머(session)는 그 기기의 일이라 옮기지 않는다.
+type FocusBackup = Pick<FocusData, "subjects" | "records">;
+type BackupData = { deadlines: SavedDeadline[]; activities: Activity[]; focus: FocusBackup };
+
+const EMPTY_FOCUS: FocusBackup = { subjects: [], records: [] };
 
 function isYmd(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -45,6 +52,33 @@ function isActivity(value: unknown): value is Activity {
   return typeof a.id === "string" && typeof a.title === "string" && isYmd(a.date);
 }
 
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isFocusRecord(value: unknown): value is FocusData["records"][number] {
+  if (!value || typeof value !== "object") return false;
+  const r = value as Record<string, unknown>;
+  return (
+    typeof r.subject === "string" &&
+    typeof r.minutes === "number" &&
+    Number.isFinite(r.minutes) &&
+    r.minutes >= 0 &&
+    typeof r.finishedAt === "number" &&
+    Number.isFinite(r.finishedAt)
+  );
+}
+
+function isFocusSession(value: unknown): value is NonNullable<FocusData["session"]> {
+  if (!value || typeof value !== "object") return false;
+  const s = value as Record<string, unknown>;
+  return (
+    typeof s.subject === "string" &&
+    (s.phase === "focus" || s.phase === "break" || s.phase === "done") &&
+    typeof s.endsAt === "number"
+  );
+}
+
 function readList<T>(key: string, isItem: (value: unknown) => value is T): T[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
@@ -54,16 +88,38 @@ function readList<T>(key: string, isItem: (value: unknown) => value is T): T[] {
   }
 }
 
+function readFocus(): FocusData {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(FOCUS_KEY) ?? "null");
+    if (!parsed || typeof parsed !== "object") return { ...EMPTY_FOCUS, session: null };
+    const { subjects, records, session } = parsed as Record<string, unknown>;
+    return {
+      subjects: Array.isArray(subjects) ? subjects.filter(isString) : [],
+      records: Array.isArray(records) ? records.filter(isFocusRecord) : [],
+      session: isFocusSession(session) ? session : null,
+    };
+  } catch {
+    return { ...EMPTY_FOCUS, session: null };
+  }
+}
+
 function readCurrent(): BackupData {
+  const { subjects, records } = readFocus();
   return {
     deadlines: readList(DEADLINES_KEY, isDeadline),
     activities: readList(ACTIVITIES_KEY, isActivity),
+    focus: { subjects, records },
   };
 }
 
 export function hasBackupData() {
-  const { deadlines, activities } = readCurrent();
-  return deadlines.length > 0 || activities.length > 0;
+  const { deadlines, activities, focus } = readCurrent();
+  return (
+    deadlines.length > 0 ||
+    activities.length > 0 ||
+    focus.subjects.length > 0 ||
+    focus.records.length > 0
+  );
 }
 
 export function exportBackup() {
@@ -85,6 +141,16 @@ export function exportBackup() {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+function parseFocus(value: unknown): FocusBackup | null {
+  // 공부 기록을 넣기 전에 내보낸 파일에는 이 칸이 없다.
+  if (value === undefined) return EMPTY_FOCUS;
+  if (!value || typeof value !== "object") return null;
+  const { subjects, records } = value as Record<string, unknown>;
+  if (!Array.isArray(subjects) || !subjects.every(isString)) return null;
+  if (!Array.isArray(records) || !records.every(isFocusRecord)) return null;
+  return { subjects, records };
+}
+
 // 우니스 파일이 아니거나 하나라도 형식이 틀리면 전체를 받지 않는다.
 export function parseBackup(text: string): BackupData | null {
   let parsed: unknown;
@@ -101,7 +167,10 @@ export function parseBackup(text: string): BackupData | null {
   const { deadlines, activities } = file;
   if (!Array.isArray(deadlines) || !deadlines.every(isDeadline)) return null;
   if (!Array.isArray(activities) || !activities.every(isActivity)) return null;
-  return { deadlines, activities };
+
+  const focus = parseFocus(file.focus);
+  if (!focus) return null;
+  return { deadlines, activities, focus };
 }
 
 // 같은 내용이면 건너뛰고 새 항목만 더한다. id가 겹치면 새 id를 붙인다.
@@ -129,6 +198,25 @@ function mergeList<T extends { id: string; date: string }>(
   return { merged, added: fresh.length };
 }
 
+// 과목은 합치고, 과목과 끝난 시각이 같은 기록은 하나만 남긴다. 이 기기의 진행 중인 타이머는 그대로 둔다.
+function mergeFocus(current: FocusData, incoming: FocusBackup) {
+  const subjects = [...new Set([...current.subjects, ...incoming.subjects])];
+  const seen = new Set(current.records.map((r) => `${r.subject}|${r.finishedAt}`));
+  const fresh = incoming.records.filter((r) => {
+    const key = `${r.subject}|${r.finishedAt}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const records = [...current.records, ...fresh].sort((a, b) => a.finishedAt - b.finishedAt);
+
+  return {
+    merged: { subjects, records, session: current.session },
+    added: fresh.length,
+    changed: fresh.length > 0 || subjects.length !== current.subjects.length,
+  };
+}
+
 // 합친 결과를 저장하고 새로 더한 개수를 돌려준다. 저장에 실패하면 원래대로 되돌리고 오류를 던진다.
 export function importBackup(data: BackupData) {
   const current = readCurrent();
@@ -142,19 +230,28 @@ export function importBackup(data: BackupData) {
     data.activities,
     (a) => `${a.title}|${a.date}`,
   );
+  const focus = mergeFocus(readFocus(), data.focus);
 
   const previousDeadlines = localStorage.getItem(DEADLINES_KEY);
   const previousActivities = localStorage.getItem(ACTIVITIES_KEY);
+  const previousFocus = localStorage.getItem(FOCUS_KEY);
   try {
     localStorage.setItem(DEADLINES_KEY, JSON.stringify(deadlines.merged));
     localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(activities.merged));
+    if (focus.changed) localStorage.setItem(FOCUS_KEY, JSON.stringify(focus.merged));
   } catch (error) {
     restore(DEADLINES_KEY, previousDeadlines);
     restore(ACTIVITIES_KEY, previousActivities);
+    restore(FOCUS_KEY, previousFocus);
     throw error;
   }
 
-  return { addedDeadlines: deadlines.added, addedActivities: activities.added };
+  return {
+    addedDeadlines: deadlines.added,
+    addedActivities: activities.added,
+    addedFocusRecords: focus.added,
+    changed: deadlines.added > 0 || activities.added > 0 || focus.changed,
+  };
 }
 
 function restore(key: string, value: string | null) {
