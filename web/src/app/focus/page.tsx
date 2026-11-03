@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { ALERT_WINDOW_MS, playEndAlert, prepareAlert } from "./alert";
+import {
+  ALARM_SECONDS,
+  ALERT_WINDOW_MS,
+  getServerAlarmRinging,
+  isAlarmRinging,
+  prepareAlert,
+  startAlarm,
+  stopAlarm,
+  subscribeAlarm,
+} from "./alert";
 import {
   BREAK_MINUTES,
   FOCUS_MINUTES,
@@ -25,8 +34,7 @@ import {
 
 type Session = NonNullable<FocusData["session"]>;
 
-const ALERT_NOTICE =
-  "폰 화면을 켜 두고 이 화면을 열어 두면 끝날 때 소리와 진동으로 알려 드려요. 화면이 꺼지면 울리지 않을 수 있고, 아이폰은 진동이 없고 무음 모드에서는 소리도 나지 않아요. 기록은 그대로 저장돼요.";
+const ALERT_NOTICE = `폰 화면을 켜 두고 이 화면을 열어 두면 끝날 때 알람이 울려요. 화면을 누르면 꺼지고, 누르지 않아도 ${ALARM_SECONDS}초 뒤에 멈춰요. 화면이 꺼지면 울리지 않을 수 있고, 아이폰은 진동이 없고 무음 모드에서는 소리도 나지 않아요. 기록은 그대로 저장돼요.`;
 
 function formatClock(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -262,6 +270,7 @@ export default function FocusPage() {
   const data = useSyncExternalStore(subscribeData, getData, getServerData);
   const persisted = useSyncExternalStore(subscribeData, isPersisted, getServerPersisted);
   const now = useSyncExternalStore(subscribeClock, getNow, getServerNow);
+  const ringing = useSyncExternalStore(subscribeAlarm, isAlarmRinging, getServerAlarmRinging);
 
   const { session, records } = data;
 
@@ -270,15 +279,23 @@ export default function FocusPage() {
       const current = Date.now();
       const focusEndedAt = settleSession(current);
       if (focusEndedAt !== null && current - focusEndedAt <= ALERT_WINDOW_MS) {
-        playEndAlert();
+        startAlarm();
       }
     }
   }, [session, now]);
 
   // 새로 고친 뒤에도 소리가 나도록, 시작 버튼만이 아니라 화면을 누를 때마다 준비한다.
+  // 알람이 울리는 중에는 화면 어디를 눌러도 끈다. 다른 화면으로 가도 끈다.
   useEffect(() => {
-    window.addEventListener("click", prepareAlert);
-    return () => window.removeEventListener("click", prepareAlert);
+    const handleClick = () => {
+      stopAlarm();
+      prepareAlert();
+    };
+    window.addEventListener("click", handleClick);
+    return () => {
+      window.removeEventListener("click", handleClick);
+      stopAlarm();
+    };
   }, []);
 
   const { rows, today } = summarize(records, now);
@@ -305,6 +322,16 @@ export default function FocusPage() {
             이 브라우저에서는 저장을 할 수 없어요. 타이머는 쓸 수 있지만 창을 닫으면
             기록이 사라져요.
           </div>
+        )}
+
+        {ringing && (
+          <button
+            type="button"
+            onClick={stopAlarm}
+            className="mt-8 w-full rounded-xl bg-accent px-5 py-4 text-base font-bold text-white"
+          >
+            알람 끄기
+          </button>
         )}
 
         {!session && <SubjectPicker data={data} />}
