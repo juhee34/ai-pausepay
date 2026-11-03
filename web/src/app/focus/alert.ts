@@ -4,9 +4,12 @@
 // 끝난 지 오래 지나 돌아왔을 때 갑자기 소리가 나지 않게 한다.
 export const ALERT_WINDOW_MS = 60 * 1000;
 
+// 공부하다가도 알아차리도록 크고 길게 울린다. 짧고 작으면 들리지 않았다.
 const BEEP_COUNT = 3;
-const BEEP_SECONDS = 0.18;
-const BEEP_GAP_SECONDS = 0.14;
+const BEEP_SECONDS = 0.5;
+const BEEP_GAP_SECONDS = 0.2;
+const BEEP_VOLUME = 0.7;
+const BEEP_FADE_SECONDS = 0.05;
 const VIBRATE_PATTERN = [200, 100, 200, 100, 200];
 
 let context: AudioContext | null = null;
@@ -28,9 +31,10 @@ function beep(audio: AudioContext) {
     const oscillator = audio.createOscillator();
     const gain = audio.createGain();
     oscillator.frequency.value = 880;
-    // 소리가 뚝 끊기는 잡음을 막으려고 부드럽게 줄인다.
-    gain.gain.setValueAtTime(0.25, at);
-    gain.gain.exponentialRampToValueAtTime(0.001, at + BEEP_SECONDS);
+    // 소리가 뚝 끊기는 잡음을 막으려고 끝부분만 부드럽게 줄인다.
+    gain.gain.setValueAtTime(BEEP_VOLUME, at);
+    gain.gain.setValueAtTime(BEEP_VOLUME, at + BEEP_SECONDS - BEEP_FADE_SECONDS);
+    gain.gain.linearRampToValueAtTime(0, at + BEEP_SECONDS);
     oscillator.connect(gain);
     gain.connect(audio.destination);
     oscillator.start(at);
