@@ -11,14 +11,20 @@ import { useToday } from "@/lib/briefing";
 import { downloadCalendarFile } from "@/lib/calendar-file";
 import { dateCandidates } from "@/lib/date-candidates";
 import { addDeadlines } from "@/lib/deadline-store";
+import { setCourseGrading, useGrading } from "@/lib/grading-store";
 import {
   ACCEPTED_TYPES,
+  GRADING_NAMES,
   MAX_UPLOAD_BYTES,
   isAcceptedType,
+  reviewGrading,
   type Deadline,
+  type GradingDraft,
+  type SyllabusGrading,
 } from "@/lib/syllabus";
 import { useTimetable } from "@/lib/timetable-store";
 import EditSheet from "./edit-sheet";
+import GradingReview, { SavedGrading } from "./grading-review";
 import MonthCalendar, { type DotKind } from "./month-calendar";
 import ReviewList, { type Draft } from "./review-list";
 
@@ -31,6 +37,7 @@ function formatSize(bytes: number) {
 export default function CalendarPage() {
   const today = useToday();
   const timetable = useTimetable();
+  const savedGrading = useGrading();
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +47,9 @@ export default function CalendarPage() {
   const [view, setView] = useState<"list" | "month">("month");
   const [month, setMonth] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
+  const [gradingCourse, setGradingCourse] = useState("");
+  const [gradingDrafts, setGradingDrafts] = useState<GradingDraft[]>([]);
+  const gradingReview = reviewGrading(gradingDrafts);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0];
@@ -79,15 +89,22 @@ export default function CalendarPage() {
         return;
       }
       const found = data.deadlines as Deadline[];
-      if (found.length === 0) {
-        setError("챙길 일정을 찾지 못했어요. 다른 쪽이나 캡쳐로 다시 해 보세요.");
+      const grading: SyllabusGrading[] = data.grading ?? [];
+      if (found.length === 0 && grading.length === 0) {
+        setError("일정과 평가 비율을 찾지 못했어요. 다른 쪽이나 캡쳐로 다시 해 보세요.");
         return;
       }
+      const course = data.course || found.find((item) => item.course)?.course || "";
+      setGradingCourse(course);
+      setGradingDrafts(GRADING_NAMES.map((name) => {
+        const item = grading.find((entry) => entry.name === name);
+        return { name, weight: item ? String(item.weight) : "" };
+      }));
       // 달력은 오늘 이후 첫 일정이 있는 달부터 보여 준다.
       const firstUpcoming = found.find((d) => d.date && today && d.date >= today)?.date;
       setMonth((firstUpcoming ?? today ?? found.find((d) => d.date)?.date ?? "").slice(0, 7));
       setFileName(file.name);
-      setDrafts(found.map((d) => ({ ...d, key: crypto.randomUUID(), checked: true })));
+      setDrafts(found.map((d) => ({ ...d, course: d.course || course, key: crypto.randomUUID(), checked: true })));
       setFile(null);
     } catch {
       setError("인터넷 연결을 확인하고 다시 해 주세요.");
@@ -105,25 +122,45 @@ export default function CalendarPage() {
       setEditing(undated.key);
       return;
     }
-    const { added, saved } = addDeadlines(
-      chosen.map((d) => ({
-        course: d.course,
-        title: d.title.trim() || d.kind,
-        date: d.date!,
-        when: d.when,
-        kind: d.kind,
-      })),
-    );
-    try {
-      downloadCalendarFile(saved);
-    } catch {
-      setError("일정은 저장했지만 캘린더 파일을 만들지 못했어요. 홈의 '다시 받기'를 눌러 주세요.");
+    const course = gradingCourse.trim();
+    const hasGrading = gradingReview.items.length > 0;
+    if (gradingReview.invalid || (hasGrading && !course)) {
+      setError("평가 비율은 0~100 사이 숫자로, 과목명은 빈칸 없이 넣어 주세요.");
+      return;
     }
-    setNotice(
-      added === chosen.length
-        ? `${added}개를 저장하고 캘린더 파일을 내려받았어요.`
-        : `${added}개를 새로 저장했어요. 이미 있던 ${chosen.length - added}개는 건너뛰었어요.`,
-    );
+    if (chosen.length === 0 && !hasGrading) return;
+    const previous = Object.hasOwn(savedGrading, course) ? savedGrading[course] : undefined;
+    if (hasGrading && previous?.length && JSON.stringify(previous) !== JSON.stringify(gradingReview.items)) {
+      if (!confirm(`${course}의 평가 비율이 이미 있어요. 확인한 비율로 바꿀까요? 받은 점수는 그대로 남아요.`)) return;
+    }
+    setError(null);
+    let added = 0;
+    let saved: ReturnType<typeof addDeadlines>["saved"] = [];
+    try {
+      // 실패하면 확인 화면을 유지한다. 재시도해도 이미 저장한 일정은 중복 추가하지 않는다.
+      if (chosen.length > 0) {
+        ({ added, saved } = addDeadlines(chosen.map((d) => ({
+          course: d.course.trim(), title: d.title.trim() || d.kind,
+          date: d.date!, when: d.when, kind: d.kind,
+        }))));
+      }
+      if (hasGrading) setCourseGrading(course, gradingReview.items);
+    } catch {
+      setError("저장을 마치지 못했어요. 일부 일정은 저장됐을 수 있으니, 저장 공간을 확인하고 다시 눌러 주세요.");
+      return;
+    }
+    let message = hasGrading ? `${course} 평가 비율을 저장했어요.` : "";
+    if (chosen.length > 0) {
+      message += ` 일정 ${added}개를 새로 저장했어요.`;
+      if (chosen.length > added) message += ` 이미 있던 ${chosen.length - added}개는 건너뛰었어요.`;
+      try {
+        downloadCalendarFile(saved);
+        message += " 캘린더 파일을 내려받았어요.";
+      } catch {
+        setError("일정은 저장했지만 캘린더 파일을 만들지 못했어요. 홈의 '다시 받기'를 눌러 주세요.");
+      }
+    }
+    setNotice(message.trim());
     setDrafts(null);
   }
 
@@ -182,6 +219,15 @@ export default function CalendarPage() {
         )}
 
         <ReviewList drafts={drafts} month={month} onChange={setDrafts} onEdit={setEditing} />
+        <GradingReview
+          course={gradingCourse}
+          drafts={gradingDrafts}
+          onCourseChange={(course) => {
+            setDrafts(drafts.map((draft) => draft.course === gradingCourse ? { ...draft, course } : draft));
+            setGradingCourse(course);
+          }}
+          onChange={setGradingDrafts}
+        />
         <p className="mt-3 px-1 text-xs leading-relaxed text-muted">
           AI가 찾은 결과라 틀릴 수 있어요. 원본과 날짜를 꼭 비교해 주세요. 일정 이름을 누르면 고칠 수 있어요.
         </p>
@@ -195,12 +241,15 @@ export default function CalendarPage() {
         <div className="h-24" aria-hidden="true" />
         <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 border-t border-line bg-surface">
           <div className="mx-auto max-w-[480px] px-4 py-2.5">
-            <Button className="w-full" disabled={checkedCount === 0} onClick={addToCalendar}>
+            <Button className="w-full" disabled={
+              (checkedCount === 0 && gradingReview.items.length === 0) || gradingReview.invalid ||
+              (gradingReview.items.length > 0 && !gradingCourse.trim())
+            } onClick={addToCalendar}>
               <span>
-                <span className="font-mono">{checkedCount}</span>개 일정 캘린더에 추가
+                {checkedCount > 0 ? <><span className="font-mono">{checkedCount}</span>개 일정{gradingReview.items.length > 0 ? "·평가 비율 저장" : " 캘린더에 추가"}</> : "평가 비율 저장"}
               </span>
             </Button>
-            <p className="mt-1 text-center text-[11px] text-muted">.ics 파일로 받아요 · 하루 전 알림 포함</p>
+            <p className="mt-1 text-center text-[11px] text-muted">{checkedCount > 0 ? ".ics 파일로 받아요 · 하루 전 알림 포함" : "확인한 비율을 이 폰에 저장해요"}</p>
           </div>
         </div>
 
@@ -229,7 +278,7 @@ export default function CalendarPage() {
       <p className="px-1 text-xs font-medium text-muted">강의계획서 → 캘린더</p>
       <h1 className="px-1 text-[22px] font-bold">한 장으로 한 학기 일정</h1>
       <p className="mt-1 px-1 text-sm text-muted">
-        강의계획서 PDF나 KLAS 화면 캡쳐를 올리면 과제·퀴즈·시험 날짜를 찾아 드려요.
+        강의계획서 PDF나 KLAS 화면 캡쳐를 올리면 과제·퀴즈·시험 날짜와 성적 평가 비율을 찾아 드려요.
       </p>
 
       <Block className="mt-6">
@@ -274,6 +323,7 @@ export default function CalendarPage() {
           </Link>
         </p>
       )}
+      <SavedGrading />
     </AppShell>
   );
 }

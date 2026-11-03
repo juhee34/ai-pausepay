@@ -9,6 +9,25 @@ export type AcceptedType = (typeof ACCEPTED_TYPES)[number];
 export const DEADLINE_KINDS = ["과제", "퀴즈", "중간", "기말", "기타"] as const;
 export type DeadlineKind = (typeof DEADLINE_KINDS)[number];
 
+export const GRADING_NAMES = ["중간", "기말", "과제", "퀴즈", "출석", "기타"] as const;
+export type GradingName = (typeof GRADING_NAMES)[number];
+export type SyllabusGrading = { name: GradingName; weight: number };
+export type GradingDraft = { name: GradingName; weight: string };
+
+// 빈칸을 0으로 추측하지 않는다. 0% 항목은 기말 계산 저장소에 넣지 않는다.
+export function reviewGrading(drafts: GradingDraft[]) {
+  const entered = drafts.filter((item) => item.weight.trim() !== "");
+  const invalid = entered.some((item) => {
+    const weight = Number(item.weight);
+    return !Number.isFinite(weight) || weight < 0 || weight > 100;
+  });
+  const items = entered
+    .map(({ name, weight }) => ({ name, weight: Number(weight) }))
+    .filter((item) => Number.isFinite(item.weight) && item.weight > 0 && item.weight <= 100);
+  const total = Math.round(items.reduce((sum, item) => sum + item.weight, 0) * 100) / 100;
+  return { items, total, invalid, needsReview: invalid || total !== 100 };
+}
+
 export type Deadline = {
   course: string;
   title: string;
