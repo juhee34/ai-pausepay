@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // B의 계정 백업: 정리된 데이터만. 로그인 시에는 이 문서를 자동 생성하지 않는다.
+    match /users/{uid}/backups/{backupId} {
+      allow read, delete: if isOwner(uid) && backupId == 'current';
+      allow create, update: if isOwner(uid) && backupId == 'current'
+        && request.resource.data.keys().hasOnly(['version', 'updatedAt', 'data'])
+        && request.resource.data.version == 1
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.data.keys().hasAll(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts'])
+        && request.resource.data.data.keys().hasOnly(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts'])
+        && request.resource.data.data.deadlines is list
+        && request.resource.data.data.activities is list
+        && request.resource.data.data.timetable is list
+        && request.resource.data.data.examResults is list
+        && request.resource.data.data.receipts is list
+        && request.resource.data.data.grades is map
+        && request.resource.data.data.grading is map
+        && request.resource.data.data.focus is map
+        && request.resource.data.data.focus.keys().hasOnly(['subjects', 'records'])
+        && request.resource.data.data.focus.subjects is list
+        && request.resource.data.data.focus.records is list;
+    }
+
+    // A의 AI 사용량: 본인만 읽고, 서버(firebase-admin)만 기록한다.
+    match /users/{uid}/usage/{day} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // 그 외 경로(구독 비밀 토큰 포함)는 화면 코드에서 접근하지 못한다.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

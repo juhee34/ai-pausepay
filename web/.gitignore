@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 로컬 Firebase 접근 규칙 검사 결과 (사용자 데이터·실행 기록은 커밋하지 않음)
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
