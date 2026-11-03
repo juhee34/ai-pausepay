@@ -1,12 +1,12 @@
 "use client";
 
-// 일정, 대외활동, 시간표, 집중 모드 공부 기록, 시험 대비 결과, 점수, 평가 비율을 파일로 내보내고 다시 불러온다.
+// 일정, 대외활동, 시간표, 집중 모드 공부 기록, 시험 대비 결과, 점수, 평가 비율, 스펙 영수증을 파일로 내보내고 다시 불러온다.
 // 파일은 이 기기 안에서만 만들고 읽으며 서버로 보내지 않는다.
 // 저장소 파일(deadline-store.ts, activity-store.ts)은 화면 안에 사본을 들고 있으므로,
 // 가져온 뒤에는 페이지를 새로 고쳐야 화면에 반영된다.
 
 import type { FocusData } from "@/app/focus/store";
-import type { Activity } from "./activity-store";
+import { hasValidActivityDetails, type Activity } from "./activity-store";
 import type { SavedDeadline } from "./deadline-store";
 import {
   EXAM_RESULTS_KEY,
@@ -16,6 +16,7 @@ import {
 } from "./exam-results";
 import { GRADES_KEY, isCourseGrades, type GradesData } from "./grades-store";
 import { GRADING_KEY, isGradingList, type GradingData } from "./grading-store";
+import { RECEIPTS_KEY, isReceipt, type Receipt } from "./receipt-store";
 import { DEADLINE_KINDS } from "./syllabus";
 import { isClassSlot, type ClassSlot } from "./timetable";
 
@@ -40,6 +41,7 @@ type BackupData = {
   examResults: ExamResult[];
   grades: GradesData;
   grading: GradingData;
+  receipts: Receipt[];
 };
 
 const EMPTY_FOCUS: FocusBackup = { subjects: [], records: [] };
@@ -67,7 +69,12 @@ function isDeadline(value: unknown): value is SavedDeadline {
 function isActivity(value: unknown): value is Activity {
   if (!value || typeof value !== "object") return false;
   const a = value as Record<string, unknown>;
-  return typeof a.id === "string" && typeof a.title === "string" && isYmd(a.date);
+  return (
+    typeof a.id === "string" &&
+    typeof a.title === "string" &&
+    isYmd(a.date) &&
+    hasValidActivityDetails(a)
+  );
 }
 
 function isString(value: unknown): value is string {
@@ -147,12 +154,14 @@ function readCurrent(): BackupData {
     examResults: readList(EXAM_RESULTS_KEY, isExamResult),
     grades: readRecord(GRADES_KEY, isCourseGrades),
     grading: readRecord(GRADING_KEY, isGradingList),
+    receipts: readList(RECEIPTS_KEY, isReceipt),
   };
 }
 
 export function hasBackupData() {
-  const { deadlines, activities, focus, timetable, examResults, grades, grading } = readCurrent();
+  const { deadlines, activities, focus, timetable, examResults, grades, grading, receipts } = readCurrent();
   return (
+    receipts.length > 0 ||
     Object.keys(grades).length > 0 ||
     Object.keys(grading).length > 0 ||
     deadlines.length > 0 ||
@@ -233,9 +242,10 @@ export function parseBackup(text: string): BackupData | null {
   const examResults = parseOptionalList(file.examResults, isExamResult);
   const grades = parseOptionalRecord(file.grades, isCourseGrades);
   const grading = parseOptionalRecord(file.grading, isGradingList);
-  if (!timetable || !examResults || !grades || !grading) return null;
+  const receipts = parseOptionalList(file.receipts, isReceipt);
+  if (!timetable || !examResults || !grades || !grading || !receipts) return null;
 
-  return { deadlines, activities, focus, timetable, examResults, grades, grading };
+  return { deadlines, activities, focus, timetable, examResults, grades, grading, receipts };
 }
 
 // 같은 내용이면 건너뛰고 새 항목만 더한다. id가 겹치면 새 id를 붙인다.
@@ -320,6 +330,9 @@ export function importBackup(data: BackupData) {
   const examResults = mergeExamResults(current.examResults, data.examResults);
   const grades = mergeRecord(current.grades, data.grades);
   const grading = mergeRecord(current.grading, data.grading);
+  // 같은 영수증(id)은 이 기기 것을 그대로 두고 없는 것만 더한다.
+  const knownReceipts = new Set(current.receipts.map((r) => r.id));
+  const freshReceipts = data.receipts.filter((r) => !knownReceipts.has(r.id));
 
   // 시간표는 학기당 하나라 섞지 않는다. 이 기기에 없을 때만 파일 것을 넣는다.
   const timetableAdded = current.timetable.length === 0 && data.timetable.length > 0;
@@ -336,6 +349,7 @@ export function importBackup(data: BackupData) {
     EXAM_RESULTS_KEY,
     GRADES_KEY,
     GRADING_KEY,
+    RECEIPTS_KEY,
   ];
   const previous = keys.map((key) => localStorage.getItem(key));
   try {
@@ -348,6 +362,10 @@ export function importBackup(data: BackupData) {
     }
     if (grades.added > 0) localStorage.setItem(GRADES_KEY, JSON.stringify(grades.merged));
     if (grading.added > 0) localStorage.setItem(GRADING_KEY, JSON.stringify(grading.merged));
+    if (freshReceipts.length > 0) {
+      const receipts = [...current.receipts, ...freshReceipts].sort((a, b) => b.createdAt - a.createdAt);
+      localStorage.setItem(RECEIPTS_KEY, JSON.stringify(receipts));
+    }
   } catch (error) {
     keys.forEach((key, index) => restore(key, previous[index]));
     throw error;
@@ -360,11 +378,13 @@ export function importBackup(data: BackupData) {
     addedExamResults: examResults.added,
     addedGrades: grades.added,
     addedGrading: grading.added,
+    addedReceipts: freshReceipts.length,
     timetableAdded,
     timetableKept,
     changed:
       grades.added > 0 ||
       grading.added > 0 ||
+      freshReceipts.length > 0 ||
       deadlines.added > 0 ||
       activities.added > 0 ||
       focus.changed ||

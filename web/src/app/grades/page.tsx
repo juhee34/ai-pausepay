@@ -385,7 +385,6 @@ export default function GradesPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [exampleTargets, setExampleTargets] = useState<Record<string, number>>({});
   const [sheet, setSheet] = useState<Sheet | null>(null);
-  const [riskSoon, setRiskSoon] = useState(false);
 
   const myCourses = [
     ...new Set(
@@ -652,21 +651,13 @@ export default function GradesPage() {
             })}
           </ul>
 
-          {/* 학기 리스크 지도(/risk)가 생기면 Link로 바꾼다. */}
-          <button
-            type="button"
-            onClick={() => setRiskSoon(true)}
+          <Link
+            href="/risk"
             className="mt-4 flex min-h-11 w-full items-center justify-between rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
           >
             부담이 몰리는 주 보기
-            {riskSoon ? (
-              <span role="status" className="text-xs">
-                곧 열려요
-              </span>
-            ) : (
-              <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
-            )}
-          </button>
+            <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
+          </Link>
 
           <p className="mt-4 text-[11px] leading-relaxed text-muted">
             필요 점수 = (목표 총점 − 기말 전까지 확보한 점수) ÷ 기말 배점 × 100이에요. 85점 이상이면

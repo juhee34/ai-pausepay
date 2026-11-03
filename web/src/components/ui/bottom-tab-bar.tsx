@@ -24,11 +24,11 @@ import BottomSheet from "./bottom-sheet";
 
 const LEFT_TABS = [
   { href: "/", label: "홈", Icon: House },
-  { href: "/focus", label: "집중", Icon: Timer },
+  { href: "/mail", label: "메일", Icon: Mail },
 ];
 const RIGHT_TABS = [
   { href: "/exam", label: "시험 대비", Icon: NotebookPen },
-  { href: "/mail", label: "메일", Icon: Mail },
+  { href: "/my", label: "마이페이지", Icon: UserRound },
 ];
 
 type FeatureTile = {
@@ -47,22 +47,22 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
     tiles: [
       { href: "/today", label: "오늘의 한 가지", sub: "지금 할 공부 하나", Icon: Sparkles, ready: false },
       { href: "/grades", label: "기말 필요 점수", sub: "목표까지 몇 점?", Icon: Calculator, ready: true },
-      { href: "/risk", label: "학기 리스크 지도", sub: "몰리는 주 미리 보기", Icon: MapIcon, ready: false },
+      { href: "/risk", label: "학기 리스크 지도", sub: "몰리는 주 미리 보기", Icon: MapIcon, ready: true },
+      { href: "/focus", label: "집중 모드", sub: "25분 집중 + 5분 휴식", Icon: Timer, ready: true },
     ],
   },
   {
     title: "취업 준비",
     tiles: [
       { href: "/calendar?type=posting", label: "공고·자격증 올리기", sub: "마감을 일정에 추가", Icon: CalendarPlus, ready: false },
-      { href: "/career", label: "대외활동", sub: "지원 단계 관리", Icon: ListChecks, ready: false },
-      { href: "/career/receipts", label: "스펙 영수증", sub: "경험을 한 줄로 정리", Icon: Award, ready: false },
+      { href: "/career", label: "대외활동", sub: "지원 단계 관리", Icon: ListChecks, ready: true },
+      { href: "/career/receipts", label: "스펙 영수증", sub: "경험을 한 줄로 정리", Icon: Award, ready: true },
       { href: "/career/skills", label: "역량 공백 지도", sub: "부족한 역량 찾기", Icon: Radar, ready: false },
     ],
   },
   {
     title: "내 정보",
     tiles: [
-      { href: "/my", label: "마이페이지", sub: "Google 로그인·내 정보", Icon: UserRound, ready: true },
       { href: "/timetable", label: "시간표 캡쳐", sub: "캡쳐로 시간표 넣기", Icon: CalendarClock, ready: true },
     ],
   },

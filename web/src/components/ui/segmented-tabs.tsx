@@ -20,7 +20,7 @@ export default function SegmentedTabs<T extends string>({
             type="button"
             aria-pressed={active}
             onClick={() => onChange(option.value)}
-            className={`min-h-9 rounded-[9px] px-3.5 text-[13px] font-semibold ${
+            className={`min-h-11 rounded-[9px] px-3.5 text-[13px] font-semibold ${
               active ? "bg-surface text-ink" : "text-muted"
             }`}
           >

@@ -8,7 +8,7 @@ import { MAX_SLOTS, MAX_TEXT_LENGTH, WEEKDAYS, type ClassSlot, type Weekday } fr
 export type SlotDraft = ClassSlot & { key: string };
 
 const INPUT =
-  "min-h-11 rounded-button border border-line bg-surface px-3 text-[15px] text-ink placeholder:text-muted/60";
+  "min-h-11 rounded-button border border-line bg-surface px-3 text-[16px] text-ink placeholder:text-muted/60";
 
 // 저장 전에 고쳐야 할 점. 없으면 null.
 export function slotProblem(s: SlotDraft) {
@@ -73,7 +73,7 @@ export default function ReviewTable({
                   aria-label="시작 시간"
                   value={d.start ?? ""}
                   onChange={(e) => update(d.key, { start: e.target.value || null })}
-                  className={`${INPUT} w-0 flex-1 !px-2 text-sm`}
+                  className={`${INPUT} w-0 flex-1 !px-2`}
                 />
                 <span aria-hidden="true" className="text-muted">~</span>
                 <input
@@ -81,7 +81,7 @@ export default function ReviewTable({
                   aria-label="끝 시간"
                   value={d.end ?? ""}
                   onChange={(e) => update(d.key, { end: e.target.value || null })}
-                  className={`${INPUT} w-0 flex-1 !px-2 text-sm`}
+                  className={`${INPUT} w-0 flex-1 !px-2`}
                 />
               </div>
               <div className="flex gap-2">

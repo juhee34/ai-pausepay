@@ -47,7 +47,7 @@ export default function BottomSheet({
           type="button"
           aria-label="닫기"
           onClick={onClose}
-          className="flex h-8 w-full items-center justify-center"
+          className="flex h-11 w-full items-center justify-center"
         >
           <span aria-hidden="true" className="h-1 w-10 rounded-full bg-line" />
         </button>
