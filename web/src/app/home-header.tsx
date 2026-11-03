@@ -1,37 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Settings } from "lucide-react";
+import { ChevronRight, FileUp, Menu } from "lucide-react";
 import { useState } from "react";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import { useToday } from "@/lib/briefing";
 import { formatKoreanDate } from "@/lib/day-plan";
 import DataBackup from "./data-backup";
 
-// 홈 머리: '오늘' + 날짜, 오른쪽 설정 버튼. 설정 창에는 시간표 바꾸기와 데이터 내보내기·가져오기가 있다.
+// 홈 머리: '오늘' + 날짜, 오른쪽 메뉴 버튼. 메뉴 창에는 강의계획서 넣기, 시간표 바꾸기, 데이터 내보내기·가져오기가 있다.
 export default function HomeHeader() {
   const today = useToday();
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="mb-4 flex items-end justify-between px-1">
-      <div>
+    <header className="mb-4 flex items-end justify-between gap-2 px-1">
+      <div className="min-w-0">
         <p className="text-xs font-medium text-muted">오늘</p>
-        <h1 className="min-h-8 text-[22px] font-bold">{today ? formatKoreanDate(today) : ""}</h1>
+        <h1 className="min-h-8 text-[22px] font-bold leading-tight">{today ? formatKoreanDate(today) : ""}</h1>
       </div>
       <button
         type="button"
-        aria-label="설정"
+        aria-label="메뉴"
+        aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink active:bg-divider"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ink active:bg-divider"
       >
-        <Settings size={20} strokeWidth={1.8} aria-hidden="true" />
+        <Menu size={20} strokeWidth={1.8} aria-hidden="true" />
       </button>
 
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="설정">
+      <BottomSheet open={open} onClose={() => setOpen(false)} title="메뉴">
+        <Link
+          href="/calendar"
+          className="flex min-h-11 items-center gap-2 rounded-button bg-brand px-4 text-[15px] font-semibold text-white active:bg-brand-strong"
+        >
+          <FileUp size={18} strokeWidth={1.8} aria-hidden="true" />
+          강의계획서 넣기
+          <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" className="ml-auto" />
+        </Link>
         <Link
           href="/timetable"
-          className="flex min-h-11 items-center justify-between rounded-button bg-canvas px-4 text-[15px] font-semibold"
+          className="mt-2 flex min-h-11 items-center justify-between rounded-button bg-canvas px-4 text-[15px] font-semibold"
         >
           시간표 보기·다시 올리기
           <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />

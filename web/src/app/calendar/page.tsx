@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, FileUp } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
@@ -20,13 +21,13 @@ import { useTimetable } from "@/lib/timetable-store";
 import EditSheet from "./edit-sheet";
 import MonthCalendar, { type DotKind } from "./month-calendar";
 import ReviewList, { type Draft } from "./review-list";
-import SavedList from "./saved-list";
 
 function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
 // 강의계획서 → 캘린더. 올리기 → AI가 찾은 일정 확인·수정 → 이 폰에 저장 + .ics 내려받기.
+// 저장한 일정은 홈의 달력과 목록에서 본다.
 export default function CalendarPage() {
   const today = useToday();
   const timetable = useTimetable();
@@ -116,7 +117,7 @@ export default function CalendarPage() {
     try {
       downloadCalendarFile(saved);
     } catch {
-      setError("일정은 저장했지만 캘린더 파일을 만들지 못했어요. 아래 '다시 받기'를 눌러 주세요.");
+      setError("일정은 저장했지만 캘린더 파일을 만들지 못했어요. 홈의 '다시 받기'를 눌러 주세요.");
     }
     setNotice(
       added === chosen.length
@@ -221,6 +222,10 @@ export default function CalendarPage() {
 
   return (
     <AppShell>
+      <Link href="/" className="-ml-1 mb-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
+        <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
+        홈
+      </Link>
       <p className="px-1 text-xs font-medium text-muted">강의계획서 → 캘린더</p>
       <h1 className="px-1 text-[22px] font-bold">한 장으로 한 학기 일정</h1>
       <p className="mt-1 px-1 text-sm text-muted">
@@ -263,11 +268,12 @@ export default function CalendarPage() {
       )}
       {notice && (
         <p role="status" className="mt-4 rounded-callout bg-brand-soft p-3.5 text-sm font-semibold text-brand">
-          {notice}
+          {notice}{" "}
+          <Link href="/" className="underline">
+            홈 달력에서 보기
+          </Link>
         </p>
       )}
-
-      <SavedList />
     </AppShell>
   );
 }

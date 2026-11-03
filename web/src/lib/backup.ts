@@ -1,6 +1,6 @@
 "use client";
 
-// 일정, 대외활동, 시간표, 집중 모드 공부 기록, 시험 대비 결과를 파일로 내보내고 다시 불러온다.
+// 일정, 대외활동, 시간표, 집중 모드 공부 기록, 시험 대비 결과, 점수, 평가 비율을 파일로 내보내고 다시 불러온다.
 // 파일은 이 기기 안에서만 만들고 읽으며 서버로 보내지 않는다.
 // 저장소 파일(deadline-store.ts, activity-store.ts)은 화면 안에 사본을 들고 있으므로,
 // 가져온 뒤에는 페이지를 새로 고쳐야 화면에 반영된다.
@@ -14,6 +14,8 @@ import {
   isExamResult,
   type ExamResult,
 } from "./exam-results";
+import { GRADES_KEY, isCourseGrades, type GradesData } from "./grades-store";
+import { GRADING_KEY, isGradingList, type GradingData } from "./grading-store";
 import { DEADLINE_KINDS } from "./syllabus";
 import { isClassSlot, type ClassSlot } from "./timetable";
 
@@ -36,6 +38,8 @@ type BackupData = {
   focus: FocusBackup;
   timetable: ClassSlot[];
   examResults: ExamResult[];
+  grades: GradesData;
+  grading: GradingData;
 };
 
 const EMPTY_FOCUS: FocusBackup = { subjects: [], records: [] };
@@ -102,6 +106,22 @@ function readList<T>(key: string, isItem: (value: unknown) => value is T): T[] {
   }
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function readRecord<T>(key: string, isValue: (value: unknown) => value is T): Record<string, T> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "{}");
+    if (!isPlainObject(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, value]) => isValue(value)),
+    ) as Record<string, T>;
+  } catch {
+    return {};
+  }
+}
+
 function readFocus(): FocusData {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(FOCUS_KEY) ?? "null");
@@ -125,12 +145,16 @@ function readCurrent(): BackupData {
     focus: { subjects, records },
     timetable: readList(TIMETABLE_KEY, isClassSlot),
     examResults: readList(EXAM_RESULTS_KEY, isExamResult),
+    grades: readRecord(GRADES_KEY, isCourseGrades),
+    grading: readRecord(GRADING_KEY, isGradingList),
   };
 }
 
 export function hasBackupData() {
-  const { deadlines, activities, focus, timetable, examResults } = readCurrent();
+  const { deadlines, activities, focus, timetable, examResults, grades, grading } = readCurrent();
   return (
+    Object.keys(grades).length > 0 ||
+    Object.keys(grading).length > 0 ||
     deadlines.length > 0 ||
     activities.length > 0 ||
     focus.subjects.length > 0 ||
@@ -175,6 +199,16 @@ function parseOptionalList<T>(value: unknown, isItem: (item: unknown) => item is
   return Array.isArray(value) && value.every(isItem) ? value : null;
 }
 
+function parseOptionalRecord<T>(
+  value: unknown,
+  isValue: (item: unknown) => item is T,
+): Record<string, T> | null {
+  if (value === undefined) return {};
+  return isPlainObject(value) && Object.values(value).every(isValue)
+    ? (value as Record<string, T>)
+    : null;
+}
+
 // 우니스 파일이 아니거나 하나라도 형식이 틀리면 전체를 받지 않는다.
 export function parseBackup(text: string): BackupData | null {
   let parsed: unknown;
@@ -197,9 +231,11 @@ export function parseBackup(text: string): BackupData | null {
 
   const timetable = parseOptionalList(file.timetable, isClassSlot);
   const examResults = parseOptionalList(file.examResults, isExamResult);
-  if (!timetable || !examResults) return null;
+  const grades = parseOptionalRecord(file.grades, isCourseGrades);
+  const grading = parseOptionalRecord(file.grading, isGradingList);
+  if (!timetable || !examResults || !grades || !grading) return null;
 
-  return { deadlines, activities, focus, timetable, examResults };
+  return { deadlines, activities, focus, timetable, examResults, grades, grading };
 }
 
 // 같은 내용이면 건너뛰고 새 항목만 더한다. id가 겹치면 새 id를 붙인다.
@@ -261,6 +297,12 @@ function mergeExamResults(current: ExamResult[], incoming: ExamResult[]) {
   return { merged, added: fresh.length };
 }
 
+// 과목별 기록은 섞지 않는다. 이 기기에 이미 있는 과목은 그대로 두고 없는 과목만 더한다.
+function mergeRecord<T>(current: Record<string, T>, incoming: Record<string, T>) {
+  const fresh = Object.entries(incoming).filter(([course]) => !Object.hasOwn(current, course));
+  return { merged: { ...current, ...Object.fromEntries(fresh) }, added: fresh.length };
+}
+
 // 합친 결과를 저장하고 새로 더한 개수를 돌려준다. 저장에 실패하면 원래대로 되돌리고 오류를 던진다.
 export function importBackup(data: BackupData) {
   const current = readCurrent();
@@ -276,6 +318,8 @@ export function importBackup(data: BackupData) {
   );
   const focus = mergeFocus(readFocus(), data.focus);
   const examResults = mergeExamResults(current.examResults, data.examResults);
+  const grades = mergeRecord(current.grades, data.grades);
+  const grading = mergeRecord(current.grading, data.grading);
 
   // 시간표는 학기당 하나라 섞지 않는다. 이 기기에 없을 때만 파일 것을 넣는다.
   const timetableAdded = current.timetable.length === 0 && data.timetable.length > 0;
@@ -284,7 +328,15 @@ export function importBackup(data: BackupData) {
     data.timetable.length > 0 &&
     JSON.stringify(current.timetable) !== JSON.stringify(data.timetable);
 
-  const keys = [DEADLINES_KEY, ACTIVITIES_KEY, FOCUS_KEY, TIMETABLE_KEY, EXAM_RESULTS_KEY];
+  const keys = [
+    DEADLINES_KEY,
+    ACTIVITIES_KEY,
+    FOCUS_KEY,
+    TIMETABLE_KEY,
+    EXAM_RESULTS_KEY,
+    GRADES_KEY,
+    GRADING_KEY,
+  ];
   const previous = keys.map((key) => localStorage.getItem(key));
   try {
     localStorage.setItem(DEADLINES_KEY, JSON.stringify(deadlines.merged));
@@ -294,6 +346,8 @@ export function importBackup(data: BackupData) {
     if (examResults.added > 0) {
       localStorage.setItem(EXAM_RESULTS_KEY, JSON.stringify(examResults.merged));
     }
+    if (grades.added > 0) localStorage.setItem(GRADES_KEY, JSON.stringify(grades.merged));
+    if (grading.added > 0) localStorage.setItem(GRADING_KEY, JSON.stringify(grading.merged));
   } catch (error) {
     keys.forEach((key, index) => restore(key, previous[index]));
     throw error;
@@ -304,9 +358,13 @@ export function importBackup(data: BackupData) {
     addedActivities: activities.added,
     addedFocusRecords: focus.added,
     addedExamResults: examResults.added,
+    addedGrades: grades.added,
+    addedGrading: grading.added,
     timetableAdded,
     timetableKept,
     changed:
+      grades.added > 0 ||
+      grading.added > 0 ||
       deadlines.added > 0 ||
       activities.added > 0 ||
       focus.changed ||
