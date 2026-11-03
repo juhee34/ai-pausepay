@@ -35,6 +35,7 @@
 - 이미 설치된 것: `@anthropic-ai/sdk` (`@supabase/supabase-js`도 있지만 이번 학기에는 쓰지 않음). 필요할 때 추가할 부품: `zod`, `ics`, `unpdf`, `date-fns`, `lucide-react`, `sonner` (`docs/개발가이드.md`의 참고 자료 참고). 새 패키지는 설치 전에 이유를 설명합니다.
 
 ## 디자인
+- 모든 화면은 `docs/DESIGN.md`를 따른다
 - 폰 화면(폭 375px) 먼저, 하단 탭바, 포인트 색 1개, 둥근 카드, 넓은 여백
 
 ## 꼭 지킬 것

@@ -12,8 +12,53 @@
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
-  --font-sans: var(--font-noto-sans-kr);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plex-sans-kr);
+  --font-mono: var(--font-plex-mono);
+}
+
+/* 우니스 디자인 규칙(docs/DESIGN.md)의 색·모서리. 새 화면은 위 background·accent 대신 이 이름을 쓴다 */
+@theme {
+  --color-canvas: #F2F1F4;
+  --color-surface: #FFFFFF;
+  --color-divider: #F0EEF2;
+  --color-line: #EAE7EC;
+  --color-ink: #1C1A1E;
+  --color-muted: #6B6570;
+
+  --color-brand: #8C1D40;
+  --color-brand-soft: #F8EEF1;
+  --color-brand-strong: #6E1632;
+
+  /* 일정 종류 */
+  --color-assignment: #2756A6;
+  --color-assignment-soft: #E4EBF8;
+  --color-quiz: #22553A;
+  --color-quiz-soft: #E3F1E7;
+  --color-quiz-dot: #2F7A4C;
+  --color-exam: #8C1D40;
+  --color-exam-soft: #F8EEF1;
+  --color-review: #7A4300;
+  --color-review-soft: #FFF6E8;
+  --color-review-line: #F2C98A;
+  --color-review-dot: #C77A00;
+
+  --radius-block: 20px;
+  --radius-block-sm: 18px;
+  --radius-callout: 16px;
+  --radius-button: 12px;
+
+  /* BottomSheet가 올라올 때 */
+  --animate-sheet-up: sheet-up 220ms ease-out;
+  --animate-fade-in: fade-in 220ms ease-out;
+
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }
 
 @media (prefers-color-scheme: dark) {

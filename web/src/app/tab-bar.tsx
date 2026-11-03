@@ -13,6 +13,8 @@ const TABS = [
 
 export default function TabBar() {
   const pathname = usePathname();
+  // /design은 새 탭바(components/ui/bottom-tab-bar)를 보여 주므로 옛 탭바는 숨긴다
+  if (pathname.startsWith("/design")) return null;
 
   return (
     <nav
