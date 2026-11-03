@@ -7,7 +7,7 @@
 - 서비스 소개: [docs/소개서.md](./docs/소개서.md) · 개발 가이드: [docs/개발가이드.md](./docs/개발가이드.md)
 - Claude Code 작업 규칙: [CLAUDE.md](./CLAUDE.md)
 
-> 이 레포는 2026학년도 AI·SW 티키타카 프로젝트의 이전 주제 **PAUSEPAY(대학생 소비 쿨다운 가계부)**로 시작했습니다. 그때의 로드맵은 [ROADMAP.md](./ROADMAP.md)에 남아 있습니다.
+> 이 레포는 2026학년도 AI·SW 티키타카 프로젝트의 이전 주제 **PAUSEPAY(대학생 소비 쿨다운 가계부)**로 시작했습니다. 그때의 코드와 로드맵은 Git 기록에 남아 있습니다.
 
 ## 저장소 구조
 
@@ -25,5 +25,6 @@ cd web
 npm install
 # web/.env.local 파일을 만들고 아래 값을 채우기 (이 파일은 절대 커밋하지 않음)
 #   ANTHROPIC_API_KEY=...
+#   AI_LIMIT_SECRET=...
 npm run dev
 ```

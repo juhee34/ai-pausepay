@@ -6,7 +6,7 @@
 - 모바일 우선 반응형 웹앱 프로토타입. 2인 팀이 2026년 10~11월에 만들고, 11/17~11/30 시범 운영(기말 대비) 후 발표합니다. 일정은 `docs/PRD.md`의 일정 표를 따릅니다.
 - **기능 범위와 완료 기준은 `docs/PRD.md`가 기준입니다.** 배경 자료는 `docs/소개서.md`, `docs/개발가이드.md`에 있고, 두 문서가 PRD와 다르면 PRD를 따릅니다.
 - **코드는 `web/` 폴더**(Next.js 16, App Router, `web/src/app`)에 있습니다. `web/AGENTS.md`의 규칙(이 Next.js 버전의 문서를 먼저 확인)도 따릅니다. 실행은 `cd web` 후 `npm run dev`.
-- 이 레포는 이전 주제 **PAUSEPAY(소비 쿨다운 가계부)**로 시작했습니다. `ROADMAP.md`, `web/src/app/api/risk-score`, `web/src/lib/risk-score.ts`, 홈 화면 문구는 PAUSEPAY 시절 것입니다. 우니스로 바꾸면서 필요 없는 코드는 **지우기 전에 팀에게 먼저 물어봅니다.** `web/src/lib/claude.ts`는 그대로 재사용합니다. Supabase(`web/src/lib/supabase.ts`)는 이번 학기에 쓰지 않습니다(파일은 팀과 상의 전까지 그대로 둠).
+- 이 레포는 이전 주제 **PAUSEPAY(소비 쿨다운 가계부)**로 시작했고, 그때의 코드는 정리했습니다(필요하면 Git 기록에서 찾을 수 있음). Supabase는 이번 학기에 쓰지 않습니다.
 
 ## 우리 팀에게 설명하는 법
 - 두 사람 모두 코딩 초보입니다. 설명은 한국어로 쉽게, 전문 용어는 한 줄로 풀어 주세요.
@@ -29,10 +29,10 @@
 
 ## 기술
 - Next.js 16 (App Router) + TypeScript + Tailwind CSS 4 (+ 필요하면 shadcn/ui), 배포는 Vercel, 협업은 GitHub
-- AI는 Claude API. **호출은 `web/src/app/api/` 안의 서버 코드에서만** 하고, Claude 연결은 `web/src/lib/claude.ts`의 `getAnthropic()`을 재사용합니다(지금은 파일 안에서만 쓰이니, 필요하면 export). 키는 `web/.env.local`의 `ANTHROPIC_API_KEY`, 배포 때는 Vercel 환경 변수에 넣습니다.
+- AI는 Claude API. **호출은 `web/src/app/api/` 안의 서버 코드에서만** 하고, Claude 연결은 `web/src/lib/claude.ts`의 `getAnthropic()`을 재사용합니다. 키는 `web/.env.local`의 `ANTHROPIC_API_KEY`, 배포 때는 Vercel 환경 변수에 넣습니다.
 - 웹앱 AI 비용은 API 크레딧으로 나갑니다. 빠르고 가벼운 모델을 기본으로, 답변은 스트리밍으로 보여 줍니다.
 - 개인 데이터(일정·성적·기록)는 브라우저 `localStorage`에만 저장합니다. 서버로는 보내지 않습니다.
-- 이미 설치된 것: `@anthropic-ai/sdk` (`@supabase/supabase-js`도 있지만 이번 학기에는 쓰지 않음). 필요할 때 추가할 부품: `zod`, `ics`, `unpdf`, `date-fns`, `lucide-react`, `sonner` (`docs/개발가이드.md`의 참고 자료 참고). 새 패키지는 설치 전에 이유를 설명합니다.
+- 이미 설치된 것: `@anthropic-ai/sdk`, `zod`, `ics`, `unpdf`. 필요할 때 추가할 부품: `date-fns`, `lucide-react`, `sonner` (`docs/개발가이드.md`의 참고 자료 참고). 새 패키지는 설치 전에 이유를 설명합니다.
 
 ## 디자인
 - 폰 화면(폭 375px) 먼저, 하단 탭바, 포인트 색 1개, 둥근 카드, 넓은 여백
