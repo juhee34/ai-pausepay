@@ -45,6 +45,22 @@ export function useToday() {
   return useSyncExternalStore(noop, () => toYmd(new Date()), () => null);
 }
 
+// 지금 시각(자정부터 몇 분). 현재 시각 선·다음 수업 계산용으로 30초마다 다시 읽는다.
+function everyHalfMinute(listener: () => void) {
+  const id = setInterval(listener, 30_000);
+  return () => clearInterval(id);
+}
+export function useNowMinutes() {
+  return useSyncExternalStore(
+    everyHalfMinute,
+    () => {
+      const now = new Date();
+      return now.getHours() * 60 + now.getMinutes();
+    },
+    () => null,
+  );
+}
+
 // AI를 못 쓸 때 보여 주는 정해진 문장. 가장 가까운 일부터 고른다.
 export function ruleBasedPick(today: string, items: BriefingItem[]) {
   const next = [...items]

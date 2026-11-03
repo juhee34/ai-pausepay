@@ -9,6 +9,7 @@ export type Activity = {
   id: string;
   title: string;
   date: string; // YYYY-MM-DD
+  done?: boolean; // 홈에서 체크한 일정
 };
 
 export const MAX_ACTIVITY_TITLE = 40;
@@ -74,6 +75,10 @@ export function addActivity(title: string, date: string) {
     ...getSnapshot(),
     { id: crypto.randomUUID(), title: title.trim().slice(0, MAX_ACTIVITY_TITLE), date },
   ]);
+}
+
+export function setActivityDone(id: string, done: boolean) {
+  write(getSnapshot().map((a) => (a.id === id ? { ...a, done } : a)));
 }
 
 export function removeActivity(id: string) {

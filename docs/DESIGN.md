@@ -71,8 +71,8 @@
 
 | 부품 | 하는 일 |
 |---|---|
-| `AppShell` | 회색 바탕, 최대 폭 480px, 하단 탭바 |
-| `BottomTabBar` | 현재 탭 표시, 가운데 ＋ 버튼 |
+| `AppShell` | 회색 바탕, 최대 폭 480px, 좌우 여백 |
+| `BottomTabBar` | 현재 탭 표시, 가운데 ＋ 버튼. 모든 화면에 붙도록 `layout.tsx`가 그림 |
 | `Block` | 흰 블록 |
 | `Button` | `primary`(포인트색) / `secondary`(흰색·테두리) / `ghost`(글자만) |
 | `Badge` | 일정 종류별 색 (과제·퀴즈·시험·확인 필요) |
