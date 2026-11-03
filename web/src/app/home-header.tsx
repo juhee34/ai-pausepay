@@ -4,21 +4,15 @@ import Link from "next/link";
 import { ChevronRight, FileUp, Menu } from "lucide-react";
 import { useState } from "react";
 import BottomSheet from "@/components/ui/bottom-sheet";
-import { useToday } from "@/lib/briefing";
-import { formatKoreanDate } from "@/lib/day-plan";
 import DataBackup from "./data-backup";
 
-// 홈 머리: '오늘' + 날짜, 오른쪽 메뉴 버튼. 메뉴 창에는 강의계획서 넣기, 시간표 바꾸기, 데이터 내보내기·가져오기가 있다.
+// 홈 머리: UNIS 로고, 오른쪽 메뉴 버튼. 메뉴 창에는 강의계획서 넣기, 시간표 바꾸기, 데이터 내보내기·가져오기가 있다.
 export default function HomeHeader() {
-  const today = useToday();
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="mb-4 flex items-end justify-between gap-2 px-1">
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-muted">오늘</p>
-        <h1 className="min-h-8 text-[22px] font-bold leading-tight">{today ? formatKoreanDate(today) : ""}</h1>
-      </div>
+    <header className="mb-4 flex items-center justify-between gap-2 px-1">
+      <h1 className="text-[28px] font-bold leading-none tracking-wide text-brand">UNIS</h1>
       <button
         type="button"
         aria-label="메뉴"
