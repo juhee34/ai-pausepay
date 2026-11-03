@@ -5,6 +5,7 @@ import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/check-row";
+import { copyText } from "@/lib/copy-text";
 import {
   MAIL_SITUATIONS,
   MAX_COURSE_LENGTH,
@@ -38,27 +39,6 @@ function getSendTimeHint(now: Date) {
     return `지금은 ${hour}시예요. 급하지 않으면 평일 낮에 보내거나 예약 발송을 써요.`;
   }
   return "지금은 평일 낮이라 보내기 좋은 시간이에요.";
-}
-
-// 폰에서 http 주소로 테스트할 때는 navigator.clipboard가 없어서 예전 방식도 함께 쓴다.
-async function copyText(text: string) {
-  if (navigator.clipboard) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // 아래 예전 방식으로 다시 시도한다.
-    }
-  }
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand("copy");
-  textarea.remove();
-  return copied;
 }
 
 // 글자가 16px보다 작으면 아이폰이 입력할 때 화면을 확대한다.
