@@ -1,12 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import {
-  AI_LIMIT_MESSAGE,
-  DAILY_AI_LIMIT,
-  getAiUsageToday,
-  recordAiUse,
-} from "@/lib/ai-limit";
+import { recordAiUse } from "@/lib/ai-limit";
+import { CLAUDE_REQUEST_OPTIONS, checkAiLimit, claudeErrorResponse } from "@/lib/ai-route";
 import { getAnthropic } from "@/lib/claude";
 import { DEADLINE_KINDS } from "@/lib/syllabus";
 
@@ -46,10 +41,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "일정 목록을 확인해 주세요." }, { status: 400 });
   }
 
-  const usedToday = getAiUsageToday(request);
-  if (usedToday >= DAILY_AI_LIMIT) {
-    return NextResponse.json({ error: AI_LIMIT_MESSAGE }, { status: 429 });
-  }
+  const limit = checkAiLimit(request);
+  if (limit instanceof NextResponse) return limit;
+  const { usedToday } = limit;
 
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const lines = parsed.data.items
@@ -68,7 +62,7 @@ export async function POST(request: NextRequest) {
           content: `오늘은 ${today}입니다.\n<일정>\n${lines}\n</일정>\n지금 시작할 일 하나를 추천해 주세요.`,
         },
       ],
-    });
+    }, CLAUDE_REQUEST_OPTIONS);
 
     const text = response.content
       .filter((block) => block.type === "text")
@@ -84,10 +78,6 @@ export async function POST(request: NextRequest) {
     recordAiUse(result, usedToday);
     return result;
   } catch (error) {
-    if (error instanceof Anthropic.APIError) {
-      console.error("briefing: Claude API error", error.status, error.message);
-      return NextResponse.json({ error: "AI가 응답하지 않았어요." }, { status: 502 });
-    }
-    throw error;
+    return claudeErrorResponse(error, "briefing");
   }
 }

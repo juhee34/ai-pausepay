@@ -2,12 +2,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { recordAiUse } from "@/lib/ai-limit";
 import {
-  AI_LIMIT_MESSAGE,
-  DAILY_AI_LIMIT,
-  getAiUsageToday,
-  recordAiUse,
-} from "@/lib/ai-limit";
+  CLAUDE_REQUEST_OPTIONS,
+  checkAiLimit,
+  claudeErrorResponse,
+  readFormFile,
+} from "@/lib/ai-route";
 import { getAnthropic } from "@/lib/claude";
 import {
   DEADLINE_KINDS,
@@ -56,10 +57,8 @@ function isValidYmd(value: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const form = await request.formData();
-  const file = form.get("file");
-
-  if (!(file instanceof File)) {
+  const file = await readFormFile(request);
+  if (!file) {
     return NextResponse.json({ error: "파일이 없어요." }, { status: 400 });
   }
   if (!isAcceptedType(file.type)) {
@@ -75,11 +74,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 메일·시험 대비 팩과 하루 사용 횟수를 함께 쓴다.
-  const usedToday = getAiUsageToday(request);
-  if (usedToday >= DAILY_AI_LIMIT) {
-    return NextResponse.json({ error: AI_LIMIT_MESSAGE }, { status: 429 });
-  }
+  // 다른 AI 기능과 하루 사용 횟수를 함께 쓴다.
+  const limit = checkAiLimit(request);
+  if (limit instanceof NextResponse) return limit;
+  const { usedToday } = limit;
 
   // 파일은 저장하지 않고, 이 요청 안에서만 Claude에게 보낸 뒤 버린다.
   const data = Buffer.from(await file.arrayBuffer()).toString("base64");
@@ -108,7 +106,7 @@ export async function POST(request: NextRequest) {
           ],
         },
       ],
-    });
+    }, CLAUDE_REQUEST_OPTIONS);
 
     if (!response.parsed_output) {
       return NextResponse.json(
@@ -131,19 +129,6 @@ export async function POST(request: NextRequest) {
     recordAiUse(result, usedToday);
     return result;
   } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json(
-        { error: "지금 요청이 많아요. 잠시 뒤에 다시 해 주세요." },
-        { status: 429 },
-      );
-    }
-    if (error instanceof Anthropic.APIError) {
-      console.error("syllabus: Claude API error", error.status, error.message);
-      return NextResponse.json(
-        { error: "AI가 응답하지 않았어요. 잠시 뒤에 다시 해 주세요." },
-        { status: 502 },
-      );
-    }
-    throw error;
+    return claudeErrorResponse(error, "syllabus");
   }
 }
