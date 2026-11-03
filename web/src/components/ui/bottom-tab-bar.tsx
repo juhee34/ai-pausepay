@@ -53,7 +53,7 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
     title: "취업 준비",
     tiles: [
       { href: "/calendar?type=posting", label: "공고·자격증 올리기", sub: "마감을 일정에 추가", Icon: CalendarPlus, ready: false },
-      { href: "/career", label: "대외활동", sub: "지원 단계 관리", Icon: ListChecks, ready: false },
+      { href: "/career", label: "대외활동", sub: "지원 단계 관리", Icon: ListChecks, ready: true },
       { href: "/career/receipts", label: "스펙 영수증", sub: "경험을 한 줄로 정리", Icon: Award, ready: false },
       { href: "/career/skills", label: "역량 공백 지도", sub: "부족한 역량 찾기", Icon: Radar, ready: false },
     ],
