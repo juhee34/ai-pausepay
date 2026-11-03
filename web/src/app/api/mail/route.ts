@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import {
@@ -8,12 +7,8 @@ import {
   MAX_MESSAGE_LENGTH,
   STUDENT_ID_PLACEHOLDER,
 } from "@/app/mail/situations";
-import {
-  AI_LIMIT_MESSAGE,
-  DAILY_AI_LIMIT,
-  getAiUsageToday,
-  recordAiUse,
-} from "@/lib/ai-limit";
+import { recordAiUse } from "@/lib/ai-limit";
+import { CLAUDE_REQUEST_OPTIONS, checkAiLimit, claudeErrorResponse } from "@/lib/ai-route";
 import { getAnthropic } from "@/lib/claude";
 
 export const maxDuration = 60;
@@ -52,10 +47,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const usedToday = getAiUsageToday(request);
-  if (usedToday >= DAILY_AI_LIMIT) {
-    return NextResponse.json({ error: AI_LIMIT_MESSAGE }, { status: 429 });
-  }
+  const limit = checkAiLimit(request);
+  if (limit instanceof NextResponse) return limit;
+  const { usedToday } = limit;
 
   const { situation, course, message } = parsed.data;
   const guide = MAIL_SITUATIONS.find((s) => s.id === situation)?.guide;
@@ -72,7 +66,7 @@ export async function POST(request: NextRequest) {
           content: `상황: ${guide}\n과목명: ${course}\n<하고_싶은_말>\n${message}\n</하고_싶은_말>`,
         },
       ],
-    });
+    }, CLAUDE_REQUEST_OPTIONS);
 
     // 키 오류나 요청 초과 같은 연결 단계 오류를 글자를 보내기 전에 잡는다.
     await stream.withResponse();
@@ -114,19 +108,6 @@ export async function POST(request: NextRequest) {
     recordAiUse(response, usedToday);
     return response;
   } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json(
-        { error: "지금 요청이 많아요. 잠시 뒤에 다시 해 주세요." },
-        { status: 429 },
-      );
-    }
-    if (error instanceof Anthropic.APIError) {
-      console.error("mail: Claude API error", error.status, error.message);
-      return NextResponse.json(
-        { error: "AI가 응답하지 않았어요. 잠시 뒤에 다시 해 주세요." },
-        { status: 502 },
-      );
-    }
-    throw error;
+    return claudeErrorResponse(error, "mail");
   }
 }
