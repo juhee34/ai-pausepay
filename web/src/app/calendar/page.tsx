@@ -1,6 +1,14 @@
 "use client";
 
+import { ChevronLeft, FileUp } from "lucide-react";
 import { useState } from "react";
+import AppShell from "@/components/ui/app-shell";
+import Block from "@/components/ui/block";
+import Button from "@/components/ui/button";
+import SegmentedTabs from "@/components/ui/segmented-tabs";
+import { useToday } from "@/lib/briefing";
+import { downloadCalendarFile } from "@/lib/calendar-file";
+import { dateCandidates } from "@/lib/date-candidates";
 import { addDeadlines } from "@/lib/deadline-store";
 import {
   ACCEPTED_TYPES,
@@ -8,6 +16,9 @@ import {
   isAcceptedType,
   type Deadline,
 } from "@/lib/syllabus";
+import { useTimetable } from "@/lib/timetable-store";
+import EditSheet from "./edit-sheet";
+import MonthCalendar, { type DotKind } from "./month-calendar";
 import ReviewList, { type Draft } from "./review-list";
 import SavedList from "./saved-list";
 
@@ -15,12 +26,19 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
+// 강의계획서 → 캘린더. 올리기 → AI가 찾은 일정 확인·수정 → 이 폰에 저장 + .ics 내려받기.
 export default function CalendarPage() {
+  const today = useToday();
+  const timetable = useTimetable();
   const [file, setFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Draft[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [view, setView] = useState<"list" | "month">("month");
+  const [month, setMonth] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0];
@@ -28,7 +46,6 @@ export default function CalendarPage() {
     e.target.value = "";
     if (!picked) return;
 
-    setDrafts(null);
     setNotice(null);
     if (!isAcceptedType(picked.type)) {
       setFile(null);
@@ -51,7 +68,6 @@ export default function CalendarPage() {
     setLoading(true);
     setError(null);
     setNotice(null);
-    setDrafts(null);
     try {
       const body = new FormData();
       body.append("file", file);
@@ -61,9 +77,17 @@ export default function CalendarPage() {
         setError(data?.error ?? "일정을 찾지 못했어요. 잠시 뒤에 다시 해 주세요.");
         return;
       }
-      setDrafts(
-        (data.deadlines as Deadline[]).map((d, i) => ({ ...d, key: `${Date.now()}-${i}` })),
-      );
+      const found = data.deadlines as Deadline[];
+      if (found.length === 0) {
+        setError("챙길 일정을 찾지 못했어요. 다른 쪽이나 캡쳐로 다시 해 보세요.");
+        return;
+      }
+      // 달력은 오늘 이후 첫 일정이 있는 달부터 보여 준다.
+      const firstUpcoming = found.find((d) => d.date && today && d.date >= today)?.date;
+      setMonth((firstUpcoming ?? today ?? found.find((d) => d.date)?.date ?? "").slice(0, 7));
+      setFileName(file.name);
+      setDrafts(found.map((d) => ({ ...d, key: crypto.randomUUID(), checked: true })));
+      setFile(null);
     } catch {
       setError("인터넷 연결을 확인하고 다시 해 주세요.");
     } finally {
@@ -71,49 +95,142 @@ export default function CalendarPage() {
     }
   }
 
-  function saveDrafts() {
+  function addToCalendar() {
     if (!drafts) return;
-    const added = addDeadlines(
-      drafts
-        .filter((d): d is Draft & { date: string } => Boolean(d.date))
-        .map((d) => ({
-          course: d.course,
-          title: d.title.trim() || d.kind,
-          date: d.date,
-          when: d.when,
-          kind: d.kind,
-        })),
+    const chosen = drafts.filter((d) => d.checked);
+    // 날짜가 정해지지 않은 일정이 있으면 그 일정의 날짜 고르기부터
+    const undated = chosen.find((d) => !d.date);
+    if (undated) {
+      setEditing(undated.key);
+      return;
+    }
+    const { added, saved } = addDeadlines(
+      chosen.map((d) => ({
+        course: d.course,
+        title: d.title.trim() || d.kind,
+        date: d.date!,
+        when: d.when,
+        kind: d.kind,
+      })),
+    );
+    try {
+      downloadCalendarFile(saved);
+    } catch {
+      setError("일정은 저장했지만 캘린더 파일을 만들지 못했어요. 아래 '다시 받기'를 눌러 주세요.");
+    }
+    setNotice(
+      added === chosen.length
+        ? `${added}개를 저장하고 캘린더 파일을 내려받았어요.`
+        : `${added}개를 새로 저장했어요. 이미 있던 ${chosen.length - added}개는 건너뛰었어요.`,
     );
     setDrafts(null);
-    setFile(null);
-    setNotice(
-      added === drafts.length
-        ? `${added}개를 내 일정에 저장했어요.`
-        : `${added}개를 저장했어요. 이미 있던 ${drafts.length - added}개는 건너뛰었어요.`,
+  }
+
+  const editingDraft = drafts?.find((d) => d.key === editing) ?? null;
+
+  if (drafts && today) {
+    const checkedCount = drafts.filter((d) => d.checked).length;
+    const marks = drafts.flatMap((d): { date: string; kind: DotKind }[] => {
+      if (d.date) return [{ date: d.date, kind: d.kind }];
+      // 확인 필요 일정은 첫 날짜 후보에 주황 점
+      const first = dateCandidates(`${d.when} ${d.title}`, d.course, timetable)[0];
+      return first ? [{ date: first.date, kind: "확인 필요" }] : [];
+    });
+
+    return (
+      <AppShell>
+        <header className="mb-4 flex items-start gap-2">
+          <button
+            type="button"
+            aria-label="올리기로 돌아가기"
+            onClick={() => {
+              if (confirm("찾은 일정을 버리고 돌아갈까요?")) setDrafts(null);
+            }}
+            className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink active:bg-divider"
+          >
+            <ChevronLeft size={22} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+          <div className="min-w-0 flex-1 pt-1">
+            <h1 className="text-[22px] font-bold leading-tight">찾은 일정 {drafts.length}개</h1>
+            <p className="truncate text-xs text-muted">{fileName}</p>
+          </div>
+          <SegmentedTabs
+            label="보기 방식"
+            options={[
+              { value: "list", label: "목록" },
+              { value: "month", label: "달력" },
+            ]}
+            value={view}
+            onChange={setView}
+          />
+        </header>
+
+        {view === "month" && (
+          <MonthCalendar
+            month={month}
+            today={today}
+            marks={marks}
+            onMonthChange={setMonth}
+            onSelectDate={(date) => {
+              const target = drafts.find((d) => d.date === date);
+              document
+                .getElementById(`draft-${target?.key}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          />
+        )}
+
+        <ReviewList drafts={drafts} month={month} onChange={setDrafts} onEdit={setEditing} />
+        <p className="mt-3 px-1 text-xs leading-relaxed text-muted">
+          AI가 찾은 결과라 틀릴 수 있어요. 원본과 날짜를 꼭 비교해 주세요. 일정 이름을 누르면 고칠 수 있어요.
+        </p>
+        {error && (
+          <p role="alert" className="mt-3 rounded-callout border border-review-line bg-review-soft p-3.5 text-sm text-review">
+            {error}
+          </p>
+        )}
+
+        {/* 아래 고정 바가 마지막 내용을 가리지 않게 */}
+        <div className="h-24" aria-hidden="true" />
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 border-t border-line bg-surface">
+          <div className="mx-auto max-w-[480px] px-4 py-2.5">
+            <Button className="w-full" disabled={checkedCount === 0} onClick={addToCalendar}>
+              <span>
+                <span className="font-mono">{checkedCount}</span>개 일정 캘린더에 추가
+              </span>
+            </Button>
+            <p className="mt-1 text-center text-[11px] text-muted">.ics 파일로 받아요 · 하루 전 알림 포함</p>
+          </div>
+        </div>
+
+        <EditSheet
+          draft={editingDraft}
+          onClose={() => setEditing(null)}
+          onRemove={() => {
+            setDrafts(drafts.filter((d) => d.key !== editing));
+            setEditing(null);
+          }}
+          onSave={(patch) => {
+            setDrafts(drafts.map((d) => (d.key === editing ? { ...d, ...patch, checked: true } : d)));
+            setEditing(null);
+          }}
+        />
+      </AppShell>
     );
   }
 
   return (
-    <main className="flex-1">
-      <section className="mx-auto max-w-md px-5 pt-12 pb-20">
-        <p className="text-accent text-xs font-semibold tracking-widest">
-          강의계획서 → 캘린더
-        </p>
-        <h1 className="mt-3 text-2xl font-bold leading-snug">
-          강의계획서 한 장으로
-          <br />
-          한 학기 일정 만들기
-        </h1>
-        <p className="mt-3 text-sm text-foreground/70">
-          강의계획서 PDF나 KLAS 화면 캡쳐를 올리면 과제·퀴즈·시험 날짜를
-          찾아 드려요.
-        </p>
+    <AppShell>
+      <p className="px-1 text-xs font-medium text-muted">강의계획서 → 캘린더</p>
+      <h1 className="px-1 text-[22px] font-bold">한 장으로 한 학기 일정</h1>
+      <p className="mt-1 px-1 text-sm text-muted">
+        강의계획서 PDF나 KLAS 화면 캡쳐를 올리면 과제·퀴즈·시험 날짜를 찾아 드려요.
+      </p>
 
-        <label className="mt-8 flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed border-accent/40 bg-accent-soft/40 px-5 py-8 text-center">
-          <span className="text-sm font-semibold">파일 고르기</span>
-          <span className="mt-1 text-xs text-foreground/60">
-            PDF · PNG · JPG, 4MB까지
-          </span>
+      <Block className="mt-6">
+        <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-button bg-canvas px-4 py-3 text-[15px] font-semibold active:bg-divider">
+          <FileUp size={20} strokeWidth={1.8} aria-hidden="true" />
+          파일 고르기
           <input
             type="file"
             accept={ACCEPTED_TYPES.join(",")}
@@ -122,55 +239,35 @@ export default function CalendarPage() {
             className="sr-only"
           />
         </label>
-
-        <p className="mt-3 text-xs leading-relaxed text-foreground/50">
-          올린 파일은 서버에 저장하지 않고, 내 일정을 찾는 데만 써요.
-        </p>
-
-        {error && (
-          <div
-            role="alert"
-            className="mt-6 rounded-2xl bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300"
-          >
-            {error}
-          </div>
-        )}
+        <p className="mt-2 text-center text-xs text-muted">PDF · PNG · JPG, 4MB까지</p>
 
         {file && (
-          <div className="mt-6 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-5">
+          <div className="mt-3 border-t border-divider pt-3">
             <p className="truncate text-sm font-semibold">{file.name}</p>
-            <p className="mt-1 text-xs text-foreground/50">
-              {formatSize(file.size)}
-            </p>
-            <button
-              type="button"
-              onClick={findDeadlines}
-              disabled={loading}
-              className="mt-4 w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {loading ? "일정 찾는 중… (10~30초)" : "일정 찾기"}
-            </button>
+            <p className="font-mono text-xs text-muted">{formatSize(file.size)}</p>
+            <Button className="mt-3 w-full" onClick={findDeadlines} disabled={loading}>
+              {loading ? "일정 찾는 중… (10~30초)" : "AI로 일정 찾기"}
+            </Button>
           </div>
         )}
+      </Block>
 
-        {drafts && drafts.length === 0 && (
-          <p className="mt-8 rounded-2xl bg-foreground/[0.04] p-4 text-sm text-foreground/70">
-            챙길 일정을 찾지 못했어요. 다른 쪽이나 캡쳐로 다시 해 보세요.
-          </p>
-        )}
+      <p className="mt-3 px-1 text-xs leading-relaxed text-muted">
+        올린 파일은 서버에 저장하지 않고, 내 일정을 찾는 데만 써요. 강의자료는 나만 보고 다른 사람과 공유하지 마세요.
+      </p>
 
-        {drafts && drafts.length > 0 && (
-          <ReviewList drafts={drafts} onChange={setDrafts} onSave={saveDrafts} />
-        )}
+      {error && (
+        <p role="alert" className="mt-4 rounded-callout border border-review-line bg-review-soft p-3.5 text-sm text-review">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="mt-4 rounded-callout bg-brand-soft p-3.5 text-sm font-semibold text-brand">
+          {notice}
+        </p>
+      )}
 
-        {notice && (
-          <p role="status" className="mt-6 rounded-2xl bg-accent-soft/60 p-4 text-sm font-semibold text-accent">
-            {notice}
-          </p>
-        )}
-
-        <SavedList />
-      </section>
-    </main>
+      <SavedList />
+    </AppShell>
   );
 }
