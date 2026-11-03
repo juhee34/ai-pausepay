@@ -78,6 +78,12 @@ function keepCard(a: Activity): Activity {
   return { id: a.id, title: a.title, date: a.date, ...(a.done ? { done: a.done } : {}) };
 }
 
+// 끝났거나 불합격한 활동의 마감은 홈 달력·일정·추천에 띄우지 않는다.
+export function isHomeActivity(a: Activity) {
+  const stage = stageOf(a);
+  return stage !== "done" && stage !== "rejected";
+}
+
 // 단계가 없는 옛 카드는 '진행 중'으로 읽는다.
 export function stageOf(a: Activity): ActivityStage {
   return a.stage ?? "active";

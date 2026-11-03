@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useActivities } from "@/lib/activity-store";
+import { isHomeActivity, useActivities } from "@/lib/activity-store";
 import { addDays, ruleBasedPick, useToday, type BriefingItem } from "@/lib/briefing";
 import { useSavedDeadlines } from "@/lib/deadline-store";
 
@@ -46,7 +46,7 @@ export function useTodayPick() {
         .filter((d) => !d.done && inRange(d.date))
         .map((d) => ({ type: "일정" as const, title: d.title, course: d.course, date: d.date, kind: d.kind })),
       ...activities
-        .filter((a) => !a.done && inRange(a.date))
+        .filter((a) => isHomeActivity(a) && !a.done && inRange(a.date))
         .map((a) => ({ type: "대외활동" as const, title: a.title, course: "", date: a.date, kind: "대외활동" as const })),
     ]
       .sort((a, b) => a.date.localeCompare(b.date))

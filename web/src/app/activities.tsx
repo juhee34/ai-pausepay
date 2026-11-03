@@ -1,18 +1,20 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import Button from "@/components/ui/button";
 import {
   MAX_ACTIVITY_TITLE,
   addActivity,
+  isHomeActivity,
   removeActivity,
   useActivities,
 } from "@/lib/activity-store";
 import { useToday } from "@/lib/briefing";
 import { dDay, formatKoreanDate } from "@/lib/day-plan";
 
-const INPUT = "min-h-11 w-full rounded-button border border-line bg-surface px-3 text-[15px] text-ink";
+const INPUT = "min-h-11 w-full rounded-button border border-line bg-surface px-3 text-[16px] text-ink";
 
 // 동아리·공모전처럼 강의계획서에 없는 일정을 직접 적는 곳. 홈의 '+ 대외활동' 창 안에 들어간다.
 // 적은 일정은 홈의 그날 목록에 같이 보인다. 지난 일정은 숨긴다.
@@ -24,7 +26,7 @@ export default function Activities() {
 
   if (!today) return null;
 
-  const upcoming = activities.filter((a) => a.date >= today);
+  const upcoming = activities.filter((a) => a.date >= today && isHomeActivity(a));
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -79,6 +81,14 @@ export default function Activities() {
           ))}
         </ul>
       )}
+
+      <Link
+        href="/career"
+        className="mt-3 flex min-h-11 items-center justify-between rounded-button bg-canvas px-4 text-[15px] font-semibold active:bg-divider"
+      >
+        대외활동 전체 보기
+        <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
+      </Link>
     </div>
   );
 }

@@ -18,7 +18,7 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "우니스",
-  description: "강의계획서 한 장으로 한 학기를 챙기는 대학생 AI 학업 비서",
+  description: "수업 일정과 취업 준비를 한곳에서, 대학생 AI 비서",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -41,7 +41,7 @@ export default function SavedList() {
           time={shortDate(d.date)}
           title={d.title}
           sub={d.course}
-          past={d.date < today}
+          past={d.date < today || d.done}
           right={
             <>
               {badge ? <Badge kind={badge}>{d.kind}</Badge> : <span className="text-[11px] text-muted">{d.kind}</span>}
