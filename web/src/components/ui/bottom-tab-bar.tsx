@@ -17,6 +17,7 @@ import {
   Radar,
   Sparkles,
   Timer,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import BottomSheet from "./bottom-sheet";
@@ -61,6 +62,7 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
   {
     title: "내 정보",
     tiles: [
+      { href: "/my", label: "마이페이지", sub: "Google 로그인·내 정보", Icon: UserRound, ready: true },
       { href: "/timetable", label: "시간표 캡쳐", sub: "캡쳐로 시간표 넣기", Icon: CalendarClock, ready: true },
     ],
   },
