@@ -1,4 +1,4 @@
-# 우니스 (UNIS) — 대학생을 위한 AI 학업 비서
+# 우니스 (UNIS) — 수업 일정과 취업 준비를 한곳에서, 대학생 AI 비서
 
 > 이름의 뜻: **UNIfied Student** — "흩어진 대학 생활을 하나로 잇는 학생 비서". UNI는 '하나'(unify), S는 학생(Student). 첫 사용자와 시범 운영 대상은 광운대생입니다.
 
@@ -15,23 +15,39 @@
 - 모르는 명령을 실행하기 전에 그 명령이 무엇을 하는지 먼저 설명해 주세요.
 
 ## 이번 학기에 만드는 것
-**핵심 4개 (반드시)**
-1. 강의계획서 → 캘린더 (대표 기능) — `web/src/app/calendar`. 강의계획서 PDF 또는 **KLAS 화면 캡쳐(이미지)**를 올리면 AI가 날짜를 인식
-2. 오늘의 브리핑 (홈 화면) — `web/src/app/page.tsx`
+번호는 `docs/PRD.md`의 핵심 번호와 같습니다. **새 화면은 `docs/design-ref/`의 시안 캡처를 열어 보고 그대로** 만듭니다 (규칙은 `docs/DESIGN.md`의 '분석 화면').
+
+**학교**
+1. 강의계획서 → 캘린더 (대표) — `web/src/app/calendar`, `web/src/app/api/syllabus`. PDF·KLAS 캡쳐에서 날짜 + **성적 평가 비율**(`unis.grading.v1`)
+2. 오늘의 브리핑 (홈) — `web/src/app/page.tsx`. 2-1 **오늘의 한 가지** — `web/src/app/today` (시안 01)
 3. 시험 대비 팩 — `web/src/app/exam`
-4. 교수님 메일 작성기 — `web/src/app/mail`
+4. 교수님 메일 — `web/src/app/mail`
+5. 집중 모드 — `web/src/app/focus` (타이머 완료. 과목명 고르기, 일정 연결, 주차별 막대 추가)
+6. **기말 필요 점수** — `web/src/app/grades` (시안 02, AI 없음, `unis.grades.v1`)
+7. **학기 리스크 지도** — `web/src/app/risk` (시안 03, AI 없음)
 
-**여건 되면** (핵심 4개가 폰에서 모두 돌아간 뒤에만): 우니스 리서치 `web/src/app/research`, 졸업요건 계산기 `web/src/app/graduation`, 집중 모드 `web/src/app/focus`, 스펙 영수증 `web/src/app/career`
+**취업 준비**
+8. 취준 일정 — 공고·자격증 캡쳐 → 일정. `web/src/app/api/posting`, 캘린더 확인 화면 부품 재사용
+9. 대외활동 목록 — `web/src/app/career`. 기존 `web/src/lib/activity-store.ts`(`unis.activities.v1`)를 넓혀 쓰고 옛 데이터도 읽기
+10. 스펙 영수증 + 역량 공백 지도 — `web/src/app/career/receipts`, `web/src/app/api/receipt`, `unis.receipts.v1` (시안 04)
 
-**만들지 않음**: KLAS 직접 연동(로그인·자동 가져오기). KLAS 정보는 사용자가 캡쳐해서 올리는 방식으로만 받습니다. 사용 기록 수집(Supabase·참가 코드 등 분석용 코드)도 만들지 않습니다. 경영학 분석은 설문·인터뷰·API 비용으로 하며 앱 개발이 필요 없습니다.
+**들어가는 곳**: 탭바는 그대로(홈 · 일정 · ＋ · 시험 대비 · 메일). 가운데 ＋는 여러 기능을 묶음별 타일로 보여 주는 **전체 기능** 창이고, 새 화면은 여기에 넣습니다 (`docs/DESIGN.md`).
 
-요청받지 않은 '여건 되면' 기능을 먼저 만들거나 폴더를 미리 만들지 마세요.
+**직무별 필요 역량 표는 임시**입니다. `web/src/lib/competencies.ts` 한 곳에만 두고, 팀이 나중에 채웁니다.
+
+**나중 (이벤트)**: 학기 결산서·시간 흐름 (시안 05·06). 요청받기 전에는 만들지 않습니다.
+
+**여건 되면** (위 핵심이 폰에서 모두 돌아간 뒤에만): 기업 분석 카드·우니스 리서치 `web/src/app/research`, 졸업요건 계산기 `web/src/app/graduation`
+
+**만들지 않음**: KLAS 직접 연동(로그인·자동 가져오기). KLAS 정보는 사용자가 캡쳐해서 올리는 방식으로만 받습니다. 공고 사이트 자동 가져오기(크롤링)도 하지 않습니다. 사용 기록 수집(Supabase·참가 코드 등 분석용 코드)도 만들지 않습니다. 경영학 분석은 설문·인터뷰·API 비용으로 하며 앱 개발이 필요 없습니다.
+
+요청받지 않은 '나중'·'여건 되면' 기능을 먼저 만들거나 폴더를 미리 만들지 마세요.
 
 ## 기술
 - Next.js 16 (App Router) + TypeScript + Tailwind CSS 4 (+ 필요하면 shadcn/ui), 배포는 Vercel, 협업은 GitHub
 - AI는 Claude API. **호출은 `web/src/app/api/` 안의 서버 코드에서만** 하고, Claude 연결은 `web/src/lib/claude.ts`의 `getAnthropic()`을 재사용합니다. 키는 `web/.env.local`의 `ANTHROPIC_API_KEY`, 배포 때는 Vercel 환경 변수에 넣습니다.
 - 웹앱 AI 비용은 API 크레딧으로 나갑니다. 빠르고 가벼운 모델을 기본으로, 답변은 스트리밍으로 보여 줍니다.
-- 개인 데이터(일정·성적·기록)는 브라우저 `localStorage`에만 저장합니다. 서버로는 보내지 않습니다.
+- 개인 데이터(일정·점수·대외활동·영수증·집중 기록)는 브라우저 `localStorage`에만 저장합니다. 서버에 저장하지 않고, AI에는 사용자가 입력한 글·이미지만 잠깐 보냅니다. 새 저장 키를 만들면 내보내기·가져오기(`web/src/lib/backup.ts`)에도 넣습니다.
 - 이미 설치된 것: `@anthropic-ai/sdk`, `zod`, `ics`, `unpdf`, `lucide-react`(아이콘). 필요할 때 추가할 부품: `date-fns`, `sonner` (`docs/개발가이드.md`의 참고 자료 참고). 새 패키지는 설치 전에 이유를 설명합니다.
 
 ## 디자인
@@ -43,6 +59,8 @@
 - `main`에 직접 커밋하지 않습니다. `feature/기능이름` 브랜치 → PR로 합칩니다. 커밋 메시지는 `feat: …`, `fix: …`, `style: …`, `docs: …`
 - `git push --force`는 쓰지 않습니다.
 - AI가 뽑은 결과(특히 날짜)는 **사용자가 확인·수정한 뒤** 저장합니다.
+- 스펙 영수증 AI는 **입력에 없는 숫자·사실을 지어내지 않습니다.** 숫자가 없으면 넣으라는 표시만 합니다.
+- 계산 화면(오늘의 한 가지·기말 필요 점수·리스크 지도·공백 지도)은 AI 없이 코드로 계산하고, 계산 함수는 화면과 나눠 `web/src/lib`에 둡니다. 화면 맨 아래에 계산식 각주를 둡니다.
 - 올린 강의자료는 그 사람 학습에만 쓰고 서버에 저장·공유하지 않습니다(저작권). 화면에 안내 문구를 둡니다.
 - PDF·이미지는 올리기 전에 크기를 확인하고, 4MB가 넘으면 안내합니다 (Vercel 요청 4.5MB 제한).
 - AI 주소 보호: 기기당 하루 사용 횟수 제한, 입력·답변 길이 상한.
