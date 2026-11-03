@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
-// 목록 한 줄: 왼쪽 시각(또는 체크박스) + 제목/보조 글 + 오른쪽 자리(배지·버튼·체크박스).
+// 목록 한 줄: 왼쪽 체크박스·시각(둘 다 있으면 체크박스 먼저) + 제목/보조 글 + 오른쪽 자리(배지·버튼·체크박스).
 // 줄 사이 구분선은 감싸는 쪽에서 `divide-y divide-divider`로 긋는다.
 export default function CheckRow({
   time,
@@ -22,11 +22,11 @@ export default function CheckRow({
 }) {
   return (
     <div className={`flex min-h-11 items-center gap-3 px-3.5 py-2.5 ${past ? "text-muted" : ""}`}>
-      {time !== undefined && (
-        <span className="w-11 shrink-0 font-mono text-[13px] font-medium text-muted">{time}</span>
-      )}
       {checked !== undefined && (
         <Checkbox checked={checked} onChange={onCheckedChange} label={typeof title === "string" ? title : undefined} />
+      )}
+      {time !== undefined && (
+        <span className="w-11 shrink-0 font-mono text-[13px] font-medium text-muted">{time}</span>
       )}
       <div className="min-w-0 flex-1">
         <p className={`truncate text-[15px] font-medium ${past ? "line-through" : ""}`}>{title}</p>

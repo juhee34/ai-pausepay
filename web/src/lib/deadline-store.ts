@@ -72,15 +72,16 @@ export function useSavedDeadlines() {
   return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
 }
 
-// 같은 과목·제목·날짜는 두 번 저장하지 않는다. 새로 추가된 개수를 돌려준다.
+// 같은 과목·제목·날짜는 두 번 저장하지 않는다.
+// 새로 추가된 개수와, 넣으려던 일정에 해당하는 저장된 일정(이미 있던 것 포함, .ics용)을 돌려준다.
 export function addDeadlines(items: Omit<SavedDeadline, "id">[]) {
+  const keyOf = (d: Omit<SavedDeadline, "id">) => `${d.course}|${d.title}|${d.date}`;
   const current = getSnapshot();
-  const seen = new Set(current.map((d) => `${d.course}|${d.title}|${d.date}`));
-  const fresh = items
-    .filter((d) => !seen.has(`${d.course}|${d.title}|${d.date}`))
-    .map((d) => ({ ...d, id: crypto.randomUUID() }));
+  const seen = new Set(current.map(keyOf));
+  const fresh = items.filter((d) => !seen.has(keyOf(d))).map((d) => ({ ...d, id: crypto.randomUUID() }));
   write([...current, ...fresh]);
-  return fresh.length;
+  const wanted = new Set(items.map(keyOf));
+  return { added: fresh.length, saved: getSnapshot().filter((d) => wanted.has(keyOf(d))) };
 }
 
 export function setDeadlineDone(id: string, done: boolean) {

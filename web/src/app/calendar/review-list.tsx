@@ -1,92 +1,146 @@
 "use client";
 
-import { DEADLINE_KINDS, type Deadline, type DeadlineKind } from "@/lib/syllabus";
+import { ChevronDown } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import Badge from "@/components/ui/badge";
+import Block from "@/components/ui/block";
+import CheckRow, { Checkbox } from "@/components/ui/check-row";
+import { BADGE_OF } from "@/lib/day-plan";
+import type { Deadline } from "@/lib/syllabus";
 
-export type Draft = Deadline & { key: string };
+export type Draft = Deadline & { key: string; checked: boolean };
 
-type Props = {
+export function shortDate(ymd: string) {
+  return `${Number(ymd.slice(5, 7))}/${Number(ymd.slice(8))}`;
+}
+
+// 찾은 일정 체크리스트 "캘린더에 넣을 일정".
+// 날짜 없는 '확인 필요'는 맨 위에 고정, 보고 있는 달은 펼쳐 두고, 다른 달은 접은 줄로.
+export default function ReviewList({
+  drafts,
+  month,
+  onChange,
+  onEdit,
+}: {
   drafts: Draft[];
+  month: string; // 달력에서 보고 있는 달 YYYY-MM
   onChange: (drafts: Draft[]) => void;
-  onSave: () => void;
-};
+  onEdit: (key: string) => void;
+}) {
+  const setChecked = (key: string, checked: boolean) =>
+    onChange(drafts.map((d) => (d.key === key ? { ...d, checked } : d)));
+  const allChecked = drafts.length > 0 && drafts.every((d) => d.checked);
 
-const inputClass =
-  "w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm";
+  const review = drafts.filter((d) => !d.date);
+  const dated = drafts
+    .filter((d): d is Draft & { date: string } => Boolean(d.date))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const before = dated.filter((d) => d.date.slice(0, 7) < month);
+  const inMonth = dated.filter((d) => d.date.slice(0, 7) === month);
+  const after = dated.filter((d) => d.date.slice(0, 7) > month);
 
-// AI가 찾은 일정을 사용자가 확인·수정하는 목록. 날짜가 다 채워져야 저장할 수 있다.
-export default function ReviewList({ drafts, onChange, onSave }: Props) {
-  const missing = drafts.filter((d) => !d.date).length;
-
-  function update(key: string, patch: Partial<Draft>) {
-    onChange(drafts.map((d) => (d.key === key ? { ...d, ...patch } : d)));
-  }
+  const row = (d: Draft & { date: string }) => {
+    const badge = BADGE_OF[d.kind];
+    return (
+      <div key={d.key} id={`draft-${d.key}`} className="scroll-mt-24">
+        <CheckRow
+          checked={d.checked}
+          onCheckedChange={(v) => setChecked(d.key, v)}
+          time={shortDate(d.date)}
+          title={
+            <button type="button" onClick={() => onEdit(d.key)} className="w-full truncate text-left">
+              {d.title}
+            </button>
+          }
+          sub={d.course}
+          right={badge ? <Badge kind={badge}>{d.kind}</Badge> : <span className="text-[11px] text-muted">{d.kind}</span>}
+        />
+      </div>
+    );
+  };
 
   return (
-    <div className="mt-8">
-      <h2 className="text-sm font-semibold">찾은 일정 {drafts.length}개 · 확인하고 고쳐 주세요</h2>
-      <p className="mt-1 text-xs text-foreground/50">
-        AI가 찾은 결과라 틀릴 수 있어요. 원본과 날짜를 꼭 비교해 주세요.
-      </p>
+    <Block padded={false} className="mt-2.5">
+      <div className="flex items-center justify-between px-3.5 pt-2">
+        <h2 className="text-[15px] font-bold">캘린더에 넣을 일정</h2>
+        <label className="flex items-center gap-1 text-xs font-medium text-muted">
+          모두
+          <Checkbox
+            checked={allChecked}
+            onChange={(v) => onChange(drafts.map((d) => ({ ...d, checked: v })))}
+            label="모두 고르기"
+          />
+        </label>
+      </div>
 
-      <ul className="mt-4 space-y-3">
-        {drafts.map((d) => (
-          <li
-            key={d.key}
-            className={`rounded-2xl border p-4 ${
-              d.date ? "border-foreground/10 bg-foreground/[0.02]" : "border-accent/50 bg-accent-soft/30"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <select
-                aria-label="종류"
-                value={d.kind}
-                onChange={(e) => update(d.key, { kind: e.target.value as DeadlineKind })}
-                className="rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent"
-              >
-                {DEADLINE_KINDS.map((kind) => (
-                  <option key={kind} value={kind}>
-                    {kind}
-                  </option>
-                ))}
-              </select>
-              <span className="min-w-0 flex-1 truncate text-xs text-foreground/50">{d.course}</span>
+      {review.length > 0 && (
+        <div className="mt-1 divide-y divide-review-line border-y border-review-line bg-review-soft">
+          {review.map((d) => (
+            <div key={d.key} id={`draft-${d.key}`} className="flex min-h-11 items-center gap-3 px-3.5 py-2.5">
+              <Checkbox checked={d.checked} onChange={(v) => setChecked(d.key, v)} label={`${d.title} 고르기`} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-medium">{d.title}</p>
+                <p className="truncate text-xs text-review">원문: {d.when || "날짜 없음"}</p>
+              </div>
               <button
                 type="button"
-                onClick={() => onChange(drafts.filter((x) => x.key !== d.key))}
-                className="shrink-0 rounded-full px-2 py-1 text-xs text-foreground/50"
+                onClick={() => onEdit(d.key)}
+                className="min-h-11 shrink-0 rounded-button px-2 text-[13px] font-semibold text-brand active:bg-brand-soft"
               >
-                빼기
+                날짜 고르기
               </button>
             </div>
+          ))}
+        </div>
+      )}
 
-            <input
-              aria-label="제목"
-              value={d.title}
-              onChange={(e) => update(d.key, { title: e.target.value })}
-              className={`mt-3 font-semibold ${inputClass}`}
-            />
-            <input
-              type="date"
-              aria-label="날짜"
-              value={d.date ?? ""}
-              onChange={(e) => update(d.key, { date: e.target.value || null })}
-              className={`mt-2 ${inputClass}`}
-            />
-            <p className={`mt-1.5 text-xs ${d.date ? "text-foreground/40" : "font-semibold text-accent"}`}>
-              {d.date ? `원본: ${d.when}` : `원본: ${d.when} · 날짜를 넣어 주세요`}
-            </p>
-          </li>
-        ))}
-      </ul>
+      <div className="divide-y divide-divider">
+        {before.length > 0 && <Folded items={before} render={row} />}
+        {inMonth.map(row)}
+        {after.length > 0 && <Folded items={after} render={row} />}
+        {dated.length === 0 && review.length === 0 && (
+          <p className="px-3.5 py-4 text-sm text-muted">넣을 일정이 없어요.</p>
+        )}
+      </div>
+    </Block>
+  );
+}
 
+// 다른 달 일정을 접은 줄: "9·10월 · 퀴즈·보고서·중간고사 3/3"
+function Folded({
+  items,
+  render,
+}: {
+  items: (Draft & { date: string })[];
+  render: (d: Draft & { date: string }) => ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const months = [...new Set(items.map((d) => Number(d.date.slice(5, 7))))];
+  const titles = items.slice(0, 3).map((d) => d.title).join("·") + (items.length > 3 ? "…" : "");
+  const checked = items.filter((d) => d.checked).length;
+
+  return (
+    <>
       <button
         type="button"
-        onClick={onSave}
-        disabled={missing > 0 || drafts.length === 0}
-        className="mt-5 w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-40"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex min-h-11 w-full items-center gap-2 px-3.5 py-2.5 text-left"
       >
-        {missing > 0 ? `날짜 ${missing}개를 넣으면 저장할 수 있어요` : `내 일정에 ${drafts.length}개 저장`}
+        <span className="min-w-0 flex-1 truncate text-sm text-muted">
+          <span className="font-semibold text-ink">{months.join("·")}월</span> · {titles}
+        </span>
+        <span className="shrink-0 font-mono text-xs text-muted">
+          {checked}/{items.length}
+        </span>
+        <ChevronDown
+          size={18}
+          strokeWidth={1.8}
+          aria-hidden="true"
+          className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
-    </div>
+      {open && items.map(render)}
+    </>
   );
 }
