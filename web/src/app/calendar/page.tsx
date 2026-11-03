@@ -2,7 +2,8 @@
 
 import { ChevronLeft, FileUp } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { useTimetable } from "@/lib/timetable-store";
 import EditSheet from "./edit-sheet";
 import GradingReview, { SavedGrading } from "./grading-review";
 import MonthCalendar, { type DotKind } from "./month-calendar";
+import PostingFlow, { UploadModeTabs } from "./posting-flow";
 import ReviewList, { type Draft } from "./review-list";
 
 function formatSize(bytes: number) {
@@ -34,7 +36,7 @@ function formatSize(bytes: number) {
 
 // 강의계획서 → 캘린더. 올리기 → AI가 찾은 일정 확인·수정 → 이 폰에 저장 + .ics 내려받기.
 // 저장한 일정은 홈의 달력과 목록에서 본다.
-export default function CalendarPage() {
+function SyllabusFlow() {
   const today = useToday();
   const timetable = useTimetable();
   const savedGrading = useGrading();
@@ -275,6 +277,9 @@ export default function CalendarPage() {
         <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
         홈
       </Link>
+      <div className="mb-3 px-1">
+        <UploadModeTabs value="syllabus" />
+      </div>
       <p className="px-1 text-xs font-medium text-muted">강의계획서 → 캘린더</p>
       <h1 className="px-1 text-[22px] font-bold">한 장으로 한 학기 일정</h1>
       <p className="mt-1 px-1 text-sm text-muted">
@@ -325,5 +330,19 @@ export default function CalendarPage() {
       )}
       <SavedGrading />
     </AppShell>
+  );
+}
+
+function CalendarByType() {
+  // ?type=posting이면 공고·자격증 올리기
+  return useSearchParams().get("type") === "posting" ? <PostingFlow /> : <SyllabusFlow />;
+}
+
+export default function CalendarPage() {
+  // useSearchParams를 쓰는 화면은 Suspense로 감싸야 빌드된다.
+  return (
+    <Suspense fallback={null}>
+      <CalendarByType />
+    </Suspense>
   );
 }

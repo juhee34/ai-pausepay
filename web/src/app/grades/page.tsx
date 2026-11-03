@@ -389,7 +389,7 @@ export default function GradesPage() {
   const myCourses = [
     ...new Set(
       [
-        ...[...timetable, ...deadlines].map((item) => item.course),
+        ...[...timetable, ...deadlines.filter((d) => !d.source)].map((item) => item.course),
         ...Object.keys(grades),
         ...Object.keys(grading),
       ]

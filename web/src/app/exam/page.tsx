@@ -57,7 +57,7 @@ export default function ExamPage() {
   const deadlines = useSavedDeadlines();
   const timetable = useTimetable();
   const courseOptions = [
-    ...new Set([...timetable, ...deadlines].map((item) => item.course.trim())),
+    ...new Set([...timetable, ...deadlines.filter((d) => !d.source)].map((item) => item.course.trim())),
   ].filter(Boolean);
 
   const [fileName, setFileName] = useState<string | null>(null);

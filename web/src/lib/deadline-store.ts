@@ -10,6 +10,7 @@ export type SavedDeadline = Omit<Deadline, "date"> & {
   id: string;
   date: string; // 저장할 때는 날짜가 꼭 있어야 한다 (YYYY-MM-DD)
   done?: boolean; // 홈에서 체크한 일정
+  source?: "posting"; // 공고에서 넣은 일정. course에 기관 이름이 들어 있어 과목 목록에서 뺀다.
 };
 
 const STORAGE_KEY = "unis.deadlines.v1";
