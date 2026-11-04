@@ -4,6 +4,7 @@ import { aiFetch } from "@/lib/ai-fetch";
 
 import { useRef, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
+import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import CookieNote from "@/components/ui/cookie-note";
@@ -155,8 +156,8 @@ export default function MailPage() {
 
   return (
     <AppShell>
+      <BrandLabel />
       <header className="mb-4 px-1">
-        <p className="text-xs font-medium text-muted">교수님 메일</p>
         <h1 className="text-[22px] font-bold">교수님께 보낼 메일 초안</h1>
         <p className="mt-1 text-sm text-muted">
           상황을 고르고 내용을 적으면 예의 바른 초안과 보내기 전 체크리스트가 나와요.

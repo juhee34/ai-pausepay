@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
+import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import CookieNote from "@/components/ui/cookie-note";
@@ -182,6 +183,7 @@ function SyllabusFlow() {
 
     return (
       <AppShell>
+        <BrandLabel />
         <header className="mb-4 flex items-start gap-2">
           <button
             type="button"
