@@ -15,7 +15,7 @@ loaded._compile(
   }).outputText,
   filename,
 );
-const { calcRequired, convertScore, statusOf } = loaded.exports;
+const { DEFAULT_ESTIMATE, calcRequired, convertScore, estimateCuts, statusOf, upperZ } = loaded.exports;
 
 const items100 = [
   { name: "중간", weight: 30 },
@@ -94,6 +94,65 @@ test("받은 점수를 배점으로 바꾼다", () => {
   assert.equal(convertScore(24, 30, 30), 24);
   assert.equal(convertScore(2, 3, 10), 6.67);
   assert.equal(convertScore(100, 100, 20), 20);
+});
+
+const itemsMine = [
+  { name: "중간", weight: 30 },
+  { name: "과제", weight: 10 },
+  { name: "퀴즈", weight: 20 },
+  { name: "출석", weight: 10 },
+  { name: "기말", weight: 30 },
+];
+const scoresMine = { 중간: 24, 과제: 10, 퀴즈: 20, 출석: 10 };
+
+test("z 값은 정규 분포표와 비슷하다", () => {
+  assert.equal(upperZ(50), 0);
+  assert.ok(Math.abs(upperZ(15) - 1.036) < 0.002);
+  assert.ok(Math.abs(upperZ(30) - 0.524) < 0.002);
+  assert.ok(Math.abs(upperZ(70) + 0.524) < 0.002);
+});
+
+test("중간 평균 18/30이면 학점별 컷과 기말 필요 점수가 손 계산과 같다", () => {
+  const result = estimateCuts(itemsMine, scoresMine, { 중간: 18 });
+  assert.equal(result.classMean, 76); // 18 + 10 + 20 + 10 + 기말 평균 18
+  assert.equal(result.averageRate, 0.6);
+  assert.deepEqual(result.assumedItems, ["과제", "퀴즈", "출석"]);
+  const by = Object.fromEntries(result.cuts.map((c) => [c.grade, c]));
+  assert.equal(by["A+"].cut, 86.4);
+  assert.equal(by["A+"].result.required, 74.7); // (86.4 - 64) ÷ 30 × 100
+  assert.equal(by.A0.cut, 81.2);
+  assert.equal(by.A0.result.required, 57.3); // (81.2 - 64) ÷ 30 × 100
+  assert.equal(by["B+"].cut, 76);
+  assert.equal(by["B+"].result.required, 40);
+});
+
+test("평균이 없거나 기말이 없으면 추정하지 않는다", () => {
+  assert.equal(estimateCuts(itemsMine, scoresMine, {}), null);
+  assert.equal(estimateCuts([{ name: "중간", weight: 30 }], { 중간: 20 }, { 중간: 18 }), null);
+});
+
+test("내 점수를 모르는 항목은 입력한 평균의 비율로 본다", () => {
+  const result = estimateCuts(itemsMine, { 중간: 24 }, { 중간: 18 });
+  assert.equal(result.classMean, 60); // 모든 항목이 60%
+  assert.deepEqual(result.assumedItems, ["과제", "퀴즈", "출석"]);
+});
+
+test("총점이 100이 아니어도 전체 평균을 100점 기준으로 바꾼다", () => {
+  const items = [
+    { name: "중간", weight: 40 },
+    { name: "과제", weight: 40 },
+    { name: "기말", weight: 40 },
+  ];
+  const result = estimateCuts(items, { 중간: 30, 과제: 30 }, { 중간: 20, 과제: 20 });
+  assert.equal(result.classMean, 50);
+  assert.equal(result.cuts.find((c) => c.grade === "B+").cut, 50);
+});
+
+test("추정 기준을 바꾸면 컷도 바뀌고, 컷은 0~100을 넘지 않는다", () => {
+  const wide = estimateCuts(itemsMine, scoresMine, { 중간: 18 }, { ...DEFAULT_ESTIMATE, spread: 20 });
+  assert.equal(wide.cuts.find((c) => c.grade === "A+").cut, 96.7);
+  const huge = estimateCuts(itemsMine, scoresMine, { 중간: 18 }, { ...DEFAULT_ESTIMATE, spread: 40 });
+  assert.equal(huge.cuts.find((c) => c.grade === "A+").cut, 100);
 });
 
 test("상태 경계값", () => {

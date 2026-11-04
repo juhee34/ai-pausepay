@@ -63,6 +63,40 @@ function load(file) {
 const account = load("lib/account-backup.ts");
 const backup = load("lib/backup.ts");
 
+test("목표 직무는 파일·계정 백업으로 복원하고 기존 선택과 옛 백업은 유지한다", async () => {
+  store.set("unis.targetJob.v1", "데이터 분석");
+  assert.equal(backup.hasBackupData(), true);
+  const data = backup.readBackupData();
+  assert.equal(data.targetJob, "데이터 분석");
+  assert.equal(backup.parseBackup(JSON.stringify({ app: "unis", version: 1, ...data })).targetJob, "데이터 분석");
+  assert.equal(backup.parseBackupData({ ...data, targetJob: "없는 직무" }), null);
+  await account.uploadAccountBackup("test-user");
+  assert.equal(remote.data.targetJob, "데이터 분석");
+  const restored = await account.readAccountBackup("test-user");
+  store.clear();
+  assert.equal(backup.importBackup(restored.data).targetJobAdded, true);
+  assert.equal(store.get("unis.targetJob.v1"), "데이터 분석");
+  store.set("unis.targetJob.v1", "서비스 기획");
+  assert.equal(backup.importBackup(restored.data).targetJobAdded, false);
+  assert.equal(store.get("unis.targetJob.v1"), "서비스 기획");
+  const old = { ...data };
+  delete old.targetJob;
+  assert.deepEqual(backup.parseBackupData(old), old);
+});
+
+test("복원 도중 저장이 실패하면 목표 직무도 되돌린다", () => {
+  const data = { ...backup.readBackupData(), targetJob: "데이터 분석" };
+  const original = localStorage.setItem;
+  let fail = true;
+  localStorage.setItem = (key, value) => {
+    if (key === "unis.deadlines.v1" && fail) { fail = false; throw new Error("storage full"); }
+    original(key, value);
+  };
+  try { assert.throws(() => backup.importBackup(data)); }
+  finally { localStorage.setItem = original; }
+  assert.equal(store.has("unis.targetJob.v1"), false);
+});
+
 const DEADLINE = { id: "d1", title: "가상 과제", course: "가상 과목", when: "", date: "2026-11-20", kind: "과제" };
 const RECEIPT = {
   id: "r1",

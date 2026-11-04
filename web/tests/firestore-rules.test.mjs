@@ -42,6 +42,12 @@ describe("Firestore: 본인 백업만 허용하고 사용량은 서버만 쓴다
     await assertFails(setDoc(doc(bob, backup()), payload()));
     await assertFails(deleteDoc(doc(bob, backup())));
   });
+  test("목표 직무는 선택 항목이며 허용한 직무 이름만 백업할 수 있다", async () => {
+    const db = environment.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, backup()), payload()));
+    await assertSucceeds(setDoc(doc(db, backup()), { ...payload(), data: { ...payload().data, targetJob: "데이터 분석" } }));
+    await assertFails(setDoc(doc(db, backup()), { ...payload(), data: { ...payload().data, targetJob: "없는 직무" } }));
+  });
   test("AI 사용량은 본인만 읽고 화면에서는 아무도 쓰지 못한다", async () => {
     await environment.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), "users/alice/usage/2026-11-03"), { total: 1 });
