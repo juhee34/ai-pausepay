@@ -4,6 +4,7 @@ import { Award, ChevronRight, Plus, Radar } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
+import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import SegmentedTabs from "@/components/ui/segmented-tabs";
@@ -92,6 +93,7 @@ export default function CareerPage() {
 
   return (
     <AppShell>
+      <BrandLabel />
       <header className="flex items-center justify-between gap-3 px-1">
         <h1 className="text-[22px] font-bold">대외활동</h1>
         <Button onClick={() => setSheet({ kind: "add" })} className="shrink-0 !px-3 text-sm">
