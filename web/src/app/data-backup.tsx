@@ -4,6 +4,7 @@ import { useState } from "react";
 import Button from "@/components/ui/button";
 import {
   MAX_BACKUP_BYTES,
+  describeImport,
   exportBackup,
   hasBackupData,
   importBackup,
@@ -53,39 +54,17 @@ export default function DataBackup() {
         return;
       }
 
-      const {
-        addedDeadlines,
-        addedActivities,
-        addedFocusRecords,
-        addedExamResults,
-        addedGrades,
-        addedGrading,
-        addedReceipts,
-        timetableAdded,
-        timetableKept,
-        changed,
-      } = importBackup(data);
-      const keptNote = timetableKept ? " 시간표는 이 폰에 있는 것을 그대로 뒀어요." : "";
-      if (!changed) {
+      const result = importBackup(data);
+      const keptNote = result.timetableKept ? " 시간표는 이 폰에 있는 것을 그대로 뒀어요." : "";
+      if (!result.changed) {
         setNotice({ kind: "ok", text: `파일의 내용이 이미 모두 들어 있어요.${keptNote}` });
         setBusy(false);
         return;
       }
 
-      // 가져온 것만 알려 준다.
-      const addedParts = [
-        addedDeadlines > 0 && `일정 ${addedDeadlines}개`,
-        addedActivities > 0 && `대외활동 ${addedActivities}개`,
-        addedFocusRecords > 0 && `공부 기록 ${addedFocusRecords}개`,
-        addedExamResults > 0 && `시험 결과 ${addedExamResults}개`,
-        addedGrades > 0 && `점수 ${addedGrades}과목`,
-        addedGrading > 0 && `평가 비율 ${addedGrading}과목`,
-        addedReceipts > 0 && `영수증 ${addedReceipts}장`,
-        timetableAdded && "시간표",
-      ].filter(Boolean);
       setNotice({
         kind: "ok",
-        text: `${addedParts.length > 0 ? addedParts.join(", ") : "기록"} 가져왔어요.${keptNote} 화면을 새로 고칠게요.`,
+        text: `${describeImport(result)} 가져왔어요.${keptNote} 화면을 새로 고칠게요.`,
       });
       setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
     } catch {
