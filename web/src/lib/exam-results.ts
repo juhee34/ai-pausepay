@@ -49,6 +49,18 @@ export function saveExamResult(result: ExamResult) {
   }
 }
 
+// 단답형을 '맞은 걸로 치기'로 고치면 방금 저장한 점수도 고친다. finishedAt으로 찾는다.
+export function updateExamResultCorrect(finishedAt: number, correct: number) {
+  try {
+    const next = readExamResults().map((r) =>
+      r.finishedAt === finishedAt ? { ...r, correct: Math.min(r.total, Math.max(0, correct)) } : r,
+    );
+    localStorage.setItem(EXAM_RESULTS_KEY, JSON.stringify(next));
+  } catch {
+    // 저장 공간을 못 써도 채점 화면은 그대로 보여 준다.
+  }
+}
+
 // 그 과목의 가장 최근 정답률(0~1). 결과가 없으면 null.
 export function getLatestAccuracy(course: string) {
   const latest = readExamResults()

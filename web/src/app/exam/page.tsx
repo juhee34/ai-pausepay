@@ -10,9 +10,11 @@ import Button from "@/components/ui/button";
 import CookieNote from "@/components/ui/cookie-note";
 import SegmentedTabs from "@/components/ui/segmented-tabs";
 import { useSavedDeadlines } from "@/lib/deadline-store";
-import { saveExamResult } from "@/lib/exam-results";
+import { saveExamResult, updateExamResultCorrect } from "@/lib/exam-results";
 import { useTimetable } from "@/lib/timetable-store";
+import { isShortAnswerCorrect } from "./grading";
 import {
+  MAX_SHORT_INPUT_LENGTH,
   MAX_SOURCE_LENGTH,
   MIN_SOURCE_LENGTH,
   QUIZ_SIZE,
@@ -42,8 +44,10 @@ async function readPdfPages(file: File) {
 }
 
 // 글자가 16px보다 작으면 아이폰이 입력할 때 화면을 확대한다.
-const inputClass =
-  "mt-1.5 block min-h-11 w-full rounded-button border border-line bg-surface px-3.5 py-2.5 text-base font-normal text-ink outline-none placeholder:text-muted focus:border-brand";
+const inputShape =
+  "mt-1.5 block min-h-11 w-full rounded-button border px-3.5 py-2.5 text-base font-normal outline-none placeholder:text-muted";
+const inputTone = "border-line bg-surface text-ink focus:border-brand";
+const inputClass = `${inputShape} ${inputTone}`;
 
 const warningClass = "text-xs font-semibold text-review";
 
@@ -77,6 +81,12 @@ export default function ExamPage() {
   // 지금 푸는 문제들의 번호. 틀린 문제만 다시 풀 때는 그 번호만 남는다.
   const [round, setRound] = useState<number[]>([]);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  // 단답형에 적은 답. 저장하지 않는다.
+  const [texts, setTexts] = useState<Record<number, string>>({});
+  // 코드가 틀렸다고 했지만 사용자가 맞다고 고친 단답형 문제.
+  const [accepted, setAccepted] = useState<number[]>([]);
+  // 방금 저장한 채점 결과. 고치면 저장한 점수도 함께 고친다.
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [graded, setGraded] = useState(false);
 
   const from = Number(fromPage);
@@ -160,8 +170,7 @@ export default function ExamPage() {
       const nextPack = data as ExamPack;
       setPack(nextPack);
       setRound(nextPack.questions.map((_, index) => index));
-      setAnswers({});
-      setGraded(false);
+      resetRound();
       scrollToTop();
     } catch {
       setError("문제를 만들지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.");
@@ -170,11 +179,39 @@ export default function ExamPage() {
     }
   }
 
+  function resetRound() {
+    setAnswers({});
+    setTexts({});
+    setAccepted([]);
+    setSavedAt(null);
+    setGraded(false);
+  }
+
   function startRound(indexes: number[]) {
     setRound(indexes);
-    setAnswers({});
-    setGraded(false);
+    resetRound();
     scrollToTop();
+  }
+
+  function isAnswered(index: number) {
+    if (pack?.questions[index].type === "short") return (texts[index] ?? "").trim() !== "";
+    return answers[index] !== undefined;
+  }
+
+  // 사용자가 맞다고 고친 문제는 코드 비교와 상관없이 맞은 것으로 센다.
+  function isRight(index: number, acceptedList = accepted) {
+    if (!pack) return false;
+    const question = pack.questions[index];
+    if (question.type !== "short") return answers[index] === question.answerIndex;
+    return acceptedList.includes(index) || isShortAnswerCorrect(texts[index] ?? "", question.acceptedAnswers);
+  }
+
+  function toggleAccepted(index: number) {
+    const next = accepted.includes(index) ? accepted.filter((i) => i !== index) : [...accepted, index];
+    setAccepted(next);
+    if (savedAt !== null) {
+      updateExamResultCorrect(savedAt, round.filter((i) => isRight(i, next)).length);
+    }
   }
 
   function backToInput() {
@@ -182,10 +219,8 @@ export default function ExamPage() {
     scrollToTop();
   }
 
-  const answeredCount = round.filter((index) => answers[index] !== undefined).length;
-  const wrong = pack
-    ? round.filter((index) => answers[index] !== pack.questions[index].answerIndex)
-    : [];
+  const answeredCount = round.filter(isAnswered).length;
+  const wrong = pack ? round.filter((index) => !isRight(index)) : [];
 
   return (
     <AppShell>
@@ -195,7 +230,7 @@ export default function ExamPage() {
           <header className="mb-4 px-1">
             <h1 className="text-[22px] font-bold">강의자료로 요약과 문제 만들기</h1>
             <p className="mt-1 text-sm text-muted">
-              5줄 요약, 어려운 말 풀이, 객관식·OX {QUIZ_SIZE}문제가 나오고 틀린 문제만 다시 풀 수
+              5줄 요약, 어려운 말 풀이, 객관식·OX·단답형 {QUIZ_SIZE}문제가 나오고 틀린 문제만 다시 풀 수
               있어요.
             </p>
           </header>
@@ -462,7 +497,8 @@ export default function ExamPage() {
               {round.map((index, position) => {
                 const question = pack.questions[index];
                 const picked = answers[index];
-                const isCorrect = picked === question.answerIndex;
+                const isCorrect = isRight(index);
+                const wasAccepted = accepted.includes(index);
 
                 return (
                   <li key={index} className="p-3.5">
@@ -470,10 +506,27 @@ export default function ExamPage() {
                       <legend className="text-[15px] font-semibold leading-relaxed">
                         <span className="font-mono text-muted">{position + 1}</span>{" "}
                         <span className="text-xs font-medium text-muted">
-                          {question.type === "ox" ? "OX" : "객관식"}
+                          {question.type === "ox" ? "OX" : question.type === "short" ? "단답형" : "객관식"}
                         </span>{" "}
                         {question.question}
                       </legend>
+                      {question.type === "short" ? (
+                        <input
+                          aria-label={`${position + 1}번 답`}
+                          value={texts[index] ?? ""}
+                          onChange={(e) => setTexts((prev) => ({ ...prev, [index]: e.target.value }))}
+                          maxLength={MAX_SHORT_INPUT_LENGTH}
+                          autoComplete="off"
+                          placeholder="답을 짧게 적어 주세요"
+                          className={`${inputShape} ${
+                            !graded
+                              ? inputTone
+                              : isCorrect
+                                ? "border-quiz bg-quiz-soft text-quiz"
+                                : "border-brand bg-brand-soft text-brand"
+                          }`}
+                        />
+                      ) : (
                       <div
                         className={`mt-2.5 ${
                           question.type === "ox" ? "grid grid-cols-2 gap-2" : "space-y-2"
@@ -516,6 +569,7 @@ export default function ExamPage() {
                           );
                         })}
                       </div>
+                      )}
                     </fieldset>
 
                     {graded && (
@@ -525,8 +579,30 @@ export default function ExamPage() {
                             isCorrect ? "text-quiz" : "text-brand"
                           }`}
                         >
-                          {isCorrect ? "맞았어요" : "틀렸어요"}
+                          {wasAccepted ? "맞은 걸로 쳤어요" : isCorrect ? "맞았어요" : "틀렸어요"}
                         </p>
+                        {question.type === "short" && (
+                          <>
+                            <p className="mt-0.5 text-sm font-semibold break-words">
+                              정답: {question.acceptedAnswers[0]}
+                              {question.acceptedAnswers.length > 1 && (
+                                <span className="font-normal text-muted">
+                                  {" "}
+                                  (인정: {question.acceptedAnswers.slice(1).join(", ")})
+                                </span>
+                              )}
+                            </p>
+                            {(!isCorrect || wasAccepted) && (
+                              <button
+                                type="button"
+                                onClick={() => toggleAccepted(index)}
+                                className="-ml-1 min-h-11 px-1 text-[13px] font-semibold text-brand"
+                              >
+                                {wasAccepted ? "되돌리기" : "내 답도 맞아요. 맞은 걸로 치기"}
+                              </button>
+                            )}
+                          </>
+                        )}
                         <p className="mt-0.5 text-sm leading-relaxed text-muted">
                           {question.explanation}
                         </p>
@@ -545,12 +621,14 @@ export default function ExamPage() {
                 // 틀린 문제만 다시 푼 결과는 정답률을 왜곡하므로 전체를 풀었을 때만 저장한다.
                 const name = course.trim();
                 if (name && round.length === pack.questions.length) {
+                  const finishedAt = Date.now();
                   saveExamResult({
                     course: name,
                     correct: round.length - wrong.length,
                     total: round.length,
-                    finishedAt: Date.now(),
+                    finishedAt,
                   });
+                  setSavedAt(finishedAt);
                 }
                 setGraded(true);
                 scrollToTop();
