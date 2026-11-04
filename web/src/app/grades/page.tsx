@@ -11,6 +11,7 @@ import { useSavedDeadlines } from "@/lib/deadline-store";
 import {
   DEFAULT_TARGET,
   calcRequired,
+  convertScore,
   formatPoints,
   isFinalItem,
   type GradeResult,
@@ -60,7 +61,7 @@ const STATUS_CLASS: Record<GradeStatus, string> = {
   여유: "bg-quiz-soft text-quiz",
   주의: "border border-review-line bg-review-soft text-review",
   위험: "bg-brand-soft text-brand",
-  불가: "bg-ink text-white",
+  "목표 초과": "bg-ink text-white",
 };
 
 // 글자가 16px보다 작으면 아이폰이 입력할 때 화면을 확대한다.
@@ -92,13 +93,14 @@ function ResultBlock({
   target: number;
   result: GradeResult;
 }) {
-  const { required, requiredPoints, finalWeight, missing, reached, status } = result;
+  const { required, requiredPoints, finalWeight, missing, reached, status, maxTotal } = result;
+  const overTarget = status === "목표 초과";
 
   let detail = "받은 점수를 입력하면 계산해요.";
   if (finalWeight <= 0) detail = "기말 배점을 넣으면 계산해요.";
   else if (reached) detail = "기말 없이도 목표를 넘겼어요.";
-  else if (status === "불가") {
-    detail = `기말 배점 ${formatPoints(finalWeight)}점으로는 ${formatPoints(requiredPoints)}점을 채울 수 없어요.`;
+  else if (overTarget) {
+    detail = `기말을 100점 받아도 총점은 ${formatPoints(maxTotal)}점이에요. 목표 ${target}점에는 ${formatPoints(target - maxTotal)}점 모자라요.`;
   } else if (required !== null) {
     detail = `기말 배점 ${formatPoints(finalWeight)}점 중 ${formatPoints(requiredPoints)}점이 필요해요.`;
   }
@@ -113,6 +115,11 @@ function ResultBlock({
         {required !== null && <span className="ml-1.5 text-[15px]">점</span>}
       </p>
       <p className="mt-3 text-[13px]">{detail}</p>
+      {overTarget && (
+        <p className="mt-1 text-xs leading-relaxed text-white/80">
+          상대평가라면 실제 컷은 더 낮을 수 있어요. 슬라이더를 예상 컷에 맞춰 보세요.
+        </p>
+      )}
       {required !== null && missing > 0 && (
         <p className="mt-1 text-xs text-white/80">
           아직 입력하지 않은 항목 {missing}개는 빼고 계산했어요.
@@ -120,7 +127,7 @@ function ResultBlock({
       )}
       {status && (
         <span className="mt-3 inline-flex h-[22px] items-center rounded-full bg-white px-2.5 text-[11px] font-bold text-brand">
-          {status === "불가" ? "불가" : `${status} 구간`}
+          {overTarget ? "목표 초과" : `${status} 구간`}
         </span>
       )}
     </div>
@@ -210,8 +217,12 @@ function ScoreSheet({
   onSave: (score: number | null) => void;
 }) {
   const [value, setValue] = useState(saved === null ? "" : String(saved));
-  const score = Number(value);
-  const valid = value.trim() !== "" && Number.isFinite(score) && score >= 0 && score <= item.weight;
+  const [maxValue, setMaxValue] = useState(String(item.weight));
+  const got = Number(value);
+  const max = Number(maxValue);
+  const maxValid = maxValue.trim() !== "" && Number.isFinite(max) && max > 0;
+  const valid = maxValid && value.trim() !== "" && Number.isFinite(got) && got >= 0 && got <= max;
+  const score = valid ? convertScore(got, max, item.weight) : 0;
 
   return (
     <BottomSheet open onClose={onClose} title={`${item.name} 받은 점수`}>
@@ -221,20 +232,39 @@ function ScoreSheet({
           if (valid) onSave(score);
         }}
       >
-        <label className="block text-[13px] font-semibold" htmlFor="grades-score">
-          배점 {formatPoints(item.weight)}점 중 몇 점을 받았나요?
-        </label>
-        <input
-          id="grades-score"
-          inputMode="decimal"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={`0 ~ ${formatPoints(item.weight)}`}
-          className={`${inputClass} mt-1.5 font-mono`}
-        />
-        {value.trim() !== "" && !valid && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-[13px] font-semibold">
+            받은 점수
+            <input
+              id="grades-score"
+              inputMode="decimal"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className={`${inputClass} mt-1.5 font-mono`}
+            />
+          </label>
+          <label className="block text-[13px] font-semibold">
+            만점
+            <input
+              id="grades-max"
+              inputMode="decimal"
+              value={maxValue}
+              onChange={(e) => setMaxValue(e.target.value)}
+              className={`${inputClass} mt-1.5 font-mono`}
+            />
+          </label>
+        </div>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted">
+          이 항목의 배점은 {formatPoints(item.weight)}점이에요. 100점 만점 시험이면 만점을 100으로 바꿔 주세요.
+        </p>
+        {valid && max !== item.weight && (
+          <p role="status" className="mt-1 text-xs font-semibold text-brand">
+            배점 {formatPoints(item.weight)}점 기준으로 {formatPoints(score)}점이에요.
+          </p>
+        )}
+        {(value.trim() !== "" || maxValue.trim() !== "") && !valid && (value.trim() !== "" || !maxValid) && (
           <p role="alert" className="mt-1.5 text-xs font-semibold text-review">
-            0부터 {formatPoints(item.weight)} 사이의 숫자로 넣어 주세요.
+            받은 점수는 0부터 만점 사이, 만점은 0보다 큰 숫자로 넣어 주세요.
           </p>
         )}
         <Button type="submit" disabled={!valid} className="mt-3 w-full">
@@ -601,7 +631,7 @@ export default function GradesPage() {
                 </div>
                 {totalWeight !== 100 && (
                   <p className="mt-2.5 text-xs font-semibold text-review">
-                    배점 합이 {formatPoints(totalWeight)}이에요. 계획서를 확인해 주세요.
+                    배점 합이 {formatPoints(totalWeight)}이라 목표를 {formatPoints(result.targetPoints)}점으로 바꿔 계산했어요. 계획서와 같은지 확인해 주세요.
                   </p>
                 )}
                 {!isExample && (
@@ -628,7 +658,7 @@ export default function GradesPage() {
               let note = "받은 점수를 입력해 주세요";
               if (line.finalWeight <= 0) note = "평가 항목을 넣어 주세요";
               else if (line.reached) note = "기말 없이도 목표를 넘겼어요";
-              else if (line.status === "불가") note = "기말에서 만점이어도 부족해요";
+              else if (line.status === "목표 초과") note = `기말 만점이면 총점 ${formatPoints(line.maxTotal)}점이에요`;
               else if (line.required !== null) note = `기말에서 최소 ${line.required.toFixed(1)}점`;
               return (
                 <li key={name}>
@@ -660,8 +690,8 @@ export default function GradesPage() {
           </Link>
 
           <p className="mt-4 text-[11px] leading-relaxed text-muted">
-            필요 점수 = (목표 총점 − 기말 전까지 확보한 점수) ÷ 기말 배점 × 100이에요. 85점 이상이면
-            위험, 70점 이상이면 주의, 100점을 넘으면 불가로 표시해요. 상대평가 과목은 실제 컷에 따라
+            필요 점수 = (목표 총점 − 기말 전까지 확보한 점수) ÷ 기말 배점 × 100이에요. 배점 합이 100이 아니면 목표를 같은 비율로 바꿔 계산해요. 85점 이상이면
+            위험, 70점 이상이면 주의, 100점을 넘으면 목표 초과로 표시해요. 상대평가 과목은 실제 컷에 따라
             달라질 수 있어요.{isExample && " 화면의 숫자는 모두 예시 데이터예요."} 점수는 이 기기에만
             저장돼요.
           </p>
