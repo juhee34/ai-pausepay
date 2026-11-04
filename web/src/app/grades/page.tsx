@@ -11,6 +11,7 @@ import { useSavedDeadlines } from "@/lib/deadline-store";
 import {
   DEFAULT_TARGET,
   calcRequired,
+  convertScore,
   formatPoints,
   isFinalItem,
   type GradeResult,
@@ -210,8 +211,12 @@ function ScoreSheet({
   onSave: (score: number | null) => void;
 }) {
   const [value, setValue] = useState(saved === null ? "" : String(saved));
-  const score = Number(value);
-  const valid = value.trim() !== "" && Number.isFinite(score) && score >= 0 && score <= item.weight;
+  const [maxValue, setMaxValue] = useState(String(item.weight));
+  const got = Number(value);
+  const max = Number(maxValue);
+  const maxValid = maxValue.trim() !== "" && Number.isFinite(max) && max > 0;
+  const valid = maxValid && value.trim() !== "" && Number.isFinite(got) && got >= 0 && got <= max;
+  const score = valid ? convertScore(got, max, item.weight) : 0;
 
   return (
     <BottomSheet open onClose={onClose} title={`${item.name} 받은 점수`}>
@@ -221,20 +226,39 @@ function ScoreSheet({
           if (valid) onSave(score);
         }}
       >
-        <label className="block text-[13px] font-semibold" htmlFor="grades-score">
-          배점 {formatPoints(item.weight)}점 중 몇 점을 받았나요?
-        </label>
-        <input
-          id="grades-score"
-          inputMode="decimal"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={`0 ~ ${formatPoints(item.weight)}`}
-          className={`${inputClass} mt-1.5 font-mono`}
-        />
-        {value.trim() !== "" && !valid && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-[13px] font-semibold">
+            받은 점수
+            <input
+              id="grades-score"
+              inputMode="decimal"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className={`${inputClass} mt-1.5 font-mono`}
+            />
+          </label>
+          <label className="block text-[13px] font-semibold">
+            만점
+            <input
+              id="grades-max"
+              inputMode="decimal"
+              value={maxValue}
+              onChange={(e) => setMaxValue(e.target.value)}
+              className={`${inputClass} mt-1.5 font-mono`}
+            />
+          </label>
+        </div>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted">
+          이 항목의 배점은 {formatPoints(item.weight)}점이에요. 100점 만점 시험이면 만점을 100으로 바꿔 주세요.
+        </p>
+        {valid && max !== item.weight && (
+          <p role="status" className="mt-1 text-xs font-semibold text-brand">
+            배점 {formatPoints(item.weight)}점 기준으로 {formatPoints(score)}점이에요.
+          </p>
+        )}
+        {(value.trim() !== "" || maxValue.trim() !== "") && !valid && (value.trim() !== "" || !maxValid) && (
           <p role="alert" className="mt-1.5 text-xs font-semibold text-review">
-            0부터 {formatPoints(item.weight)} 사이의 숫자로 넣어 주세요.
+            받은 점수는 0부터 만점 사이, 만점은 0보다 큰 숫자로 넣어 주세요.
           </p>
         )}
         <Button type="submit" disabled={!valid} className="mt-3 w-full">
@@ -601,7 +625,7 @@ export default function GradesPage() {
                 </div>
                 {totalWeight !== 100 && (
                   <p className="mt-2.5 text-xs font-semibold text-review">
-                    배점 합이 {formatPoints(totalWeight)}이에요. 계획서를 확인해 주세요.
+                    배점 합이 {formatPoints(totalWeight)}이라 목표를 {formatPoints(result.targetPoints)}점으로 바꿔 계산했어요. 계획서와 같은지 확인해 주세요.
                   </p>
                 )}
                 {!isExample && (
@@ -660,7 +684,7 @@ export default function GradesPage() {
           </Link>
 
           <p className="mt-4 text-[11px] leading-relaxed text-muted">
-            필요 점수 = (목표 총점 − 기말 전까지 확보한 점수) ÷ 기말 배점 × 100이에요. 85점 이상이면
+            필요 점수 = (목표 총점 − 기말 전까지 확보한 점수) ÷ 기말 배점 × 100이에요. 배점 합이 100이 아니면 목표를 같은 비율로 바꿔 계산해요. 85점 이상이면
             위험, 70점 이상이면 주의, 100점을 넘으면 불가로 표시해요. 상대평가 과목은 실제 컷에 따라
             달라질 수 있어요.{isExample && " 화면의 숫자는 모두 예시 데이터예요."} 점수는 이 기기에만
             저장돼요.
