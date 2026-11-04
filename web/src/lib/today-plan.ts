@@ -56,7 +56,19 @@ export const DEFAULT_WEIGHT: Record<DeadlineKind, number> = { 중간: 30, 기말
 export const DEFAULT_HOURS: Record<DeadlineKind, number> = { 중간: 8, 기말: 8, 과제: 3, 퀴즈: 1, 기타: 1 };
 export const DEFAULT_TARGET_RATE = 0.9;
 export const DEFAULT_EXPECTED_RATE = 0.6;
-export const HOUR_CHIPS = [1, 2, 3, 4] as const;
+export const DEFAULT_AVAILABLE_HOURS = 2;
+export const MIN_AVAILABLE_HOURS = 0.5;
+export const MAX_AVAILABLE_HOURS = 24;
+
+// 직접 넣은 시간을 읽는다. 소수 한 자리까지 쓰고, 쓸 수 없는 값이면 null.
+export function parseAvailableHours(text: string) {
+  const trimmed = text.trim();
+  if (trimmed === "") return null;
+  const value = Number(trimmed);
+  if (!Number.isFinite(value)) return null;
+  const hours = Math.round(value * 10) / 10;
+  return hours >= MIN_AVAILABLE_HOURS && hours <= MAX_AVAILABLE_HOURS ? hours : null;
+}
 
 function daysBetween(from: string, to: string) {
   const [fy, fm, fd] = from.split("-").map(Number);
@@ -104,22 +116,18 @@ export function scoreTasks(today: string, tasks: PlanTask[], sources: PlanSource
   return scored;
 }
 
-// 쓸 수 있는 시간 안에서 효율 높은 일부터 채운다.
-// 1등 일은 시간이 모자라도 그만큼만 하고, 나머지 일은 다 들어갈 때만 넣는다.
-// '오늘 미루는 일'은 고르지 못한 일 중 효율이 가장 높은 일.
+// 쓸 수 있는 시간을 순위가 높은 일부터 예상 소요시간만큼 나눈다.
+// 시간이 모자라면 그 일은 남은 시간만큼만 하고, 남는 시간 없이 다 쓴다.
+// 예시 4시간 → 팀 과제 2시간, 퀴즈 1시간, 기말 복습 1시간 (8시간 중)
+// '오늘 미루는 일'은 시간을 받지 못한 일 중 효율이 가장 높은 일.
 export function planToday(scored: ScoredTask[], available: number): TodayPlan {
   const picks: TodayPlan["picks"] = [];
   let left = available;
   for (const task of scored) {
     if (left <= 0) break;
-    if (picks.length === 0) {
-      const hours = Math.min(task.hours, left);
-      picks.push({ task, hours });
-      left -= hours;
-    } else if (task.hours <= left) {
-      picks.push({ task, hours: task.hours });
-      left -= task.hours;
-    }
+    const hours = Math.min(task.hours, left);
+    picks.push({ task, hours });
+    left -= hours;
   }
   const picked = new Set(picks.map((p) => p.task.id));
   return {

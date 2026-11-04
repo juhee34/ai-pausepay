@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Award,
+  BriefcaseBusiness,
   CalendarPlus,
   Calculator,
   CalendarClock,
   House,
-  ListChecks,
   Mail,
   Map as MapIcon,
   NotebookPen,
@@ -24,10 +24,10 @@ import BottomSheet from "./bottom-sheet";
 
 const LEFT_TABS = [
   { href: "/", label: "홈", Icon: House },
-  { href: "/mail", label: "메일", Icon: Mail },
+  { href: "/today", label: "우선순위", Icon: Sparkles },
 ];
 const RIGHT_TABS = [
-  { href: "/exam", label: "시험 대비", Icon: NotebookPen },
+  { href: "/career", label: "취업", Icon: BriefcaseBusiness },
   { href: "/my", label: "마이페이지", Icon: UserRound },
 ];
 
@@ -43,19 +43,19 @@ type FeatureTile = {
 // 화면이 생기면 그 타일의 ready를 true로 바꾼다.
 const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
   {
-    title: "학점",
+    title: "학교",
     tiles: [
-      { href: "/today", label: "오늘의 한 가지", sub: "지금 할 공부 하나", Icon: Sparkles, ready: true },
       { href: "/grades", label: "기말 필요 점수", sub: "목표까지 몇 점?", Icon: Calculator, ready: true },
       { href: "/risk", label: "학기 리스크 지도", sub: "몰리는 주 미리 보기", Icon: MapIcon, ready: true },
-      { href: "/focus", label: "집중 모드", sub: "1시간 단위로 집중", Icon: Timer, ready: true },
+      { href: "/exam", label: "시험 대비", sub: "강의자료로 요약과 문제", Icon: NotebookPen, ready: true },
+      { href: "/mail", label: "교수님 메일", sub: "예의 바른 메일 초안", Icon: Mail, ready: true },
+      { href: "/focus", label: "집중 모드", sub: "30분 단위로 집중", Icon: Timer, ready: true },
     ],
   },
   {
     title: "취업 준비",
     tiles: [
       { href: "/calendar?type=posting", label: "공고·자격증 올리기", sub: "마감을 일정에 추가", Icon: CalendarPlus, ready: true },
-      { href: "/career", label: "대외활동", sub: "지원 단계 관리", Icon: ListChecks, ready: true },
       { href: "/career/receipts", label: "스펙 영수증", sub: "경험을 한 줄로 정리", Icon: Award, ready: true },
       { href: "/career/skills", label: "역량 공백 지도", sub: "부족한 역량 찾기", Icon: Radar, ready: true },
     ],

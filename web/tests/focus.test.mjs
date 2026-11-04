@@ -131,6 +131,13 @@ test("시간을 고르지 않으면 1시간이고, 바로 그만두면 기록하
   assert.deepEqual(saved().records, []);
 });
 
+test("30분 단위로 고른 시간도 그대로 기록된다", () => {
+  store.startFocus("재무관리", {}, 1.5);
+  assert.equal(store.getData().session.minutes, 90);
+  store.settleSession(store.getData().session.endsAt);
+  assert.equal(saved().records[0].minutes, 90);
+});
+
 test("진행 중이던 옛 타이머는 25분으로 기록된다", () => {
   memory.set(
     "unis-focus",

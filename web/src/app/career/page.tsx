@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Award, ChevronRight, Plus, Radar } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
@@ -23,6 +24,12 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "active", label: STAGE_LABEL.active },
   { value: "applied", label: STAGE_LABEL.applied },
   { value: "done", label: STAGE_LABEL.done },
+];
+
+// 탭바의 '취업'이 이 화면을 연다. 취업 준비의 다른 화면으로 여기서 이어 간다.
+const CAREER_LINKS = [
+  { href: "/career/receipts", label: "스펙 영수증", Icon: Award },
+  { href: "/career/skills", label: "역량 공백 지도", Icon: Radar },
 ];
 
 type Sheet = { kind: "add" } | { kind: "detail"; id: string } | { kind: "edit"; id: string };
@@ -93,6 +100,20 @@ export default function CareerPage() {
         </Button>
       </header>
       <p className="mt-1 px-1 text-[13px] text-muted">지원부터 끝날 때까지 한곳에서 챙겨요.</p>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {CAREER_LINKS.map(({ href, label, Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex min-h-11 items-center gap-1.5 rounded-[14px] bg-surface py-2.5 pl-3 pr-2 text-[13px] font-semibold active:bg-divider"
+          >
+            <Icon size={18} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-brand" />
+            <span className="min-w-0 flex-1">{label}</span>
+            <ChevronRight size={16} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-muted" />
+          </Link>
+        ))}
+      </div>
 
       {today && (
         <>
