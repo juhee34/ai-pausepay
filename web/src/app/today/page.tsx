@@ -149,7 +149,8 @@ export default function TodayPage() {
                 : `${formatHours(plan.used)} 쓰고 ${formatHours(available - plan.used)}이 남아요`}
             </p>
             <Link
-              href="/focus"
+              // 예시 데이터의 id(ex-1 등)는 일정에 없어서 집중 모드가 과목(course)만 고른다.
+              href={`/focus?deadline=${encodeURIComponent(main.task.id)}&course=${encodeURIComponent(main.task.course)}`}
               className="flex min-h-11 shrink-0 items-center gap-1 rounded-button bg-surface px-3 text-[13px] font-semibold text-brand"
             >
               <Timer size={16} strokeWidth={1.8} aria-hidden="true" />
