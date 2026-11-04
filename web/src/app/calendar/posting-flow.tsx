@@ -9,6 +9,7 @@ import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
+import CookieNote from "@/components/ui/cookie-note";
 import { Checkbox } from "@/components/ui/check-row";
 import SegmentedTabs from "@/components/ui/segmented-tabs";
 import {
@@ -413,6 +414,7 @@ export default function PostingFlow() {
         <Button className="mt-3 w-full" onClick={findEvents} disabled={!canFind}>
           {loading ? "일정 찾는 중… (10~30초)" : "AI로 일정 찾기"}
         </Button>
+        <CookieNote />
       </Block>
 
       <p className="mt-3 px-1 text-xs leading-relaxed text-muted">

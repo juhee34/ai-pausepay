@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
+import CookieNote from "@/components/ui/cookie-note";
 import { Checkbox } from "@/components/ui/check-row";
 import { copyText } from "@/lib/copy-text";
 import {
@@ -236,6 +237,7 @@ export default function MailPage() {
         <Button type="submit" disabled={!canSubmit || loading} className="w-full">
           {loading ? "초안 쓰는 중…" : "초안 만들기"}
         </Button>
+        <CookieNote />
       </form>
 
       {error && (

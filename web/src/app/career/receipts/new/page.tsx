@@ -9,6 +9,7 @@ import { Suspense, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
+import CookieNote from "@/components/ui/cookie-note";
 import { useActivities } from "@/lib/activity-store";
 import {
   MAX_RECEIPT_ANSWER,
@@ -203,6 +204,7 @@ function NewReceipt() {
         <Button type="submit" disabled={!canSubmit} className="mt-3 w-full">
           {loading ? "정리하는 중… (10~30초)" : "AI로 정리하기"}
         </Button>
+        <CookieNote />
         <p className="mt-2 px-1 text-xs leading-relaxed text-muted">
           적은 글은 정리할 때만 AI에 보내고 서버에 저장하지 않아요. 영수증은 이 기기에만 저장돼요.
         </p>
