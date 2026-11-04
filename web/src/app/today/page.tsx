@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronRight, Timer } from "lucide-react";
+import { ChevronRight, Plus, Timer } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
+import Button from "@/components/ui/button";
 import { useToday } from "@/lib/briefing";
-import { useSavedDeadlines } from "@/lib/deadline-store";
+import { useSavedDeadlines, type SavedDeadline } from "@/lib/deadline-store";
 import { getLatestAccuracy } from "@/lib/exam-results";
 import { useGrades } from "@/lib/grades-store";
 import { useGrading } from "@/lib/grading-store";
@@ -24,6 +25,8 @@ import {
   type PlanTask,
   type ScoredTask,
 } from "@/lib/today-plan";
+
+import TaskFormSheet from "../task-form-sheet";
 
 const MAX_CANDIDATES = 5;
 
@@ -71,6 +74,7 @@ export default function TodayPage() {
   // 입력하는 도중이나 잘못 넣었을 때는 마지막으로 맞게 넣은 시간을 계속 쓴다.
   const [available, setAvailable] = useState<number>(DEFAULT_AVAILABLE_HOURS);
   const hoursInvalid = parseAvailableHours(hoursText) === null;
+  const [taskSheet, setTaskSheet] = useState<{ task?: SavedDeadline } | null>(null);
 
   function changeHours(text: string) {
     setHoursText(text);
@@ -86,7 +90,15 @@ export default function TodayPage() {
       ? exampleTasks(today)
       : saved
           .filter((d) => !d.done)
-          .map((d) => ({ id: d.id, course: d.course, title: d.title, date: d.date, kind: d.kind }));
+          .map((d) => ({
+            id: d.id,
+            course: d.course,
+            title: d.title,
+            date: d.date,
+            kind: d.kind,
+            hours: d.hours,
+            startDate: d.startDate,
+          }));
     const courses = [...new Set(tasks.map((t) => t.course))];
     const accuracy: Record<string, number> = {};
     for (const course of courses) {
@@ -107,6 +119,12 @@ export default function TodayPage() {
   const hoursById = new Map(plan.picks.map((p) => [p.task.id, p.hours]));
   const top = scored[0]?.efficiency ?? 0;
   const [main, ...more] = plan.picks;
+  // 아직 시작 전인 일은 순위 대신 따로 보여 준다. 시작이 빠른 순.
+  const notStarted = today
+    ? saved
+        .filter((d) => !d.done && d.date >= today && d.startDate && d.startDate > today)
+        .sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? ""))
+    : [];
 
   return (
     <AppShell>
@@ -138,6 +156,10 @@ export default function TodayPage() {
           className="min-h-11 w-24 rounded-button border border-line bg-surface px-3.5 py-2.5 font-mono text-base text-ink outline-none focus:border-brand"
         />
         <span className="text-sm font-semibold">시간</span>
+        <Button variant="secondary" onClick={() => setTaskSheet({})} className="ml-auto shrink-0 !bg-surface !px-3 text-sm">
+          <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
+          할 일 넣기
+        </Button>
       </div>
       {hoursInvalid && (
         <p id="today-hours-error" role="alert" className="mt-1.5 text-xs font-semibold text-review">
@@ -192,8 +214,8 @@ export default function TodayPage() {
 
       {today && !main && (
         <Block className="mt-4">
-          <p className="text-[15px] font-bold">남은 일정이 없어요</p>
-          <p className="mt-1 text-[13px] text-muted">강의계획서를 넣으면 마감 전 할 일 중에서 골라 드려요.</p>
+          <p className="text-[15px] font-bold">{notStarted.length > 0 ? "오늘 할 수 있는 일이 없어요" : "남은 일정이 없어요"}</p>
+          <p className="mt-1 text-[13px] text-muted">할 일을 직접 넣거나 강의계획서를 넣으면 마감 전 할 일 중에서 골라 드려요.</p>
           <Link href="/calendar" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brand">
             강의계획서 넣기 <ChevronRight size={16} strokeWidth={1.8} aria-hidden="true" />
           </Link>
@@ -210,6 +232,7 @@ export default function TodayPage() {
           <ul className="mt-2 space-y-2">
             {scored.slice(0, MAX_CANDIDATES).map((t, i) => {
               const hours = hoursById.get(t.id);
+              const savedTask = saved.find((d) => d.id === t.id);
               return (
               <li key={t.id}>
                 <Block>
@@ -233,20 +256,39 @@ export default function TodayPage() {
                     {badge(LEVEL_CLASS[t.level], `효율 ${t.level}`)}
                   </div>
                   <p className="mt-1.5 font-mono text-xs text-muted">{meta(t)}</p>
+                  {savedTask?.memo && (
+                    <p className="mt-1 whitespace-pre-line break-words text-xs leading-relaxed text-muted">{savedTask.memo}</p>
+                  )}
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-divider">
                     <div
                       className={`h-full rounded-full ${i === 0 ? "bg-brand" : "bg-[#A89BB0]"}`}
                       style={{ width: `${top > 0 ? Math.max((t.efficiency / top) * 100, 4) : 0}%` }}
                     />
                   </div>
-                  {/* 1위는 위쪽 블록의 '집중 시작'으로 시작한다. */}
-                  {i > 0 && hours !== undefined && (
-                    <Link
-                      href={focusHref(t, hours)}
-                      className="mt-1.5 flex min-h-11 items-center gap-1 text-[13px] font-semibold text-brand"
-                    >
-                      <Timer size={16} strokeWidth={1.8} aria-hidden="true" />이 일로 집중 시작
-                    </Link>
+                  {((i > 0 && hours !== undefined) || savedTask) && (
+                    <div className="mt-1.5 flex items-center justify-between gap-2">
+                      {/* 1위는 위쪽 블록의 '집중 시작'으로 시작한다. */}
+                      {i > 0 && hours !== undefined ? (
+                        <Link
+                          href={focusHref(t, hours)}
+                          className="flex min-h-11 items-center gap-1 text-[13px] font-semibold text-brand"
+                        >
+                          <Timer size={16} strokeWidth={1.8} aria-hidden="true" />이 일로 집중 시작
+                        </Link>
+                      ) : (
+                        <span />
+                      )}
+                      {savedTask && (
+                        <button
+                          type="button"
+                          aria-label={`${t.title} 고치기`}
+                          onClick={() => setTaskSheet({ task: savedTask })}
+                          className="min-h-11 px-1 text-[13px] font-semibold text-muted"
+                        >
+                          고치기
+                        </button>
+                      )}
+                    </div>
                   )}
                 </Block>
               </li>
@@ -256,6 +298,33 @@ export default function TodayPage() {
           {scored.length > MAX_CANDIDATES && (
             <p className="mt-2 px-1 text-xs text-muted">그 아래 {scored.length - MAX_CANDIDATES}개는 순위에서 뺐어요.</p>
           )}
+        </>
+      )}
+
+      {notStarted.length > 0 && (
+        <>
+          <div className="mt-6 flex items-baseline justify-between px-1">
+            <h2 className="text-[17px] font-bold">아직 시작 전</h2>
+            <span className="text-xs text-muted">시작일부터 순위에 들어가요</span>
+          </div>
+          <Block padded={false} className="mt-2 divide-y divide-divider">
+            {notStarted.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                aria-label={`${d.title} 고치기`}
+                onClick={() => setTaskSheet({ task: d })}
+                className="flex min-h-11 w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left active:bg-divider"
+              >
+                <span className="min-w-0 break-words text-sm font-medium">
+                  {d.course} · {d.title}
+                </span>
+                <span className="shrink-0 font-mono text-xs text-muted">
+                  {Number((d.startDate ?? "").slice(5, 7))}/{Number((d.startDate ?? "").slice(8))} 시작
+                </span>
+              </button>
+            ))}
+          </Block>
         </>
       )}
 
@@ -271,9 +340,11 @@ export default function TodayPage() {
         효율 = 배점 × (목표 − 예상 득점률) ÷ 예상 소요시간이고, 마감이 3일 안이면 ×1.3, 7일 안이면 ×1.15를 곱해요. 배점은
         강의계획서의 평가 비율을 같은 종류 일정 수로 나눈 값이고, 없으면 중간·기말 30, 과제 10, 퀴즈·기타 5로 잡아요. 예상
         득점률은 시험 대비 팩의 퀴즈 정답률이나 0.6, 목표는 기말 필요 점수에서 정한 점수나 90점이에요. 예상 소요시간은 시험
-        8시간, 과제 3시간, 퀴즈·기타 1시간이에요. 오늘 시간은 1위부터 예상 소요시간만큼 나누고, 모자라면 남은 시간만큼만 넣어요. 이 값은 순서와 시간을 정하는 데만 쓰고 점수를 예측하지는 않아요.
+        8시간, 과제 3시간, 퀴즈·기타 1시간이고, 직접 넣은 예상 시간이 있으면 그 값을 써요. 시작일이 아직 안 된 일은 순위에서 빼요. 오늘 시간은 1위부터 예상 소요시간만큼 나누고, 모자라면 남은 시간만큼만 넣어요. 이 값은 순서와 시간을 정하는 데만 쓰고 점수를 예측하지는 않아요.
         {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
       </p>
+
+      {taskSheet && <TaskFormSheet task={taskSheet.task} onClose={() => setTaskSheet(null)} />}
     </AppShell>
   );
 }

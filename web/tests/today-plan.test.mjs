@@ -121,6 +121,27 @@ test("목표 점수와 시험 대비 정답률을 쓰고, 이미 목표보다 �
   assert.equal(byId.b.efficiency, 0);
 });
 
+test("시작일이 아직 안 된 일은 빼고, 오늘이 시작일이면 넣는다", () => {
+  const tasks = [
+    { id: "a", course: "x", title: "내일 시작", date: "2026-11-20", kind: "과제", startDate: "2026-11-04" },
+    { id: "b", course: "x", title: "오늘 시작", date: "2026-11-20", kind: "과제", startDate: TODAY },
+    { id: "c", course: "x", title: "어제 시작", date: "2026-11-20", kind: "과제", startDate: "2026-11-02" },
+    { id: "d", course: "x", title: "시작일 없음", date: "2026-11-20", kind: "과제" },
+  ];
+  assert.deepEqual(scoreTasks(TODAY, tasks, NO_SOURCES).map((t) => t.id).sort(), ["b", "c", "d"]);
+});
+
+test("직접 넣은 예상 시간으로 효율과 시간을 계산한다", () => {
+  const tasks = [
+    { id: "a", course: "x", title: "기본", date: "2026-11-30", kind: "과제" }, // 3시간
+    { id: "b", course: "y", title: "짧게", date: "2026-11-30", kind: "과제", hours: 1 },
+  ];
+  const scored = scoreTasks(TODAY, tasks, NO_SOURCES);
+  assert.equal(scored[0].id, "b");
+  assert.ok(Math.abs(scored[0].efficiency - 3 * scored[1].efficiency) < 1e-9);
+  assert.deepEqual(planToday(scored, 2).picks.map((p) => [p.task.id, p.hours]), [["b", 1], ["a", 1]]);
+});
+
 test("지난 일정은 빼고, 일정이 없으면 추천도 없다", () => {
   const past = [{ id: "p", course: "x", title: "지난 과제", date: "2026-11-01", kind: "과제" }];
   assert.equal(scoreTasks(TODAY, past, NO_SOURCES).length, 0);

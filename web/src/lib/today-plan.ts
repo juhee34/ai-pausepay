@@ -19,7 +19,8 @@ export type PlanTask = {
   kind: DeadlineKind;
   // 예시 데이터처럼 값을 정해 둘 때만 쓴다. 없으면 아래 규칙으로 계산한다.
   weight?: number;
-  hours?: number;
+  hours?: number; // 사용자가 넣은 예상 시간도 여기로 온다
+  startDate?: string; // 이 날이 되기 전에는 순위에 넣지 않는다
 };
 
 export type PlanSources = {
@@ -91,10 +92,10 @@ function reasonOf(days: number, weight: number, hours: number) {
   return "남은 일 중에서 시간 대비 배점이 가장 커요.";
 }
 
-// 효율 높은 순. 같으면 마감이 빠른 순.
+// 효율 높은 순. 같으면 마감이 빠른 순. 지난 일과 아직 시작 전인 일은 뺀다.
 export function scoreTasks(today: string, tasks: PlanTask[], sources: PlanSources): ScoredTask[] {
   const scored = tasks
-    .filter((t) => t.date >= today)
+    .filter((t) => t.date >= today && (!t.startDate || t.startDate <= today))
     .map((t) => {
       const weight = weightOf(t, sources);
       const hours = t.hours ?? DEFAULT_HOURS[t.kind];
