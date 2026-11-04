@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { roundsFor } from "@/app/focus/goal";
+import { BREAK_MINUTES, FOCUS_MINUTES } from "@/app/focus/store";
 import { ChevronRight, Timer } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
@@ -143,14 +145,19 @@ export default function TodayPage() {
             ))}
           </div>
           <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/20 pt-3">
-            <p className="text-[13px]">
-              {plan.used === available
-                ? `${available}시간을 모두 써요`
-                : `${formatHours(plan.used)} 쓰고 ${formatHours(available - plan.used)}이 남아요`}
-            </p>
+            <div className="min-w-0">
+              <p className="text-[13px]">
+                {plan.used === available
+                  ? `${available}시간을 모두 써요`
+                  : `${formatHours(plan.used)} 쓰고 ${formatHours(available - plan.used)}이 남아요`}
+              </p>
+              <p className="mt-0.5 text-xs text-white/80">
+                {formatHours(main.hours)} = {FOCUS_MINUTES}분 집중 {roundsFor(main.hours, FOCUS_MINUTES + BREAK_MINUTES)}번
+              </p>
+            </div>
             <Link
               // 예시 데이터의 id(ex-1 등)는 일정에 없어서 집중 모드가 과목(course)만 고른다.
-              href={`/focus?deadline=${encodeURIComponent(main.task.id)}&course=${encodeURIComponent(main.task.course)}`}
+              href={`/focus?deadline=${encodeURIComponent(main.task.id)}&course=${encodeURIComponent(main.task.course)}&hours=${main.hours}`}
               className="flex min-h-11 shrink-0 items-center gap-1 rounded-button bg-surface px-3 text-[13px] font-semibold text-brand"
             >
               <Timer size={16} strokeWidth={1.8} aria-hidden="true" />
