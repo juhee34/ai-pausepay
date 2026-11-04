@@ -2,17 +2,19 @@
 
 import { Noto_Serif } from "next/font/google";
 import Link from "next/link";
-import { ChevronRight, FileUp, Menu } from "lucide-react";
+import { ChevronRight, FileUp, Menu, Plus } from "lucide-react";
 import { useState } from "react";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import DataBackup from "./data-backup";
+import TaskFormSheet from "./task-form-sheet";
 
 // 로고 전용 글꼴. 다른 글자에는 쓰지 않는다 (docs/DESIGN.md)
 const logoFont = Noto_Serif({ subsets: ["latin"], weight: "700", style: "italic" });
 
-// 홈 머리: UNIS 로고, 오른쪽 메뉴 버튼. 메뉴 창에는 강의계획서 넣기, 시간표 바꾸기, 데이터 내보내기·가져오기가 있다.
+// 홈 머리: UNIS 로고, 오른쪽 메뉴 버튼. 메뉴 창에는 강의계획서 넣기, 할 일 직접 넣기, 시간표 바꾸기, 데이터 내보내기·가져오기가 있다.
 export default function HomeHeader() {
   const [open, setOpen] = useState(false);
+  const [addingTask, setAddingTask] = useState(false);
 
   return (
     <header className="mb-4 flex items-center justify-between gap-2 px-1">
@@ -44,6 +46,18 @@ export default function HomeHeader() {
           강의계획서 넣기
           <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" className="ml-auto" />
         </Link>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            setAddingTask(true);
+          }}
+          className="mt-2 flex min-h-11 w-full items-center gap-2 rounded-button bg-canvas px-4 text-[15px] font-semibold"
+        >
+          <Plus size={18} strokeWidth={1.8} aria-hidden="true" />
+          할 일 직접 넣기
+          <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" className="ml-auto" />
+        </button>
         <Link
           href="/timetable"
           className="mt-2 flex min-h-11 items-center justify-between rounded-button bg-canvas px-4 text-[15px] font-semibold"
@@ -54,6 +68,7 @@ export default function HomeHeader() {
         {/* 팀원(B) 부품. 모양은 B가 새 디자인으로 옮길 예정 */}
         <DataBackup />
       </BottomSheet>
+      {addingTask && <TaskFormSheet onClose={() => setAddingTask(false)} />}
     </header>
   );
 }

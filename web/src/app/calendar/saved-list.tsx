@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlus, X } from "lucide-react";
+import { CalendarPlus, Pencil, X } from "lucide-react";
 import { useState } from "react";
 import Badge from "@/components/ui/badge";
 import Block from "@/components/ui/block";
@@ -9,7 +9,8 @@ import CheckRow from "@/components/ui/check-row";
 import { useToday } from "@/lib/briefing";
 import { downloadCalendarFile } from "@/lib/calendar-file";
 import { BADGE_OF } from "@/lib/day-plan";
-import { removeDeadline, useSavedDeadlines } from "@/lib/deadline-store";
+import { removeDeadline, useSavedDeadlines, type SavedDeadline } from "@/lib/deadline-store";
+import TaskFormSheet from "../task-form-sheet";
 import { shortDate } from "./review-list";
 
 // 홈에 보이는 저장된 일정 전체: 목록, 지우기, 캘린더 파일(.ics) 다시 받기.
@@ -18,6 +19,7 @@ export default function SavedList() {
   const saved = useSavedDeadlines();
   const [showPast, setShowPast] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<SavedDeadline | null>(null);
 
   if (!today || saved.length === 0) return null;
 
@@ -40,11 +42,19 @@ export default function SavedList() {
         <CheckRow
           time={shortDate(d.date)}
           title={d.title}
-          sub={d.course}
+          sub={d.startDate ? `${d.course} · ${shortDate(d.startDate)} 시작` : d.course}
           past={d.date < today || d.done}
           right={
             <>
               {badge ? <Badge kind={badge}>{d.kind}</Badge> : <span className="text-[11px] text-muted">{d.kind}</span>}
+              <button
+                type="button"
+                aria-label={`${d.title} 고치기`}
+                onClick={() => setEditing(d)}
+                className="flex h-11 w-9 shrink-0 items-center justify-center text-muted"
+              >
+                <Pencil size={15} strokeWidth={1.8} aria-hidden="true" />
+              </button>
               <button
                 type="button"
                 aria-label={`${d.title} 지우기`}
@@ -96,6 +106,7 @@ export default function SavedList() {
           {error}
         </p>
       )}
+      {editing && <TaskFormSheet task={editing} onClose={() => setEditing(null)} />}
     </section>
   );
 }

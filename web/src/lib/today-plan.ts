@@ -19,7 +19,8 @@ export type PlanTask = {
   kind: DeadlineKind;
   // 예시 데이터처럼 값을 정해 둘 때만 쓴다. 없으면 아래 규칙으로 계산한다.
   weight?: number;
-  hours?: number;
+  hours?: number; // 사용자가 넣은 예상 시간도 여기로 온다
+  startDate?: string; // 이 날이 되기 전에는 순위에 넣지 않는다
 };
 
 export type PlanSources = {
@@ -85,16 +86,18 @@ function weightOf(task: PlanTask, sources: PlanSources) {
 }
 
 function reasonOf(days: number, weight: number, hours: number) {
+  if (days === 0) return "오늘 마감이에요. 다른 일보다 먼저 끝내요.";
   if (days <= 3) return "마감이 가까워서 오늘 끝내 두면 이번 주가 편해요.";
   if (weight >= 20) return "배점이 커서 조금씩이라도 먼저 시작하면 학점에 크게 남아요.";
   if (hours <= 1) return "짧게 끝낼 수 있어서 시간 대비 효율이 좋아요.";
   return "남은 일 중에서 시간 대비 배점이 가장 커요.";
 }
 
-// 효율 높은 순. 같으면 마감이 빠른 순.
+// 오늘 마감인 일이 맨 앞이고, 그다음은 효율 높은 순. 같으면 마감이 빠른 순.
+// 오늘 놓치면 점수를 잃는 일이라 배점이 작아도 미루지 않는다. 지난 일과 아직 시작 전인 일은 뺀다.
 export function scoreTasks(today: string, tasks: PlanTask[], sources: PlanSources): ScoredTask[] {
   const scored = tasks
-    .filter((t) => t.date >= today)
+    .filter((t) => t.date >= today && (!t.startDate || t.startDate <= today))
     .map((t) => {
       const weight = weightOf(t, sources);
       const hours = t.hours ?? DEFAULT_HOURS[t.kind];
@@ -106,9 +109,13 @@ export function scoreTasks(today: string, tasks: PlanTask[], sources: PlanSource
       const efficiency = (weight * gap * boost) / hours;
       return { ...t, weight, hours, days, efficiency, level: "보통" as EfficiencyLevel, reason: reasonOf(days, weight, hours) };
     })
-    .sort((a, b) => b.efficiency - a.efficiency || a.date.localeCompare(b.date));
+    .sort(
+      (a, b) =>
+        Number(b.days === 0) - Number(a.days === 0) || b.efficiency - a.efficiency || a.date.localeCompare(b.date),
+    );
 
-  const top = scored[0]?.efficiency ?? 0;
+  // 맨 앞이 오늘 마감일 수 있어서 가장 큰 효율을 따로 찾는다.
+  const top = Math.max(0, ...scored.map((t) => t.efficiency));
   for (const t of scored) {
     const ratio = top > 0 ? t.efficiency / top : 0;
     t.level = ratio >= 0.66 ? "높음" : ratio >= 0.34 ? "보통" : "낮음";
@@ -137,6 +144,29 @@ export function planToday(scored: ScoredTask[], available: number): TodayPlan {
   };
 }
 
+export type CourseGroup = {
+  course: string;
+  // 그 과목 안에서 효율 높은 순. rank는 1부터. 오늘 시간을 받지 못한 일은 hours가 없다.
+  tasks: { task: ScoredTask; rank: number; hours?: number }[];
+  hours: number; // 오늘 이 과목에 쓰는 시간
+  nearestDays: number; // 가장 가까운 마감까지 남은 날
+};
+
+// 과목별로 묶는다. 순위는 과목 안에서만 매기고, 과목 순서는 앞선 일이 먼저 나온 순서다.
+export function groupByCourse(scored: ScoredTask[], picks: TodayPlan["picks"]): CourseGroup[] {
+  const hoursOf = new Map(picks.map((p) => [p.task.id, p.hours]));
+  const groups = new Map<string, CourseGroup>();
+  for (const task of scored) {
+    const group = groups.get(task.course) ?? { course: task.course, tasks: [], hours: 0, nearestDays: task.days };
+    const hours = hoursOf.get(task.id);
+    group.tasks.push({ task, rank: group.tasks.length + 1, hours });
+    group.hours += hours ?? 0;
+    group.nearestDays = Math.min(group.nearestDays, task.days);
+    groups.set(task.course, group);
+  }
+  return [...groups.values()];
+}
+
 export function formatHours(hours: number) {
   return Number.isInteger(hours) ? `${hours}시간` : `${hours.toFixed(1)}시간`;
 }
@@ -149,7 +179,7 @@ export function exampleTasks(today: string): PlanTask[] {
   };
   return [
     { id: "ex-1", course: "마케팅원론", title: "팀 과제 발표자료", date: at(3), kind: "과제", weight: 15, hours: 2 },
-    { id: "ex-2", course: "조직행동론", title: "퀴즈 3", date: at(5), kind: "퀴즈", weight: 5, hours: 1 },
+    { id: "ex-2", course: "마케팅원론", title: "퀴즈 3", date: at(5), kind: "퀴즈", weight: 5, hours: 1 },
     { id: "ex-3", course: "경영통계", title: "기말 대비 · 퀴즈 복습", date: at(35), kind: "기말", weight: 30, hours: 8 },
     { id: "ex-4", course: "회계원리", title: "과제 3", date: at(9), kind: "과제", weight: 10, hours: 3 },
     { id: "ex-5", course: "데이터과학입문", title: "실습 보고서", date: at(12), kind: "과제", weight: 9, hours: 3 },

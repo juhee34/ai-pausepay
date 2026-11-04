@@ -11,7 +11,14 @@ export type SavedDeadline = Omit<Deadline, "date"> & {
   date: string; // 저장할 때는 날짜가 꼭 있어야 한다 (YYYY-MM-DD)
   done?: boolean; // 홈에서 체크한 일정
   source?: "posting"; // 공고에서 넣은 일정. course에 기관 이름이 들어 있어 과목 목록에서 뺀다.
+  // 직접 넣을 때 쓰는 칸. 모두 선택이고 옛 일정에는 없다.
+  startDate?: string; // YYYY-MM-DD, 이 날부터 우선순위에 들어간다
+  hours?: number; // 예상 소요시간
+  memo?: string; // 사용자가 적은 내용. AI에는 보내지 않는다.
 };
+
+export type DeadlineFields = Pick<SavedDeadline, "course" | "title" | "kind" | "date"> &
+  Pick<SavedDeadline, "startDate" | "hours" | "memo">;
 
 const STORAGE_KEY = "unis.deadlines.v1";
 const EMPTY: SavedDeadline[] = [];
@@ -33,10 +40,21 @@ function isSavedDeadline(value: unknown): value is SavedDeadline {
   );
 }
 
+// 선택 칸 하나가 이상해도 일정은 잃지 않는다. 그 칸만 뺀다. 백업에서 들어온 값도 여기를 지난다.
+function keepDeadline(d: SavedDeadline): SavedDeadline {
+  const { startDate, hours, memo, ...rest } = d;
+  return {
+    ...rest,
+    ...(typeof startDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(startDate) ? { startDate } : {}),
+    ...(typeof hours === "number" && Number.isFinite(hours) && hours > 0 ? { hours } : {}),
+    ...(typeof memo === "string" && memo ? { memo } : {}),
+  };
+}
+
 function read(): SavedDeadline[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter(isSavedDeadline) : [];
+    return Array.isArray(parsed) ? parsed.filter(isSavedDeadline).map(keepDeadline) : [];
   } catch {
     return [];
   }
@@ -83,6 +101,12 @@ export function addDeadlines(items: Omit<SavedDeadline, "id">[]) {
   write([...current, ...fresh]);
   const wanted = new Set(items.map(keyOf));
   return { added: fresh.length, saved: getSnapshot().filter((d) => wanted.has(keyOf(d))) };
+}
+
+// 비운 선택 칸은 지운다. 체크 여부나 공고 표시 같은 다른 칸은 그대로 둔다.
+export function updateDeadline(id: string, fields: DeadlineFields) {
+  const cleared = { startDate: undefined, hours: undefined, memo: undefined };
+  write(getSnapshot().map((d) => (d.id === id ? { ...d, ...cleared, ...fields } : d)));
 }
 
 export function setDeadlineDone(id: string, done: boolean) {
