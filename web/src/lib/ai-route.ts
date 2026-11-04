@@ -21,7 +21,7 @@ export function withAiUsage(feature: AiFeature, handler: (request: NextRequest) 
       return await handler(request);
     } finally {
       if (context.lease && !context.settled) {
-        try { await settleUsage(getAdminDb(), context.lease, false); }
+        try { await settleUsage(await getAdminDb(), context.lease, false); }
         catch { console.error("usage: reservation release failed"); }
       }
       contexts.delete(request);
@@ -34,7 +34,7 @@ export async function completeAiUse(response: NextResponse, request: NextRequest
   if (!context) throw new Error("AI usage context missing");
   if (context.lease) {
     try {
-      await settleUsage(getAdminDb(), context.lease, true);
+      await settleUsage(await getAdminDb(), context.lease, true);
       context.settled = true;
     } catch (error) {
       // 쓰기 결과가 불명확하면 실패 취소로 덮지 않는다. 미확정 예약은 만료된다.
@@ -62,7 +62,7 @@ export async function checkAiLimit(request: NextRequest): Promise<{ usedToday: n
   try {
     const uid = await verifiedUid(request);
     if (uid) {
-      context.lease = await reserveUsage(getAdminDb(), uid, context.feature);
+      context.lease = await reserveUsage(await getAdminDb(), uid, context.feature);
       return { usedToday: 0 };
     }
   } catch (error) { return usageError(error); }
