@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, X } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
@@ -792,6 +792,19 @@ export default function GradesPage() {
 
           <Block className="mt-3">
             <h2 className="text-[15px] font-bold">지금까지 확보한 점수</h2>
+            {isExample && (
+              <>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
+                  아래는 예시 점수예요. 내 과목을 넣으면 내 점수와 평균을 직접 넣을 수 있어요.
+                </p>
+                <Button onClick={() => setSheet({ kind: "course" })} className="mt-2.5 w-full">
+                  <Plus size={16} strokeWidth={1.8} aria-hidden="true" />내 과목 넣기
+                </Button>
+              </>
+            )}
+            {!isExample && items.length > 0 && (
+              <p className="mt-1 text-xs text-muted">항목을 누르면 내 점수와 평균을 넣을 수 있어요.</p>
+            )}
             {items.length === 0 ? (
               <>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
@@ -809,15 +822,29 @@ export default function GradesPage() {
                       <>
                         <span className="flex items-baseline justify-between text-[13px]">
                           <span className="min-w-0 break-words pr-3">{row.name}</span>
-                          <span className="shrink-0 font-mono font-semibold">
-                            {row.score === null ? "입력" : formatPoints(row.score)} /{" "}
-                            {formatPoints(row.weight)}
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            {row.score === null && !isExample ? (
+                              <span className="font-semibold text-brand">점수·평균 넣기</span>
+                            ) : (
+                              <span className="font-mono font-semibold">
+                                {row.score === null ? "-" : formatPoints(row.score)} / {formatPoints(row.weight)}
+                              </span>
+                            )}
+                            {!isExample && (
+                              <Pencil size={13} strokeWidth={1.8} aria-hidden="true" className="text-muted" />
+                            )}
                           </span>
                         </span>
-                        {Object.hasOwn(view.averages, row.name) && (
+                        {Object.hasOwn(view.averages, row.name) ? (
                           <span className="mt-0.5 block text-right font-mono text-[11px] text-muted">
                             평균 {formatPoints(view.averages[row.name])}
                           </span>
+                        ) : (
+                          !isExample &&
+                          view.mode === "relative" &&
+                          row.score !== null && (
+                            <span className="mt-0.5 block text-right text-[11px] font-semibold text-brand">평균 넣기</span>
+                          )
                         )}
                         <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-divider">
                           <span
@@ -834,7 +861,7 @@ export default function GradesPage() {
                         ) : (
                           <button
                             type="button"
-                            aria-label={`${row.name} 점수 입력`}
+                            aria-label={`${row.name} 점수와 평균 입력`}
                             onClick={() =>
                               setSheet({
                                 kind: "score",

@@ -248,6 +248,36 @@ npm run build -- --webpack
 Firestore 에뮬레이터가 연결되면 같은 새 테스트 파일에서 실제 트랜잭션과 화면의 토큰 문서 접근 거절도 검사합니다. 에뮬레이터 없이 실행하면 해당 검사 하나만 건너뜁니다.
 **폰에서 구글·아이폰 캘린더로 구독해 볼 것.** 같은 주소로 백업 전·후의 일정 갱신, 재발급 후 옛 주소 404와 새 구독 등록까지 확인해야 최종 완료입니다. 실제 휴대폰 구독은 아직 미확인입니다.
 
+## 계정 서버 연결 오류 진단 로그
+
+로그인 상태에서만 AI·사용량 API가 503이 될 때 Vercel 함수 로그의 `account:` 행으로 실패 단계를 확인합니다. 이 변경은 **진단 로그만 추가**하며 인증·번들 설정·패키지·환경 변수·기존 응답 상태는 바꾸지 않습니다. 실제 배포 원인은 로그를 확인한 뒤 판단합니다.
+
+| 로그 단계 | 확인할 위치 |
+|---|---|
+| `account:load-app` | `firebase-admin/app` 불러오기 |
+| `account:get-admin-app` | 기존 앱 조회 등 앱 준비 과정의 미분류 오류 |
+| `account:initialize-app` | `cert()`·`initializeApp()` 초기화 |
+| `account:load-auth` | `firebase-admin/auth` 불러오기 |
+| `account:initialize-auth` | `getAuth(app)` 초기화 |
+| `account:load-firestore` | `firebase-admin/firestore` 불러오기 |
+| `account:initialize-firestore` | `getFirestore(app)` 초기화 |
+| `account:ai-usage` | AI 공통 사용량 처리의 미분류 오류 |
+| `account:usage-route` | 사용량 조회 API의 미분류 오류 |
+
+로그는 `단계`, `오류 종류`, `안전하게 가린 첫 줄 메시지(최대 200자)` 세 값만 남깁니다. 토큰·키·이메일·스택·오류 객체·요청 내용을 기록하지 않습니다. 모듈·기반 라이브러리 오류로 구분할 수 없는 메시지는 `[unstructured message omitted]`로 생략합니다. 함수 응답에는 상세 진단 내용을 보내지 않습니다. 기존 `AccountApiError`와 정상적인 가짜 토큰 거절은 추가 오류 로그를 남기지 않습니다.
+
+배포 후 확인(실제 계정 토큰 대신 아래 가짜 값만 사용):
+
+```bash
+curl -s -w " %{http_code}\n" -H "Authorization: Bearer fake.token.value" https://unis-murex.vercel.app/api/usage
+```
+
+정상 인증 경로라면 401과 로그인 확인 만료 안내가 나옵니다. 503이면 같은 시각의 `account:` 로그에서 먼저 실패한 단계를 확인합니다. 이번 진단 PR 자체가 503을 해결했다고 판정하지 않습니다. 로그를 공유할 때도 해당 세 값만 전달하고 Vercel 화면 전체·환경 변수·요청 헤더는 보내지 않습니다.
+
+```bash
+node --test tests/account-auth-load.test.mjs tests/firebase-admin-key.test.mjs
+```
+
 ## 개발 환경 변경과 프로젝트 종료 시 정리
 
 이 계정 기능 작업은 프로젝트 안에 Firebase 패키지·테스트 도구·설정 파일을 추가했습니다.
