@@ -22,6 +22,8 @@ import {
 import {
   BREAK_MINUTES,
   DEFAULT_FOCUS_HOURS,
+  MIN_RECORD_MINUTES,
+  elapsedFocusMinutes,
   FOCUS_HOUR_CHOICES,
   MAX_SUBJECT_LENGTH,
   addSubject,
@@ -288,6 +290,7 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
     Math.max(0, Math.floor((session.endsAt - now) / 1000)),
   );
   const progress = ((totalSeconds - remaining) / totalSeconds) * 100;
+  const elapsed = elapsedFocusMinutes(session, now);
 
   return (
     <Block className="text-center">
@@ -331,13 +334,15 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
       {isFocus && confirmingStop && (
         <div className="mt-3.5">
           <p className="text-sm text-muted">
-            정한 시간을 채우지 않으면 이번 시간은 기록되지 않아요.
+            {elapsed >= MIN_RECORD_MINUTES
+              ? `지금 그만두면 ${formatMinutes(elapsed)}이 기록돼요.`
+              : `${MIN_RECORD_MINUTES}분이 안 돼서 이번 시간은 기록되지 않아요.`}
           </p>
           <div className="mt-2.5 flex gap-2">
             <Button onClick={() => setConfirmingStop(false)} className="flex-1">
               계속하기
             </Button>
-            <Button variant="secondary" onClick={endSession} className="flex-1">
+            <Button variant="secondary" onClick={() => endSession()} className="flex-1">
               그만두기
             </Button>
           </div>
@@ -373,7 +378,7 @@ function DoneCard({ session, goal }: { session: Session; goal: FocusGoal | null 
       >
         한 번 더 집중
       </Button>
-      <Button variant="secondary" onClick={endSession} className="mt-2 w-full">
+      <Button variant="secondary" onClick={() => endSession()} className="mt-2 w-full">
         다른 과목 고르기
       </Button>
     </Block>
@@ -484,7 +489,7 @@ function FocusContent() {
           <span className="font-mono font-semibold">1</span>시간 단위로 집중해요
         </h1>
         <p className="mt-1 text-sm text-muted">
-          과목과 시간을 고르고 시작하세요. 끝까지 채우면 공부 시간이 기록되고, {BREAK_MINUTES}분 쉬어요.
+          과목과 시간을 고르고 시작하세요. 집중한 시간이 기록되고, 끝까지 마치면 {BREAK_MINUTES}분 쉬어요.
         </p>
       </header>
 
