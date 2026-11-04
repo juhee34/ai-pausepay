@@ -1,7 +1,7 @@
 "use client";
 
 // 일정, 대외활동, 시간표, 집중 모드 공부 기록, 시험 대비 결과, 점수, 평가 비율, 스펙 영수증을 파일로 내보내고 다시 불러온다.
-// 파일은 이 기기 안에서만 만들고 읽으며 서버로 보내지 않는다.
+// 파일은 이 기기 안에서만 만들고 읽으며 서버로 보내지 않는다. 계정 백업(account-backup.ts)은 같은 검사를 쓴다.
 // 저장소 파일(deadline-store.ts, activity-store.ts)은 화면 안에 사본을 들고 있으므로,
 // 가져온 뒤에는 페이지를 새로 고쳐야 화면에 반영된다.
 
@@ -33,7 +33,7 @@ export const MAX_BACKUP_BYTES = 1024 * 1024;
 
 // 진행 중인 타이머(session)는 그 기기의 일이라 옮기지 않는다.
 type FocusBackup = Pick<FocusData, "subjects" | "records">;
-type BackupData = {
+export type BackupData = {
   deadlines: SavedDeadline[];
   activities: Activity[];
   focus: FocusBackup;
@@ -158,6 +158,11 @@ function readCurrent(): BackupData {
   };
 }
 
+// 검사를 통과한 값만 고른 지금 기록. 계정 백업이 올린다.
+export function readBackupData() {
+  return readCurrent();
+}
+
 export function hasBackupData() {
   const { deadlines, activities, focus, timetable, examResults, grades, grading, receipts } = readCurrent();
   return (
@@ -246,6 +251,12 @@ export function parseBackup(text: string): BackupData | null {
   if (!timetable || !examResults || !grades || !grading || !receipts) return null;
 
   return { deadlines, activities, focus, timetable, examResults, grades, grading, receipts };
+}
+
+// 계정 백업에서 받은 값을 파일과 똑같이 검사한다.
+export function parseBackupData(data: unknown) {
+  if (!isPlainObject(data)) return null;
+  return parseBackup(JSON.stringify({ ...data, app: BACKUP_APP, version: BACKUP_VERSION }));
 }
 
 // 같은 내용이면 건너뛰고 새 항목만 더한다. id가 겹치면 새 id를 붙인다.
@@ -391,6 +402,21 @@ export function importBackup(data: BackupData) {
       timetableAdded ||
       examResults.added > 0,
   };
+}
+
+// 가져온 것만 알려 준다.
+export function describeImport(result: ReturnType<typeof importBackup>) {
+  const parts = [
+    result.addedDeadlines > 0 && `일정 ${result.addedDeadlines}개`,
+    result.addedActivities > 0 && `대외활동 ${result.addedActivities}개`,
+    result.addedFocusRecords > 0 && `공부 기록 ${result.addedFocusRecords}개`,
+    result.addedExamResults > 0 && `시험 결과 ${result.addedExamResults}개`,
+    result.addedGrades > 0 && `점수 ${result.addedGrades}과목`,
+    result.addedGrading > 0 && `평가 비율 ${result.addedGrading}과목`,
+    result.addedReceipts > 0 && `영수증 ${result.addedReceipts}장`,
+    result.timetableAdded && "시간표",
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "기록";
 }
 
 function restore(key: string, value: string | null) {

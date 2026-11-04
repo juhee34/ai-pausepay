@@ -6,6 +6,7 @@ import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import { logOut, signInWithGoogle, useAccount } from "@/lib/firebase-auth";
+import AccountBackupCard from "./account-backup-card";
 import UsageCard from "./usage-card";
 
 export default function MyPage() {
@@ -56,6 +57,8 @@ export default function MyPage() {
         </div>
       </Block>
 
+      {user && <AccountBackupCard key={user.uid} uid={user.uid} />}
+
       <UsageCard key={user?.uid ?? "guest"} uid={user?.uid ?? null} />
 
       <Block className="mt-2.5">
@@ -63,7 +66,7 @@ export default function MyPage() {
           <Smartphone size={19} strokeWidth={1.8} aria-hidden="true" className="text-muted" />
           <h2 className="text-[15px] font-bold">내 기록은 이 기기에</h2>
         </div>
-        <p className="mt-2 text-sm leading-relaxed text-muted">일정·시간표·점수·공부 기록은 이 브라우저에 보관돼요. Google 로그인만으로 기록이 계정에 자동 저장되지는 않아요.</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted">일정·시간표·점수·공부 기록은 이 브라우저에 보관돼요. Google 로그인만으로 기록이 계정에 자동 저장되지는 않아요. 로그인한 뒤 계정 백업 버튼을 누를 때만 저장돼요.</p>
         <p className="mt-2 text-xs leading-relaxed text-muted">다른 폰으로 옮길 때는 홈 오른쪽 위 메뉴의 내보내기·가져오기를 이용해 주세요.</p>
       </Block>
     </AppShell>
