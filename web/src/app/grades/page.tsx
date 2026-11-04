@@ -61,7 +61,7 @@ const STATUS_CLASS: Record<GradeStatus, string> = {
   여유: "bg-quiz-soft text-quiz",
   주의: "border border-review-line bg-review-soft text-review",
   위험: "bg-brand-soft text-brand",
-  불가: "bg-ink text-white",
+  "목표 초과": "bg-ink text-white",
 };
 
 // 글자가 16px보다 작으면 아이폰이 입력할 때 화면을 확대한다.
@@ -93,13 +93,14 @@ function ResultBlock({
   target: number;
   result: GradeResult;
 }) {
-  const { required, requiredPoints, finalWeight, missing, reached, status } = result;
+  const { required, requiredPoints, finalWeight, missing, reached, status, maxTotal } = result;
+  const overTarget = status === "목표 초과";
 
   let detail = "받은 점수를 입력하면 계산해요.";
   if (finalWeight <= 0) detail = "기말 배점을 넣으면 계산해요.";
   else if (reached) detail = "기말 없이도 목표를 넘겼어요.";
-  else if (status === "불가") {
-    detail = `기말 배점 ${formatPoints(finalWeight)}점으로는 ${formatPoints(requiredPoints)}점을 채울 수 없어요.`;
+  else if (overTarget) {
+    detail = `기말을 100점 받아도 총점은 ${formatPoints(maxTotal)}점이에요. 목표 ${target}점에는 ${formatPoints(target - maxTotal)}점 모자라요.`;
   } else if (required !== null) {
     detail = `기말 배점 ${formatPoints(finalWeight)}점 중 ${formatPoints(requiredPoints)}점이 필요해요.`;
   }
@@ -114,6 +115,11 @@ function ResultBlock({
         {required !== null && <span className="ml-1.5 text-[15px]">점</span>}
       </p>
       <p className="mt-3 text-[13px]">{detail}</p>
+      {overTarget && (
+        <p className="mt-1 text-xs leading-relaxed text-white/80">
+          상대평가라면 실제 컷은 더 낮을 수 있어요. 슬라이더를 예상 컷에 맞춰 보세요.
+        </p>
+      )}
       {required !== null && missing > 0 && (
         <p className="mt-1 text-xs text-white/80">
           아직 입력하지 않은 항목 {missing}개는 빼고 계산했어요.
@@ -121,7 +127,7 @@ function ResultBlock({
       )}
       {status && (
         <span className="mt-3 inline-flex h-[22px] items-center rounded-full bg-white px-2.5 text-[11px] font-bold text-brand">
-          {status === "불가" ? "불가" : `${status} 구간`}
+          {overTarget ? "목표 초과" : `${status} 구간`}
         </span>
       )}
     </div>
@@ -652,7 +658,7 @@ export default function GradesPage() {
               let note = "받은 점수를 입력해 주세요";
               if (line.finalWeight <= 0) note = "평가 항목을 넣어 주세요";
               else if (line.reached) note = "기말 없이도 목표를 넘겼어요";
-              else if (line.status === "불가") note = "기말에서 만점이어도 부족해요";
+              else if (line.status === "목표 초과") note = `기말 만점이면 총점 ${formatPoints(line.maxTotal)}점이에요`;
               else if (line.required !== null) note = `기말에서 최소 ${line.required.toFixed(1)}점`;
               return (
                 <li key={name}>
@@ -685,7 +691,7 @@ export default function GradesPage() {
 
           <p className="mt-4 text-[11px] leading-relaxed text-muted">
             필요 점수 = (목표 총점 − 기말 전까지 확보한 점수) ÷ 기말 배점 × 100이에요. 배점 합이 100이 아니면 목표를 같은 비율로 바꿔 계산해요. 85점 이상이면
-            위험, 70점 이상이면 주의, 100점을 넘으면 불가로 표시해요. 상대평가 과목은 실제 컷에 따라
+            위험, 70점 이상이면 주의, 100점을 넘으면 목표 초과로 표시해요. 상대평가 과목은 실제 컷에 따라
             달라질 수 있어요.{isExample && " 화면의 숫자는 모두 예시 데이터예요."} 점수는 이 기기에만
             저장돼요.
           </p>

@@ -29,7 +29,7 @@ test("총점 100인 과목은 시안 숫자와 같다", () => {
   const cases = [
     [{ 중간: 24, 과제: 18, 퀴즈: 8, 출석: 10 }, 83.3, "주의"],
     [{ 중간: 26, 과제: 18, 퀴즈: 10, 출석: 10 }, 70, "주의"],
-    [{ 중간: 18, 과제: 12, 퀴즈: 6, 출석: 10 }, 130, "불가"],
+    [{ 중간: 18, 과제: 12, 퀴즈: 6, 출석: 10 }, 130, "목표 초과"],
   ];
   for (const [scores, required, status] of cases) {
     const result = calcRequired(items100, scores, 85);
@@ -51,7 +51,8 @@ test("총점 120인 과목은 목표를 비율로 바꿔 계산한다", () => {
   assert.equal(result.targetPoints, 102); // 120 × 85%
   assert.equal(result.requiredPoints, 42); // 102 - 60
   assert.equal(result.required, 105); // 42 ÷ 40 × 100
-  assert.equal(result.status, "불가");
+  assert.equal(result.status, "목표 초과");
+  assert.equal(result.maxTotal, 83.3); // (60 + 40) ÷ 120
 });
 
 test("총점 80인 과목도 같은 비율로 계산한다", () => {
@@ -74,6 +75,20 @@ test("기말 없이 목표를 넘기면 0점, 입력 전이나 기말이 없으�
   assert.equal(calcRequired([{ name: "중간", weight: 30 }], { 중간: 20 }, 85).required, null);
 });
 
+test("목표를 넘는 경우 기말 만점일 때의 총점을 알려 준다", () => {
+  const items = [
+    { name: "중간", weight: 30 },
+    { name: "과제", weight: 10 },
+    { name: "퀴즈", weight: 20 },
+    { name: "출석", weight: 10 },
+    { name: "기말", weight: 30 },
+  ];
+  const result = calcRequired(items, { 중간: 24, 과제: 10, 퀴즈: 20, 출석: 10 }, 95);
+  assert.equal(result.required, 103.3);
+  assert.equal(result.status, "목표 초과");
+  assert.equal(result.maxTotal, 94);
+});
+
 test("받은 점수를 배점으로 바꾼다", () => {
   assert.equal(convertScore(80, 100, 30), 24);
   assert.equal(convertScore(24, 30, 30), 24);
@@ -83,7 +98,7 @@ test("받은 점수를 배점으로 바꾼다", () => {
 
 test("상태 경계값", () => {
   assert.equal(statusOf(100), "위험");
-  assert.equal(statusOf(100.1), "불가");
+  assert.equal(statusOf(100.1), "목표 초과");
   assert.equal(statusOf(85), "위험");
   assert.equal(statusOf(70), "주의");
   assert.equal(statusOf(69.9), "여유");
