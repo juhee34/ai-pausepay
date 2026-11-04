@@ -90,7 +90,9 @@ function isFocusRecord(value: unknown): value is FocusData["records"][number] {
     Number.isFinite(r.minutes) &&
     r.minutes >= 0 &&
     typeof r.finishedAt === "number" &&
-    Number.isFinite(r.finishedAt)
+    Number.isFinite(r.finishedAt) &&
+    (r.deadlineId === undefined || typeof r.deadlineId === "string") &&
+    (r.activityId === undefined || typeof r.activityId === "string")
   );
 }
 

@@ -15,6 +15,9 @@ const focusDataSchema = z.object({
       subject: z.string(),
       minutes: z.number().nonnegative(),
       finishedAt: z.number(),
+      // 일정이나 대외활동에서 시작한 기록만 있다. 옛 기록에는 없다.
+      deadlineId: z.string().optional(),
+      activityId: z.string().optional(),
     }),
   ),
   session: z
@@ -23,11 +26,14 @@ const focusDataSchema = z.object({
       phase: z.enum(["focus", "break", "done"]),
       // 남은 초를 세지 않고 끝나는 시각을 저장한다. 화면이 꺼져 있어도 시간이 어긋나지 않는다.
       endsAt: z.number(),
+      deadlineId: z.string().optional(),
+      activityId: z.string().optional(),
     })
     .nullable(),
 });
 
 export type FocusData = z.infer<typeof focusDataSchema>;
+export type FocusLink = { deadlineId?: string; activityId?: string };
 
 const EMPTY_DATA: FocusData = { subjects: [], records: [], session: null };
 
@@ -118,7 +124,13 @@ export function settleSession(now: number) {
     focusEndedAt = session.endsAt;
     records = [
       ...records,
-      { subject: session.subject, minutes: FOCUS_MINUTES, finishedAt: session.endsAt },
+      {
+        subject: session.subject,
+        minutes: FOCUS_MINUTES,
+        finishedAt: session.endsAt,
+        ...(session.deadlineId ? { deadlineId: session.deadlineId } : {}),
+        ...(session.activityId ? { activityId: session.activityId } : {}),
+      },
     ];
     // 휴식은 돌아온 시각이 아니라 집중이 끝난 시각부터 센다.
     session = {
@@ -134,7 +146,7 @@ export function settleSession(now: number) {
   return focusEndedAt;
 }
 
-export function startFocus(subject: string) {
+export function startFocus(subject: string, link: FocusLink = {}) {
   const data = readData();
   if (data.session && data.session.phase !== "done") return;
   writeData({
@@ -143,6 +155,7 @@ export function startFocus(subject: string) {
       subject,
       phase: "focus",
       endsAt: Date.now() + FOCUS_MINUTES * 60 * 1000,
+      ...link,
     },
   });
 }

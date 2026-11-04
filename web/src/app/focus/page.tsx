@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
+import { isHomeActivity, useActivities } from "@/lib/activity-store";
+import { useSavedDeadlines } from "@/lib/deadline-store";
+import { useTimetable } from "@/lib/timetable-store";
 import {
   ALARM_SECONDS,
   ALERT_WINDOW_MS,
@@ -33,7 +37,9 @@ import {
   subscribeClock,
   subscribeData,
   type FocusData,
+  type FocusLink,
 } from "./store";
+import { weeklyMinutes } from "./weekly";
 
 type Session = NonNullable<FocusData["session"]>;
 
@@ -74,14 +80,58 @@ function summarize(records: FocusData["records"], now: number) {
   return { rows, today };
 }
 
+// 주소로 넘어온 일정·대외활동을 찾는다. /focus?deadline=<id>, /focus?activity=<id>, /focus?course=<과목>
+function useFocusTarget() {
+  const params = useSearchParams();
+  const deadlines = useSavedDeadlines();
+  const activities = useActivities();
+
+  const deadline = deadlines.find((d) => d.id === params.get("deadline"));
+  if (deadline) {
+    return {
+      subject: deadline.course.trim() || deadline.title,
+      label: deadline.title,
+      link: { deadlineId: deadline.id } as FocusLink,
+    };
+  }
+  const activity = activities.find((a) => a.id === params.get("activity"));
+  if (activity) {
+    return { subject: activity.title, label: activity.title, link: { activityId: activity.id } as FocusLink };
+  }
+  const course = params.get("course")?.trim().slice(0, MAX_SUBJECT_LENGTH);
+  return course ? { subject: course, label: null, link: {} as FocusLink } : null;
+}
+
 function SubjectPicker({ data }: { data: FocusData }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [newSubject, setNewSubject] = useState("");
+  const target = useFocusTarget();
+  const timetable = useTimetable();
+  const deadlines = useSavedDeadlines();
+  const activities = useActivities();
 
-  // 고른 과목이 지워졌으면 첫 번째 과목을 고른 것으로 친다.
-  const subject =
-    selected && data.subjects.includes(selected) ? selected : data.subjects[0];
+  // 공고 일정의 course에는 기관 이름이 들어 있어 과목에서 뺀다.
+  const fromSchedule = [...timetable, ...deadlines.filter((d) => !d.source)].map((item) => item.course.trim());
+  const subjects = [
+    ...new Set([target?.subject ?? "", ...fromSchedule, ...data.subjects].filter(Boolean)),
+  ];
+  // 공고로 만든 카드도 고를 수 있게 하고, 끝났거나 불합격한 활동만 뺀다.
+  const activityOptions = activities.filter(
+    (a) => isHomeActivity({ ...a, fromPosting: false }) && !subjects.includes(a.title),
+  );
+  const options = [...subjects, ...activityOptions.map((a) => a.title)];
+
+  // 고른 과목이 지워졌으면 넘어온 과목이나 첫 번째 과목을 고른 것으로 친다.
+  const subject = selected && options.includes(selected) ? selected : (target?.subject ?? options[0]);
   const hasRecord = data.records.some((record) => record.subject === subject);
+  const canRemove = data.subjects.includes(subject) && !hasRecord && !fromSchedule.includes(subject);
+  const targetActive = target !== null && subject === target.subject;
+  const pickedActivity = activityOptions.find((a) => a.title === subject);
+  const link: FocusLink = targetActive
+    ? target.link
+    : pickedActivity
+      ? { activityId: pickedActivity.id }
+      : {};
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -92,33 +142,44 @@ function SubjectPicker({ data }: { data: FocusData }) {
     setNewSubject("");
   }
 
+  const chip = (name: string) => (
+    <label
+      key={name}
+      className={`flex min-h-11 max-w-full cursor-pointer items-center break-words rounded-button px-3.5 text-sm font-semibold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand ${
+        subject === name ? "bg-brand-soft text-brand" : "bg-canvas text-muted"
+      }`}
+    >
+      <input
+        type="radio"
+        name="subject"
+        value={name}
+        checked={subject === name}
+        onChange={() => setSelected(name)}
+        className="sr-only"
+      />
+      {name}
+    </label>
+  );
+
   return (
     <div className="space-y-2.5">
       <Block className="space-y-3.5">
-        {data.subjects.length > 0 && (
+        {options.length > 0 && (
           <fieldset>
             <legend className="text-[15px] font-bold">어떤 과목을 공부할까요?</legend>
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              {data.subjects.map((s) => (
-                <label
-                  key={s}
-                  className={`flex min-h-11 max-w-full cursor-pointer items-center break-words rounded-button px-3.5 text-sm font-semibold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand ${
-                    subject === s ? "bg-brand-soft text-brand" : "bg-canvas text-muted"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="subject"
-                    value={s}
-                    checked={subject === s}
-                    onChange={() => setSelected(s)}
-                    className="sr-only"
-                  />
-                  {s}
-                </label>
-              ))}
-            </div>
-            {!hasRecord && (
+            {targetActive && target.label && (
+              <p className="mt-2 break-words rounded-button bg-canvas px-3 py-2 text-xs leading-relaxed">
+                <span className="font-semibold">연결한 일정</span> {target.label}
+              </p>
+            )}
+            {subjects.length > 0 && <div className="mt-2.5 flex flex-wrap gap-2">{subjects.map(chip)}</div>}
+            {activityOptions.length > 0 && (
+              <>
+                <p className="mt-3 text-xs font-semibold text-muted">대외활동</p>
+                <div className="mt-1.5 flex flex-wrap gap-2">{activityOptions.map((a) => chip(a.title))}</div>
+              </>
+            )}
+            {canRemove && (
               <Button
                 variant="ghost"
                 onClick={() => removeSubject(subject)}
@@ -156,7 +217,7 @@ function SubjectPicker({ data }: { data: FocusData }) {
         </form>
       </Block>
 
-      <Button disabled={!subject} onClick={() => startFocus(subject)} className="w-full">
+      <Button disabled={!subject} onClick={() => startFocus(subject, link)} className="w-full">
         <span className="font-mono">{FOCUS_MINUTES}</span>분 집중 시작
       </Button>
       <p className="px-1 text-xs leading-relaxed text-muted">{ALERT_NOTICE}</p>
@@ -235,7 +296,12 @@ function DoneCard({ session }: { session: Session }) {
         {session.subject} 공부 시간에 <span className="font-mono">{FOCUS_MINUTES}</span>분을
         더했어요.
       </p>
-      <Button onClick={() => startFocus(session.subject)} className="mt-3.5 w-full">
+      <Button
+        onClick={() =>
+          startFocus(session.subject, { deadlineId: session.deadlineId, activityId: session.activityId })
+        }
+        className="mt-3.5 w-full"
+      >
         한 번 더 집중
       </Button>
       <Button variant="secondary" onClick={endSession} className="mt-2 w-full">
@@ -245,7 +311,61 @@ function DoneCard({ session }: { session: Session }) {
   );
 }
 
-export default function FocusPage() {
+function WeeklyBars({ records, now }: { records: FocusData["records"]; now: number }) {
+  const deadlines = useSavedDeadlines();
+  const examDates = deadlines
+    .filter((d) => !d.source && (d.kind === "중간" || d.kind === "기말"))
+    .map((d) => d.date);
+  const bars = weeklyMinutes(records, now, examDates);
+  const windowTotal = bars.reduce((sum, bar) => sum + bar.minutes, 0);
+  const allTotal = records.reduce((sum, record) => sum + record.minutes, 0);
+  const highest = Math.max(...bars.map((bar) => bar.minutes), 1);
+
+  return (
+    <section className="mt-5">
+      <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
+        <h2 className="text-[15px] font-bold">주차별 집중 시간</h2>
+        <p className="shrink-0 font-mono text-xs font-medium text-muted">최근 6주 {formatMinutes(windowTotal)}</p>
+      </div>
+      <Block>
+        <ul className="flex h-36 items-end gap-2">
+          {bars.map((bar) => (
+            <li
+              key={bar.start}
+              aria-label={`${Number(bar.start.slice(5, 7))}월 ${Number(bar.start.slice(8))}일 주 ${formatMinutes(bar.minutes)}${bar.isExam ? ", 시험 주" : ""}`}
+              className="flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+            >
+              <span className="mb-1 font-mono text-[11px] font-semibold">{bar.minutes > 0 ? bar.minutes : ""}</span>
+              {/* 막대가 숫자와 날짜 자리를 침범하지 않게 칸의 70%까지만 쓴다. */}
+              <span
+                aria-hidden="true"
+                className={`block w-full max-w-7 rounded-t ${bar.isExam ? "bg-brand" : "bg-[#A89BB0]"}`}
+                style={{ height: bar.minutes > 0 ? `max(4px, ${(bar.minutes / highest) * 70}%)` : 0 }}
+              />
+              <span
+                className={`mt-1 font-mono text-[10px] ${bar.isCurrent ? "font-semibold text-brand" : "text-muted"}`}
+              >
+                {Number(bar.start.slice(5, 7))}/{Number(bar.start.slice(8))}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
+          <span className="flex items-center gap-1">
+            <span aria-hidden="true" className="h-2 w-2 rounded-sm bg-brand" />
+            시험 주
+          </span>
+          <span>숫자는 분, 날짜는 그 주 월요일이에요</span>
+        </p>
+        {allTotal !== windowTotal && (
+          <p className="mt-1 font-mono text-[11px] text-muted">전체 기록 {formatMinutes(allTotal)}</p>
+        )}
+      </Block>
+    </section>
+  );
+}
+
+function FocusContent() {
   const data = useSyncExternalStore(subscribeData, getData, getServerData);
   const persisted = useSyncExternalStore(subscribeData, isPersisted, getServerPersisted);
   const now = useSyncExternalStore(subscribeClock, getNow, getServerNow);
@@ -316,6 +436,8 @@ export default function FocusPage() {
         {session?.phase === "done" && <DoneCard session={session} />}
       </div>
 
+      {records.length > 0 && <WeeklyBars records={records} now={now} />}
+
       <section className="mt-5">
         <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
           <h2 className="text-[15px] font-bold">과목별 공부 시간</h2>
@@ -360,5 +482,14 @@ export default function FocusPage() {
         </p>
       </section>
     </AppShell>
+  );
+}
+
+export default function FocusPage() {
+  // useSearchParams를 쓰는 화면은 Suspense로 감싸야 빌드된다.
+  return (
+    <Suspense fallback={null}>
+      <FocusContent />
+    </Suspense>
   );
 }
