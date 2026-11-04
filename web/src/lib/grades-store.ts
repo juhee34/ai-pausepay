@@ -6,11 +6,14 @@
 import { useSyncExternalStore } from "react";
 import { DEFAULT_TARGET, GRADE_LEVELS, type GradeEstimate, type GradeLevel, type GradeScores } from "./grades";
 
-// averages·mode·grade·estimate는 나중에 더한 칸이라 옛 기록에는 없다. target은 오늘의 한 가지가 읽는다.
+// averages·grade·estimate·spreads는 나중에 더한 칸이라 옛 기록에는 없다. target은 오늘의 한 가지가 읽는다.
+// mode는 절대평가를 없애서 쓰지 않는다. 옛 기록을 잃지 않게 읽기만 한다.
+// spreads는 점수표에서 구한 항목별 표준편차(배점 기준)다. 전체 점수 목록은 저장하지 않는다.
 export type CourseGrades = {
   target: number;
   scores: GradeScores;
   averages?: GradeScores;
+  spreads?: GradeScores;
   mode?: "relative" | "absolute";
   grade?: GradeLevel;
   estimate?: GradeEstimate;
@@ -57,6 +60,7 @@ export function isCourseGrades(value: unknown): value is CourseGrades {
     g.target <= 100 &&
     isScoreMap(g.scores) &&
     (g.averages === undefined || isScoreMap(g.averages)) &&
+    (g.spreads === undefined || isScoreMap(g.spreads)) &&
     (g.mode === undefined || g.mode === "relative" || g.mode === "absolute") &&
     (g.grade === undefined || (GRADE_LEVELS as readonly unknown[]).includes(g.grade)) &&
     (g.estimate === undefined || isEstimate(g.estimate))
@@ -139,9 +143,19 @@ export function setGradesAverage(course: string, item: string, average: number |
   write({ ...data, [course]: { ...current, averages } });
 }
 
+// spread가 null이면 그 항목의 표준편차를 지운다.
+export function setGradesSpread(course: string, item: string, spread: number | null) {
+  const data = getSnapshot();
+  const current = courseOf(data, course);
+  const spreads = { ...current.spreads };
+  if (spread === null) delete spreads[item];
+  else spreads[item] = spread;
+  write({ ...data, [course]: { ...current, spreads } });
+}
+
 export function setGradesSettings(
   course: string,
-  settings: Partial<Pick<CourseGrades, "mode" | "grade" | "estimate" | "target">>,
+  settings: Partial<Pick<CourseGrades, "grade" | "estimate" | "target" | "spreads">>,
 ) {
   const data = getSnapshot();
   write({ ...data, [course]: { ...courseOf(data, course), ...settings } });
