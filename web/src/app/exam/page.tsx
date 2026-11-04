@@ -12,12 +12,16 @@ import SegmentedTabs from "@/components/ui/segmented-tabs";
 import { useSavedDeadlines } from "@/lib/deadline-store";
 import { saveExamResult, updateExamResultCorrect } from "@/lib/exam-results";
 import { useTimetable } from "@/lib/timetable-store";
+import { useToday } from "@/lib/briefing";
+import PrintSheet from "./print-sheet";
 import { isShortAnswerCorrect } from "./grading";
 import {
   MAX_SHORT_INPUT_LENGTH,
   MAX_SOURCE_LENGTH,
   MIN_SOURCE_LENGTH,
+  QUESTION_COUNTS,
   QUIZ_SIZE,
+  type QuestionCount,
   type ExamPack,
 } from "./schema";
 
@@ -61,6 +65,9 @@ export default function ExamPage() {
   const [mode, setMode] = useState<SourceMode>("pdf");
   const [pastedText, setPastedText] = useState("");
   const [course, setCourse] = useState("");
+  const [questionCount, setQuestionCount] = useState<QuestionCount>(QUIZ_SIZE);
+  const today = useToday();
+  const [printError, setPrintError] = useState<string | null>(null);
 
   const deadlines = useSavedDeadlines();
   const timetable = useTimetable();
@@ -160,7 +167,7 @@ export default function ExamPage() {
       const res = await aiFetch("/api/exam", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source }),
+        body: JSON.stringify({ source, count: questionCount }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data) {
@@ -214,6 +221,21 @@ export default function ExamPage() {
     }
   }
 
+  // 브라우저 인쇄 창을 연다. 제목은 PDF로 저장할 때 파일 이름이 된다.
+  function savePdf() {
+    setPrintError(null);
+    const title = document.title;
+    const name = course.trim();
+    document.title = name ? `우니스 시험 대비 ${name}` : "우니스 시험 대비";
+    window.addEventListener("afterprint", () => { document.title = title; }, { once: true });
+    try {
+      window.print();
+    } catch {
+      document.title = title;
+      setPrintError("이 화면에서는 인쇄 창을 열 수 없어요. 사파리나 크롬으로 다시 열어 주세요.");
+    }
+  }
+
   function backToInput() {
     setPack(null);
     scrollToTop();
@@ -230,7 +252,7 @@ export default function ExamPage() {
           <header className="mb-4 px-1">
             <h1 className="text-[22px] font-bold">강의자료로 요약과 문제 만들기</h1>
             <p className="mt-1 text-sm text-muted">
-              5줄 요약, 어려운 말 풀이, 객관식·OX·단답형 {QUIZ_SIZE}문제가 나오고 틀린 문제만 다시 풀 수
+              5줄 요약, 어려운 말 풀이, 객관식·OX·단답형 문제가 나오고 틀린 문제만 다시 풀 수
               있어요.
             </p>
           </header>
@@ -367,6 +389,28 @@ export default function ExamPage() {
               </p>
             </Block>
 
+            <Block>
+              <h2 className="text-[15px] font-bold">문제를 몇 개 만들까요?</h2>
+              <div role="group" aria-label="문제 수" className="mt-2.5 flex gap-2">
+                {QUESTION_COUNTS.map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    aria-pressed={questionCount === count}
+                    onClick={() => setQuestionCount(count)}
+                    className={`min-h-11 flex-1 rounded-full font-mono text-sm font-semibold ${
+                      questionCount === count ? "bg-brand text-white" : "border border-line bg-surface text-ink"
+                    }`}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-muted">
+                많을수록 오래 걸려요. 자료가 짧으면 적게 골라 주세요. 몇 개를 골라도 AI 1회로 세요.
+              </p>
+            </Block>
+
             {(mode === "text" || (fileName && isRangeValid)) && (
               <div className="px-1">
                 <p
@@ -417,6 +461,7 @@ export default function ExamPage() {
         </>
       ) : (
         <>
+          <div className="print:hidden">
           <BrandLabel />
           <header className="mb-4 px-1">
             <h1 className="text-[22px] font-bold">
@@ -648,16 +693,30 @@ export default function ExamPage() {
             </Button>
           )}
 
+          <Button variant="secondary" onClick={savePdf} className="mt-2.5 w-full !bg-surface">
+            요약 노트와 문제 PDF로 저장
+          </Button>
+          <p className="mt-1.5 px-1 text-xs leading-relaxed text-muted">
+            인쇄 창이 열리면 대상에서 &apos;PDF로 저장&apos;을 골라 주세요. 아이폰은 공유 버튼으로 저장해요. 정답과 해설은 뒤쪽에 따로 들어가요. 개인 공부용으로만 써 주세요.
+          </p>
+          {printError && (
+            <p role="alert" className="mt-1.5 px-1 text-xs font-semibold text-review">
+              {printError}
+            </p>
+          )}
+
           <Button variant="ghost" onClick={backToInput} className="mt-1 w-full">
             다른 자료 넣기
           </Button>
+          </div>
+          <PrintSheet pack={pack} course={course.trim()} today={today ?? ""} />
         </>
       )}
 
       {error && (
         <div
           role="alert"
-          className="mt-2.5 rounded-callout border border-review-line bg-review-soft p-3.5 text-sm text-review"
+          className="mt-2.5 rounded-callout border border-review-line bg-review-soft p-3.5 text-sm text-review print:hidden"
         >
           {error}
         </div>

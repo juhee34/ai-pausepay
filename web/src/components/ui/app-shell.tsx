@@ -6,7 +6,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex-1 text-ink">
       {/* 바탕색을 화면 끝까지 칠한다 (layout.tsx의 body 아래 여백까지 덮도록) */}
-      <div aria-hidden="true" className="fixed inset-0 -z-10 bg-canvas" />
+      <div aria-hidden="true" className="fixed inset-0 -z-10 bg-canvas print:hidden" />
       <main className="mx-auto w-full max-w-[480px] px-4 pt-6 pb-6">{children}</main>
     </div>
   );

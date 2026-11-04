@@ -6,7 +6,20 @@ export const MIN_SOURCE_LENGTH = 100;
 export const MAX_SOURCE_LENGTH = 30000;
 
 export const SUMMARY_LINES = 5;
-export const QUIZ_SIZE = 10;
+export const QUIZ_SIZE = 10; // 기본 문제 수
+export const QUESTION_COUNTS = [5, 10, 15, 20] as const;
+export type QuestionCount = (typeof QUESTION_COUNTS)[number];
+
+export function isQuestionCount(value: unknown): value is QuestionCount {
+  return (QUESTION_COUNTS as readonly unknown[]).includes(value);
+}
+
+// 객관식 5 : OX 2 : 단답형 3 비율로 나눈다. 5문제 → 2·1·2, 10 → 5·2·3, 15 → 7·3·5, 20 → 10·4·6
+export function questionMix(count: number) {
+  const short = Math.round(count * 0.3);
+  const ox = Math.round(count * 0.2);
+  return { multiple: count - short - ox, ox, short };
+}
 export const MAX_TERMS = 8;
 
 const MAX_SUMMARY_LINE_LENGTH = 200;
@@ -33,7 +46,7 @@ export const ExamPackSchema = z.object({
   questions: z
     .array(
       z.object({
-        number: z.number().int().describe("문제 번호. 1부터 10까지 차례로"),
+        number: z.number().int().describe("문제 번호. 1부터 차례로"),
         type: z.enum(["multiple", "ox", "short"]).describe("multiple은 객관식, ox는 OX, short는 단답형 문제"),
         question: z.string(),
         choices: z.array(z.string()).describe('객관식은 보기 4개, OX는 ["O", "X"], 단답형은 빈 목록'),
@@ -44,7 +57,7 @@ export const ExamPackSchema = z.object({
         explanation: z.string().describe("정답인 이유"),
       }),
     )
-    .describe("문제 10개"),
+    .describe("요청한 개수만큼의 문제"),
 });
 
 export type ExamPack = z.infer<typeof ExamPackSchema>;
@@ -112,7 +125,7 @@ function normalizeQuestion(raw: ExamQuestion): ExamQuestion | null {
 }
 
 // AI의 답이 약속한 형식을 지켰는지 서버에서 직접 확인한다. 어긋나면 null.
-export function normalizeExamPack(raw: ExamPack): ExamPack | null {
+export function normalizeExamPack(raw: ExamPack, count: number = QUIZ_SIZE): ExamPack | null {
   const summary = raw.summary.map((line) => line.trim());
   if (
     summary.length !== SUMMARY_LINES ||
@@ -123,7 +136,7 @@ export function normalizeExamPack(raw: ExamPack): ExamPack | null {
 
   const questions = raw.questions.map(normalizeQuestion);
   if (
-    questions.length !== QUIZ_SIZE ||
+    questions.length !== count ||
     !questions.every((question) => question !== null)
   ) {
     return null;
