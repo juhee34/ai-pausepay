@@ -4,9 +4,17 @@
 // 기말 필요 점수 화면이 쓰고, 오늘의 한 가지가 목표 점수를 읽는다.
 
 import { useSyncExternalStore } from "react";
-import { DEFAULT_TARGET, type GradeScores } from "./grades";
+import { DEFAULT_TARGET, GRADE_LEVELS, type GradeEstimate, type GradeLevel, type GradeScores } from "./grades";
 
-export type CourseGrades = { target: number; scores: GradeScores };
+// averages·mode·grade·estimate는 나중에 더한 칸이라 옛 기록에는 없다. target은 오늘의 한 가지가 읽는다.
+export type CourseGrades = {
+  target: number;
+  scores: GradeScores;
+  averages?: GradeScores;
+  mode?: "relative" | "absolute";
+  grade?: GradeLevel;
+  estimate?: GradeEstimate;
+};
 export type GradesData = Record<string, CourseGrades>;
 
 export const GRADES_KEY = "unis.grades.v1";
@@ -15,6 +23,31 @@ const EMPTY: GradesData = {};
 let cache: GradesData | null = null;
 const listeners = new Set<() => void>();
 
+function isScoreMap(value: unknown) {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.values(value).every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0)
+  );
+}
+
+function isEstimate(value: unknown) {
+  if (!value || typeof value !== "object") return false;
+  const e = value as { spread?: unknown; shares?: Record<string, unknown> };
+  // 비율이 0·100이거나 빠지면 컷을 계산할 수 없다.
+  return (
+    typeof e.spread === "number" &&
+    Number.isFinite(e.spread) &&
+    e.spread > 0 &&
+    !!e.shares &&
+    GRADE_LEVELS.every((grade) => {
+      const share = e.shares?.[grade];
+      return typeof share === "number" && share > 0 && share < 100;
+    })
+  );
+}
+
 export function isCourseGrades(value: unknown): value is CourseGrades {
   if (!value || typeof value !== "object") return false;
   const g = value as Record<string, unknown>;
@@ -22,12 +55,11 @@ export function isCourseGrades(value: unknown): value is CourseGrades {
     typeof g.target === "number" &&
     g.target >= 0 &&
     g.target <= 100 &&
-    !!g.scores &&
-    typeof g.scores === "object" &&
-    !Array.isArray(g.scores) &&
-    Object.values(g.scores).every(
-      (score) => typeof score === "number" && Number.isFinite(score) && score >= 0,
-    )
+    isScoreMap(g.scores) &&
+    (g.averages === undefined || isScoreMap(g.averages)) &&
+    (g.mode === undefined || g.mode === "relative" || g.mode === "absolute") &&
+    (g.grade === undefined || (GRADE_LEVELS as readonly unknown[]).includes(g.grade)) &&
+    (g.estimate === undefined || isEstimate(g.estimate))
   );
 }
 
@@ -95,6 +127,24 @@ export function setGradesScore(course: string, item: string, score: number | nul
   if (score === null) delete scores[item];
   else scores[item] = score;
   write({ ...data, [course]: { ...current, scores } });
+}
+
+// average가 null이면 그 항목의 평균을 지운다.
+export function setGradesAverage(course: string, item: string, average: number | null) {
+  const data = getSnapshot();
+  const current = courseOf(data, course);
+  const averages = { ...current.averages };
+  if (average === null) delete averages[item];
+  else averages[item] = average;
+  write({ ...data, [course]: { ...current, averages } });
+}
+
+export function setGradesSettings(
+  course: string,
+  settings: Partial<Pick<CourseGrades, "mode" | "grade" | "estimate" | "target">>,
+) {
+  const data = getSnapshot();
+  write({ ...data, [course]: { ...courseOf(data, course), ...settings } });
 }
 
 export function removeGradesCourse(course: string) {

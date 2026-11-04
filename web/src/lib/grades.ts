@@ -95,3 +95,82 @@ export function calcRequired(
     status: statusOf(required),
   };
 }
+
+// ---- 상대평가 컷 추정 ----
+// 교수님이 알려 주는 평균과 내 점수로 학점별 컷을 어림잡는다. 실제 컷이 아니라 추정이다.
+//
+// 확인용 예시 (중간 30, 과제 10, 퀴즈 20, 출석 10, 기말 30 / 내 점수 24, 10, 20, 10 / 중간 평균 18)
+// 평균 비율 18 ÷ 30 = 60%. 평균을 모르는 항목은 내 점수로 본다. 기말 평균 30 × 60% = 18.
+// 전체 평균 18 + 10 + 20 + 10 + 18 = 76점. 퍼진 정도 10점, A+ 상위 15%(z 1.036) → 컷 86.4점
+// 기말 필요 점수 (86.4 - 64) ÷ 30 × 100 = 74.7점
+
+export const GRADE_LEVELS = ["A+", "A0", "B+", "B0"] as const;
+export type GradeLevel = (typeof GRADE_LEVELS)[number];
+export const DEFAULT_GRADE: GradeLevel = "A0";
+
+// spread: 총점 100점 기준 표준편차. shares: 그 학점 이상이 전체의 몇 %인지.
+// 임시 기본값이다. 광운대 실제 학점 비율을 확인한 값이 아니라 사용자가 고칠 수 있게 한다.
+export type GradeEstimate = { spread: number; shares: Record<GradeLevel, number> };
+export const DEFAULT_ESTIMATE: GradeEstimate = {
+  spread: 10,
+  shares: { "A+": 15, A0: 30, "B+": 50, B0: 70 },
+};
+
+export type GradeCut = { grade: GradeLevel; cut: number; result: GradeResult };
+export type CutEstimate = {
+  classMean: number; // 추정한 전체 평균 (100점 기준)
+  averageRate: number; // 입력한 평균의 비율 (0~1). 기말 평균도 이 비율로 본다.
+  assumedItems: string[]; // 평균을 몰라 내 점수로 본 항목
+  cuts: GradeCut[];
+};
+
+// 표준 정규 분포에서 위쪽 share% 지점의 z 값 (Abramowitz & Stegun 26.2.23)
+export function upperZ(sharePercent: number) {
+  const p = sharePercent / 100;
+  if (p === 0.5) return 0;
+  const tail = p < 0.5 ? p : 1 - p;
+  const t = Math.sqrt(-2 * Math.log(tail));
+  const z = t - (2.515517 + 0.802853 * t + 0.010328 * t * t) / (1 + 1.432788 * t + 0.189269 * t * t + 0.001308 * t * t * t);
+  return p < 0.5 ? z : -z;
+}
+
+// 평균을 하나도 안 넣었거나 기말 배점이 없으면 null.
+export function estimateCuts(
+  items: GradingItem[],
+  scores: GradeScores,
+  averages: GradeScores,
+  estimate: GradeEstimate = DEFAULT_ESTIMATE,
+): CutEstimate | null {
+  const rows = items.filter((item) => !isFinalItem(item.name));
+  const finalWeight = items.filter((item) => isFinalItem(item.name)).reduce((sum, item) => sum + item.weight, 0);
+  const total = items.reduce((sum, item) => sum + item.weight, 0);
+  const known = rows.filter((row) => Object.hasOwn(averages, row.name));
+  if (finalWeight <= 0 || known.length === 0) return null;
+
+  const knownWeight = known.reduce((sum, row) => sum + row.weight, 0);
+  const knownAverage = known.reduce((sum, row) => sum + Math.min(averages[row.name], row.weight), 0);
+  const averageRate = knownWeight > 0 ? knownAverage / knownWeight : 0;
+
+  const assumedItems: string[] = [];
+  let points = finalWeight * averageRate;
+  for (const row of rows) {
+    if (Object.hasOwn(averages, row.name)) {
+      points += Math.min(averages[row.name], row.weight);
+    } else if (Object.hasOwn(scores, row.name)) {
+      assumedItems.push(row.name);
+      points += Math.min(scores[row.name], row.weight);
+    } else {
+      // 내 점수도 모르면 입력한 평균의 비율로 본다.
+      assumedItems.push(row.name);
+      points += row.weight * averageRate;
+    }
+  }
+  const classMean = (points / total) * 100;
+
+  const cuts = GRADE_LEVELS.map((grade) => {
+    const raw = classMean + upperZ(estimate.shares[grade]) * estimate.spread;
+    const cut = Math.min(100, Math.max(0, round1(raw)));
+    return { grade, cut, result: calcRequired(items, scores, cut) };
+  });
+  return { classMean: round1(classMean), averageRate, assumedItems, cuts };
+}

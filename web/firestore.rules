@@ -13,7 +13,9 @@ service cloud.firestore {
         && request.resource.data.version == 1
         && request.resource.data.updatedAt == request.time
         && request.resource.data.data.keys().hasAll(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts'])
-        && request.resource.data.data.keys().hasOnly(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts'])
+        && request.resource.data.data.keys().hasOnly(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts', 'targetJob'])
+        && (!('targetJob' in request.resource.data.data)
+          || request.resource.data.data.targetJob in ['마케팅 기획', '데이터 분석', '서비스 기획', '재무·회계'])
         && request.resource.data.data.deadlines is list
         && request.resource.data.data.activities is list
         && request.resource.data.data.timetable is list
