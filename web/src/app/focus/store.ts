@@ -2,7 +2,11 @@ import { z } from "zod";
 
 // 집중 모드의 시간 계산과 저장을 맡는다. 모든 기록은 이 브라우저에만 남고 서버로 보내지 않는다.
 
-export const FOCUS_MINUTES = 25;
+export const FOCUS_HOUR_CHOICES = [1, 2, 3, 4] as const;
+export const DEFAULT_FOCUS_HOURS = 1;
+export const MIN_RECORD_MINUTES = 1;
+// minutes가 없는 옛 타이머는 25분짜리였다.
+const LEGACY_FOCUS_MINUTES = 25;
 export const BREAK_MINUTES = 5;
 export const MAX_SUBJECT_LENGTH = 30;
 
@@ -26,6 +30,8 @@ const focusDataSchema = z.object({
       phase: z.enum(["focus", "break", "done"]),
       // 남은 초를 세지 않고 끝나는 시각을 저장한다. 화면이 꺼져 있어도 시간이 어긋나지 않는다.
       endsAt: z.number(),
+      // 고른 집중 시간. 옛 타이머에는 없다.
+      minutes: z.number().positive().optional(),
       deadlineId: z.string().optional(),
       activityId: z.string().optional(),
     })
@@ -108,9 +114,31 @@ export function subscribeClock(listener: () => void) {
   };
 }
 
+export function sessionMinutes(session: { minutes?: number }) {
+  return session.minutes ?? LEGACY_FOCUS_MINUTES;
+}
+
 // 초 단위로 끊어서 1초에 한 번만 화면을 다시 그리게 한다.
 export const getNow = () => Math.floor(Date.now() / 1000) * 1000;
 export const getServerNow = () => 0;
+
+// 집중을 시작한 뒤 지난 시간. 다 채운 분만 센다. 집중 중이 아니면 0이다.
+export function elapsedFocusMinutes(session: NonNullable<FocusData["session"]>, now: number) {
+  if (session.phase !== "focus") return 0;
+  const total = sessionMinutes(session);
+  const elapsed = Math.floor(total - (session.endsAt - now) / 60000);
+  return Math.min(total, Math.max(0, elapsed));
+}
+
+function recordOf(session: NonNullable<FocusData["session"]>, minutes: number, finishedAt: number) {
+  return {
+    subject: session.subject,
+    minutes,
+    finishedAt,
+    ...(session.deadlineId ? { deadlineId: session.deadlineId } : {}),
+    ...(session.activityId ? { activityId: session.activityId } : {}),
+  };
+}
 
 // 지난 시간을 따라잡는다. 저장소의 최신 값을 읽고 한 번에 쓰므로 탭이 여러 개여도 기록은 한 번만 남는다.
 // 이번 호출로 집중이 끝났으면 끝난 시각을 돌려준다. 다른 탭이 먼저 처리했으면 null이다.
@@ -122,16 +150,7 @@ export function settleSession(now: number) {
   let focusEndedAt: number | null = null;
   if (session.phase === "focus" && now >= session.endsAt) {
     focusEndedAt = session.endsAt;
-    records = [
-      ...records,
-      {
-        subject: session.subject,
-        minutes: FOCUS_MINUTES,
-        finishedAt: session.endsAt,
-        ...(session.deadlineId ? { deadlineId: session.deadlineId } : {}),
-        ...(session.activityId ? { activityId: session.activityId } : {}),
-      },
-    ];
+    records = [...records, recordOf(session, sessionMinutes(session), session.endsAt)];
     // 휴식은 돌아온 시각이 아니라 집중이 끝난 시각부터 센다.
     session = {
       ...session,
@@ -146,7 +165,7 @@ export function settleSession(now: number) {
   return focusEndedAt;
 }
 
-export function startFocus(subject: string, link: FocusLink = {}) {
+export function startFocus(subject: string, link: FocusLink = {}, hours: number = DEFAULT_FOCUS_HOURS) {
   const data = readData();
   if (data.session && data.session.phase !== "done") return;
   writeData({
@@ -154,7 +173,8 @@ export function startFocus(subject: string, link: FocusLink = {}) {
     session: {
       subject,
       phase: "focus",
-      endsAt: Date.now() + FOCUS_MINUTES * 60 * 1000,
+      endsAt: Date.now() + hours * 60 * 60 * 1000,
+      minutes: hours * 60,
       ...link,
     },
   });
@@ -167,10 +187,17 @@ export function skipBreak() {
   writeData({ ...data, session: { ...data.session, phase: "done" } });
 }
 
-export function endSession() {
-  // 이미 25분이 지났다면 그만두기 전에 기록부터 남긴다.
-  settleSession(Date.now());
-  writeData({ ...readData(), session: null });
+export function endSession(now: number = Date.now()) {
+  // 이미 정한 시간이 지났다면 그만두기 전에 기록부터 남긴다.
+  settleSession(now);
+  const data = readData();
+  // 중간에 그만두면 집중한 시간만 기록한다. 1분이 안 되면 잘못 누른 것으로 보고 남기지 않는다.
+  const minutes = data.session ? elapsedFocusMinutes(data.session, now) : 0;
+  const records =
+    data.session && minutes >= MIN_RECORD_MINUTES
+      ? [...data.records, recordOf(data.session, minutes, now)]
+      : data.records;
+  writeData({ ...data, records, session: null });
 }
 
 export function addSubject(name: string) {
