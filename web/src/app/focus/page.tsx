@@ -4,6 +4,7 @@ import { Minus, Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import AppShell from "@/components/ui/app-shell";
+import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import { isHomeActivity, useActivities } from "@/lib/activity-store";
@@ -527,8 +528,8 @@ function FocusContent() {
 
   return (
     <AppShell>
+      <BrandLabel />
       <header className="mb-4 px-1">
-        <p className="text-xs font-medium text-muted">집중 모드</p>
         <h1 className="text-[22px] font-bold">
           <span className="font-mono font-semibold">30</span>분 단위로 집중해요
         </h1>

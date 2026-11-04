@@ -4,6 +4,7 @@ import { aiFetch } from "@/lib/ai-fetch";
 
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
+import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import CookieNote from "@/components/ui/cookie-note";
@@ -190,8 +191,8 @@ export default function ExamPage() {
     <AppShell>
       {!pack ? (
         <>
+          <BrandLabel />
           <header className="mb-4 px-1">
-            <p className="text-xs font-medium text-muted">시험 대비</p>
             <h1 className="text-[22px] font-bold">강의자료로 요약과 문제 만들기</h1>
             <p className="mt-1 text-sm text-muted">
               5줄 요약, 어려운 말 풀이, 객관식·OX {QUIZ_SIZE}문제가 나오고 틀린 문제만 다시 풀 수
@@ -381,8 +382,8 @@ export default function ExamPage() {
         </>
       ) : (
         <>
+          <BrandLabel />
           <header className="mb-4 px-1">
-            <p className="text-xs font-medium text-muted">시험 대비</p>
             <h1 className="text-[22px] font-bold">
               {graded ? "채점 결과예요" : "요약을 읽고 문제를 풀어 보세요"}
             </h1>
