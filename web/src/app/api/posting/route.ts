@@ -3,7 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { ACTIVITY_KINDS } from "@/lib/activity-kinds";
-import { recordAiUse } from "@/lib/ai-limit";
+import { completeAiUse, withAiUsage } from "@/lib/ai-route";
 import {
   CLAUDE_REQUEST_OPTIONS,
   checkAiLimit,
@@ -59,7 +59,7 @@ function isValidYmd(value: string) {
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAiUsage("posting", async (request: NextRequest) => {
   const contentType = request.headers.get("content-type") ?? "";
   const isUpload = contentType.includes("multipart/form-data");
 
@@ -87,9 +87,8 @@ export async function POST(request: NextRequest) {
   const text = parsedText?.success ? parsedText.data.text : null;
 
   // 다른 AI 기능과 하루 사용 횟수를 함께 쓴다.
-  const limit = checkAiLimit(request);
+  const limit = await checkAiLimit(request);
   if (limit instanceof NextResponse) return limit;
-  const { usedToday } = limit;
 
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const ask = `오늘 날짜는 ${today}입니다. 이 공고에서 일정을 찾아 주세요.`;
@@ -143,9 +142,8 @@ export async function POST(request: NextRequest) {
       kind: output.kind,
       events,
     });
-    recordAiUse(result, usedToday);
-    return result;
+    return await completeAiUse(result, request);
   } catch (error) {
     return claudeErrorResponse(error, "posting");
   }
-}
+});

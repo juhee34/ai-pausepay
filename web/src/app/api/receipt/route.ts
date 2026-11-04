@@ -1,7 +1,7 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { recordAiUse } from "@/lib/ai-limit";
+import { completeAiUse, withAiUsage } from "@/lib/ai-route";
 import { CLAUDE_REQUEST_OPTIONS, checkAiLimit, claudeErrorResponse } from "@/lib/ai-route";
 import { getAnthropic } from "@/lib/claude";
 import { ALL_COMPETENCIES } from "@/lib/competencies";
@@ -66,7 +66,7 @@ result: 작년보다 많은 학생이 축제에 참여했고, 대상에 맞는 �
 oneLiner: 학생회 홍보팀에서 인스타그램 홍보를 맡아 축제 참여를 작년보다 늘렸습니다.
 competencies: 콘텐츠 제작, 협업`;
 
-export async function POST(request: NextRequest) {
+export const POST = withAiUsage("receipt", async (request: NextRequest) => {
   const parsed = ReceiptRequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
@@ -75,9 +75,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const limit = checkAiLimit(request);
+  const limit = await checkAiLimit(request);
   if (limit instanceof NextResponse) return limit;
-  const { usedToday } = limit;
 
   const { title, period, answers } = parsed.data;
   const input = [title, period ?? "", answers.what, answers.role, answers.result, answers.learned];
@@ -129,9 +128,8 @@ export async function POST(request: NextRequest) {
 
     // 성공했을 때만 1회로 센다.
     const json = NextResponse.json({ ...star, inventedNumbers });
-    recordAiUse(json, usedToday);
-    return json;
+    return await completeAiUse(json, request);
   } catch (error) {
     return claudeErrorResponse(error, "receipt");
   }
-}
+});

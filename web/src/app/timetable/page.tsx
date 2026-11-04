@@ -1,5 +1,7 @@
 "use client";
 
+import { aiFetch } from "@/lib/ai-fetch";
+
 import { ImageUp } from "lucide-react";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
@@ -54,7 +56,7 @@ export default function TimetablePage() {
     try {
       const body = new FormData();
       body.append("file", file);
-      const res = await fetch("/api/timetable", { method: "POST", body });
+      const res = await aiFetch("/api/timetable", { method: "POST", body });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data) {
         setError(data?.error ?? "시간표를 읽지 못했어요. 잠시 뒤에 다시 해 주세요.");

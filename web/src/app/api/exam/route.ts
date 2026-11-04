@@ -8,7 +8,7 @@ import {
   MIN_SOURCE_LENGTH,
   normalizeExamPack,
 } from "@/app/exam/schema";
-import { recordAiUse } from "@/lib/ai-limit";
+import { completeAiUse, withAiUsage } from "@/lib/ai-route";
 import { checkAiLimit, claudeErrorResponse } from "@/lib/ai-route";
 import { getAnthropic } from "@/lib/claude";
 
@@ -84,7 +84,7 @@ async function generateExamPack(source: string, timeout: number) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAiUsage("exam", async (request: NextRequest) => {
   const parsed = ExamRequestSchema.safeParse(
     await request.json().catch(() => null),
   );
@@ -108,9 +108,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const limit = checkAiLimit(request);
+  const limit = await checkAiLimit(request);
   if (limit instanceof NextResponse) return limit;
-  const { usedToday } = limit;
 
   const startedAt = Date.now();
 
@@ -124,8 +123,7 @@ export async function POST(request: NextRequest) {
       if (pack) {
         const response = NextResponse.json(pack);
         // 다시 시도한 횟수는 세지 않고, 성공했을 때만 1회 기록한다.
-        recordAiUse(response, usedToday);
-        return response;
+        return await completeAiUse(response, request);
       }
       console.error("exam: invalid pack on attempt", attempt);
     }
@@ -137,4 +135,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return claudeErrorResponse(error, "exam");
   }
-}
+});

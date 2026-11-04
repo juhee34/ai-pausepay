@@ -1,5 +1,7 @@
 "use client";
 
+import { aiFetch } from "@/lib/ai-fetch";
+
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -58,7 +60,7 @@ function NewReceipt() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/receipt", {
+      const res = await aiFetch("/api/receipt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, period: period || undefined, answers }),

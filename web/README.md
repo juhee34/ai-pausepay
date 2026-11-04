@@ -130,6 +130,73 @@ npx firebase-tools emulators:exec --only firestore --project demo-unis-login "no
 
 규칙 검사는 Java가 필요합니다. 로그인 화면은 Firebase 설정 없이도 열려야 하며, 다른 모든 기존 화면도 로그인 없이 동작해야 합니다.
 
+## AI 사용량 마이페이지 (A)
+
+`/my`에서 로그인 계정의 오늘·이번 주 기능별 사용 횟수와 오늘 남은 횟수를 봅니다.
+7개 AI 기능(강의계획서·시간표·브리핑·시험 대비·메일·취준 일정·영수증)이 한도를 함께 씁니다.
+한국 시간 자정에 일별 한도가 새로 시작하고, 이번 주는 월요일부터 합산합니다.
+로그인 전 기기 사용량은 계정 기록에 합치지 않습니다. 비로그인은 기존 기기별 서명 쿠키를 유지합니다.
+
+### 서버 설정 — 로그인용 네 값과 별개
+
+프로젝트에 `firebase-admin`을 추가했습니다. Node.js 22 이상이 필요합니다.
+기존 브라우저용 Firebase 설정 네 값만으로는 서버가 Firestore에 기록할 수 없습니다.
+아래 설정은 **프로젝트의 `web/.env.local`과 Vercel 환경 변수에만** 넣습니다.
+Windows 전역 환경 변수·CLI 전역 로그인·전역 설치는 필요하지 않습니다.
+
+1. 기존 로그인과 **같은 Firebase 프로젝트**에서 Firestore 기본 데이터베이스를 생성합니다. 테스트 모드로 열어 두지 말고 기존 `firestore.rules`를 적용합니다. 사용량은 본인만 읽고 화면에서 쓰지 못하는 규칙을 그대로 씁니다.
+2. Firebase 프로젝트 설정 → 서비스 계정에서 서버용 비공개 키를 발급합니다. JSON의 세 항목을 아래 이름으로 옮깁니다. JSON 파일은 저장소 밖에 보관하며 코드·채팅·스크린샷에 넣지 않습니다.
+
+| 환경 변수 이름 | 서비스 계정 JSON 항목 |
+|---|---|
+| `FIREBASE_ADMIN_PROJECT_ID` | `project_id` (브라우저용 프로젝트와 같아야 함) |
+| `FIREBASE_ADMIN_CLIENT_EMAIL` | `client_email` |
+| `FIREBASE_ADMIN_PRIVATE_KEY` | `private_key` |
+
+비공개 키는 실제 줄바꿈 또는 `\n` 표기를 지원합니다. `.env.local`에 넣을 때는 값 전체를 큰따옴표로 감쌉니다.
+서버 변수에는 `NEXT_PUBLIC_`을 붙이지 않습니다. Vercel에는 필요한 배포 환경에 같은 이름으로 등록하고 **새로 배포**합니다. 로컬은 개발 서버를 다시 시작합니다.
+이 작업에서 실제 환경 변수 값이나 Firebase 콘솔 설정은 변경하지 않았습니다.
+
+### 저장하는 것과 횟수 계산
+
+- `users/{uid}/usage/{YYYY-MM-DD}`에 `counts`(기능별 성공 횟수)와 `pending`(무작위 요청 번호·예약 만료 시각)만 저장합니다. 이름·이메일·입력 글·원본 파일·AI 답변은 사용량 문서에 넣지 않습니다.
+- 서버가 Firebase ID 토큰을 검증해 얻은 uid만 사용합니다. 화면이 보낸 uid는 받지 않으며, 로그인 증명이 잘못되면 익명 요청으로 우회하지 않습니다.
+- 트랜잭션으로 성공 횟수와 진행 중 예약의 합이 하루 20회를 넘지 않게 합니다. 일반 AI 오류·검증 실패는 성공 횟수에 넣지 않습니다. 강제 종료된 예약은 2분 뒤 다음 요청에서 회수합니다.
+- 메일은 기존 방식대로 스트리밍 연결이 시작되면 1회로 셉니다. 전송 중 중단도 포함합니다. 다른 기능은 정상 결과를 만들었을 때 1회로 셉니다.
+- 사용량 저장 결과가 불명확한 장애에서는 성공 결과 대신 오류를 안내하고 임시 예약을 만료까지 유지합니다. 장애 중에는 AI 성공 횟수가 누락될 수 있으며, 계정별 조회·기록에 실패했다고 비로그인 한도로 전환하지 않습니다.
+- 서버 설정이 없거나 Firestore에 연결하지 못하면 로그인 사용자의 AI 요청·사용량 조회는 준비 중 또는 오류로 안내합니다. 비로그인 기능은 기존대로 동작합니다.
+- 마이페이지 진입·사용량 새로고침·화면 복귀 때 조회합니다. 다른 폰에서 확인할 때도 새로고침을 누릅니다. 사용량 API 응답은 캐시하지 않습니다.
+
+### 검사와 휴대폰 확인
+
+`web` 폴더에서 다음 명령은 실계정·AI 없이 날짜 경계, 계정 분리, 동시 예약 제한, 성공·실패·예외 처리와 기존 로그인을 검사합니다.
+
+```bash
+node --test tests/ai-usage.test.mjs tests/firebase-auth.test.mjs tests/syllabus-grading.test.mjs
+npm run lint
+npx tsc --noEmit
+```
+
+메모리 저장소 테스트는 실제 Firestore 연결 검사를 대신하지 않습니다.
+
+실제 로컬 Firestore에서도 검사하려면 에뮬레이터를 실행한 상태에서 `FIRESTORE_EMULATOR_HOST`를 해당 명령에만 지정합니다. 기본 포트는 `firebase.json`의 8089입니다. Java가 필요하며, 기존 계정 기능 검사와 같은 demo 프로젝트를 사용합니다. 아래 명령은 테스트용 데이터를 로컬에 만들고 검사한 뒤 에뮬레이터를 종료합니다.
+
+```bash
+npx firebase-tools emulators:exec --only firestore --project demo-unis-login "node --test --test-concurrency=1 tests/ai-usage.test.mjs tests/firestore-rules.test.mjs"
+```
+
+`--test-concurrency=1`은 규칙 검사의 데이터 초기화가 사용량 검사와 겹치지 않도록 파일을 순서대로 실행합니다. 에뮬레이터 없이 실행하면 실제 Firestore 검사 한 항목만 건너뜁니다.
+
+배포 후 확인 순서:
+
+1. 같은 계정으로 로그인하고 AI 기능을 한 번 사용합니다. 마이페이지를 열어 해당 기능의 오늘·이번 주 숫자가 1씩 늘고 남은 횟수가 줄었는지 봅니다.
+2. 다른 폰에서 같은 계정으로 로그인하고 사용량을 새로고침해 같은 숫자인지 봅니다.
+3. 다른 계정으로 바꾸면 이전 계정의 숫자가 보이지 않는지 확인합니다.
+4. 비로그인으로 기존 기능을 확인합니다. 하루 제한·실패·동시 요청은 `docs/폰검증-체크리스트.md`에도 결과를 기록합니다.
+
+최종 완료는 실제 Firebase 설정 후 배포 주소에서 두 폰으로 확인한 때입니다.
+연결 방식 참고: [Admin SDK 설정](https://firebase.google.com/docs/admin/setup), [ID 토큰 검증](https://firebase.google.com/docs/auth/admin/verify-id-tokens), [Firestore 트랜잭션](https://firebase.google.com/docs/firestore/manage-data/transactions).
+
 ## 개발 환경 변경과 프로젝트 종료 시 정리
 
 이 계정 기능 작업은 프로젝트 안에 Firebase 패키지·테스트 도구·설정 파일을 추가했습니다.

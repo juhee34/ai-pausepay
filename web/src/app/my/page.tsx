@@ -6,6 +6,7 @@ import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import { logOut, signInWithGoogle, useAccount } from "@/lib/firebase-auth";
+import UsageCard from "./usage-card";
 
 export default function MyPage() {
   const account = useAccount();
@@ -54,6 +55,8 @@ export default function MyPage() {
           {account.error && <p role="alert" className="mt-3 rounded-callout border border-review-line bg-review-soft p-3 text-sm text-review">{account.error}</p>}
         </div>
       </Block>
+
+      <UsageCard key={user?.uid ?? "guest"} uid={user?.uid ?? null} />
 
       <Block className="mt-2.5">
         <div className="flex items-center gap-2">

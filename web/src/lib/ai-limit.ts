@@ -2,7 +2,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { NextRequest, NextResponse } from "next/server";
 
 // 기기당 하루 AI 사용 횟수. 모든 AI 기능이 함께 쓴다.
-export const DAILY_AI_LIMIT = 20;
+export { DAILY_AI_LIMIT } from "./ai-usage";
+import { DAILY_AI_LIMIT } from "./ai-usage";
 export const AI_LIMIT_MESSAGE = `오늘 AI를 ${DAILY_AI_LIMIT}번 모두 썼어요. 내일 다시 써 주세요.`;
 
 const COOKIE_NAME = "unis_ai_usage";
