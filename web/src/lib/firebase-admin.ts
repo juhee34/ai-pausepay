@@ -12,20 +12,41 @@ async function loadAdminApp() {
   }
 }
 
+// Vercel에 값을 붙여 넣을 때 앞뒤 따옴표·공백·쉼표가 같이 들어가기 쉽다. 그런 것만 걷어 낸다.
+export function cleanEnvValue(raw: string | undefined) {
+  const value = raw?.trim().replace(/,$/, "").trim().replace(/^"([\s\S]*)"$/, "$1").trim();
+  return value || undefined;
+}
+
+// 비밀 키에서 BEGIN~END 부분만 꺼낸다. JSON의 "private_key": "…" 줄을 통째로 넣어도,
+// 줄바꿈이 \n 글자로 들어가도, 윈도 줄바꿈(\r\n)이어도 읽는다. 키가 없으면 undefined.
+export function normalizePrivateKey(raw: string | undefined) {
+  const text = raw?.replace(/\\r/g, "").replace(/\\n/g, "\n").replace(/\r/g, "");
+  const match = text?.match(/-----BEGIN PRIVATE KEY-----[\s\S]*?-----END PRIVATE KEY-----/);
+  return match ? `${match[0]}\n` : cleanEnvValue(text);
+}
+
 export async function getAdminApp() {
   const { cert, getApps, initializeApp } = await loadAdminApp();
   const existing = getApps().find((app) => app.name === "unis-server");
   if (existing) return existing;
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const projectId = cleanEnvValue(process.env.FIREBASE_ADMIN_PROJECT_ID);
+  const clientEmail = cleanEnvValue(process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
+  const privateKey = normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY);
   if (!projectId || !clientEmail || !privateKey) {
     throw new AccountApiError(503, "계정별 AI 사용량 연결을 준비 중이에요. 잠시 뒤에 다시 해 주세요.");
   }
-  if (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && projectId !== process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+  const publicProjectId = cleanEnvValue(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+  if (publicProjectId && projectId !== publicProjectId) {
     throw new AccountApiError(503, "계정별 AI 사용량 설정을 확인 중이에요. 잠시 뒤에 다시 해 주세요.");
   }
-  return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) }, "unis-server");
+  try {
+    return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) }, "unis-server");
+  } catch {
+    // 키 내용은 남기지 않고 어느 단계인지만 남긴다. Vercel 로그에서 이 줄로 원인을 찾는다.
+    console.error("firebase-admin: FIREBASE_ADMIN_PRIVATE_KEY 형식을 읽지 못함");
+    throw new AccountApiError(503, "계정 연결 설정을 확인 중이에요. 로그아웃하면 지금도 AI 기능을 쓸 수 있어요.");
+  }
 }
 export async function getAdminDb() {
   const app = await getAdminApp();
