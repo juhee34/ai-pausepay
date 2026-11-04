@@ -138,6 +138,29 @@ export function planToday(scored: ScoredTask[], available: number): TodayPlan {
   };
 }
 
+export type CourseGroup = {
+  course: string;
+  // 그 과목 안에서 효율 높은 순. rank는 1부터. 오늘 시간을 받지 못한 일은 hours가 없다.
+  tasks: { task: ScoredTask; rank: number; hours?: number }[];
+  hours: number; // 오늘 이 과목에 쓰는 시간
+  nearestDays: number; // 가장 가까운 마감까지 남은 날
+};
+
+// 과목별로 묶는다. 순위는 과목 안에서만 매기고, 과목 순서는 효율이 가장 높은 일이 먼저 나온 순서다.
+export function groupByCourse(scored: ScoredTask[], picks: TodayPlan["picks"]): CourseGroup[] {
+  const hoursOf = new Map(picks.map((p) => [p.task.id, p.hours]));
+  const groups = new Map<string, CourseGroup>();
+  for (const task of scored) {
+    const group = groups.get(task.course) ?? { course: task.course, tasks: [], hours: 0, nearestDays: task.days };
+    const hours = hoursOf.get(task.id);
+    group.tasks.push({ task, rank: group.tasks.length + 1, hours });
+    group.hours += hours ?? 0;
+    group.nearestDays = Math.min(group.nearestDays, task.days);
+    groups.set(task.course, group);
+  }
+  return [...groups.values()];
+}
+
 export function formatHours(hours: number) {
   return Number.isInteger(hours) ? `${hours}시간` : `${hours.toFixed(1)}시간`;
 }
@@ -150,7 +173,7 @@ export function exampleTasks(today: string): PlanTask[] {
   };
   return [
     { id: "ex-1", course: "마케팅원론", title: "팀 과제 발표자료", date: at(3), kind: "과제", weight: 15, hours: 2 },
-    { id: "ex-2", course: "조직행동론", title: "퀴즈 3", date: at(5), kind: "퀴즈", weight: 5, hours: 1 },
+    { id: "ex-2", course: "마케팅원론", title: "퀴즈 3", date: at(5), kind: "퀴즈", weight: 5, hours: 1 },
     { id: "ex-3", course: "경영통계", title: "기말 대비 · 퀴즈 복습", date: at(35), kind: "기말", weight: 30, hours: 8 },
     { id: "ex-4", course: "회계원리", title: "과제 3", date: at(9), kind: "과제", weight: 10, hours: 3 },
     { id: "ex-5", course: "데이터과학입문", title: "실습 보고서", date: at(12), kind: "과제", weight: 9, hours: 3 },

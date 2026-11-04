@@ -14,7 +14,7 @@ loaded._compile(
   }).outputText,
   filename,
 );
-const { scoreTasks, planToday, exampleTasks, parseAvailableHours, DEFAULT_WEIGHT } = loaded.exports;
+const { groupByCourse, scoreTasks, planToday, exampleTasks, parseAvailableHours, DEFAULT_WEIGHT } = loaded.exports;
 
 const TODAY = "2026-11-03";
 const NO_SOURCES = { grading: {}, targets: {}, accuracy: {}, allTasks: [] };
@@ -29,6 +29,29 @@ test("예시 일정 5개: 손으로 계산한 효율과 순서가 같다 (PRD 2-
   scored.forEach((t, i) => assert.ok(Math.abs(t.efficiency - expected[i]) < 1e-9, `${t.title} ${t.efficiency}`));
   assert.deepEqual(scored.map((t) => t.level), ["높음", "보통", "보통", "보통", "낮음"]);
   assert.deepEqual(scored.map((t) => t.days), [3, 5, 35, 9, 12]);
+});
+
+test("과목별로 묶고 순위는 과목 안에서만 매긴다", () => {
+  const scored = scoreTasks(TODAY, exampleTasks(TODAY), NO_SOURCES);
+  const groups = groupByCourse(scored, planToday(scored, 4).picks);
+  assert.deepEqual(groups.map((g) => g.course), ["마케팅원론", "경영통계", "회계원리", "데이터과학입문"]);
+
+  const marketing = groups[0];
+  assert.deepEqual(
+    marketing.tasks.map((t) => [t.rank, t.task.title, t.hours]),
+    [
+      [1, "팀 과제 발표자료", 2],
+      [2, "퀴즈 3", 1],
+    ],
+  );
+  assert.equal(marketing.hours, 3);
+  assert.equal(marketing.nearestDays, 3);
+
+  assert.equal(groups[1].hours, 1); // 기말 복습에 남은 1시간
+  assert.equal(groups[2].hours, 0); // 시간을 받지 못한 과목
+  assert.equal(groups[2].tasks[0].rank, 1); // 과목마다 1위부터
+  assert.equal(groups[2].tasks[0].hours, undefined);
+  assert.deepEqual(groupByCourse([], []), []);
 });
 
 test("직접 넣은 시간은 0.5~24시간만 받고 소수 한 자리로 맞춘다", () => {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronRight, Plus, Timer } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Timer } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   MIN_AVAILABLE_HOURS,
   exampleTasks,
   formatHours,
+  groupByCourse,
   parseAvailableHours,
   planToday,
   scoreTasks,
@@ -27,8 +28,6 @@ import {
 } from "@/lib/today-plan";
 
 import TaskFormSheet from "../task-form-sheet";
-
-const MAX_CANDIDATES = 5;
 
 const LEVEL_CLASS: Record<EfficiencyLevel, string> = {
   높음: "bg-brand-soft text-brand",
@@ -48,8 +47,19 @@ function dDay(days: number) {
   return days === 0 ? "D-day" : `D-${days}`;
 }
 
+const URGENT_DAYS = 3;
+
+// 마감까지 남은 날. 한눈에 보이게 크게 쓰고, 3일 안이면 포인트색으로 쓴다.
+function DDay({ days }: { days: number }) {
+  return (
+    <span className={`shrink-0 font-mono text-lg font-bold leading-6 ${days <= URGENT_DAYS ? "text-brand" : "text-ink"}`}>
+      {dDay(days)}
+    </span>
+  );
+}
+
 function meta(task: ScoredTask) {
-  return `배점 ${Math.round(task.weight * 10) / 10}% · ${dDay(task.days)} · 약 ${formatHours(task.hours)}`;
+  return `배점 ${Math.round(task.weight * 10) / 10}% · 약 ${formatHours(task.hours)}`;
 }
 
 // 예시 데이터의 id(ex-1 등)는 일정에 없어서 집중 모드가 과목(course)만 고른다.
@@ -75,6 +85,8 @@ export default function TodayPage() {
   const [available, setAvailable] = useState<number>(DEFAULT_AVAILABLE_HOURS);
   const hoursInvalid = parseAvailableHours(hoursText) === null;
   const [taskSheet, setTaskSheet] = useState<{ task?: SavedDeadline } | null>(null);
+  // 누른 적 없는 과목은 첫 과목만 펼쳐 둔다.
+  const [openCourses, setOpenCourses] = useState<Record<string, boolean>>({});
 
   function changeHours(text: string) {
     setHoursText(text);
@@ -116,7 +128,7 @@ export default function TodayPage() {
   }, [today, isExample, saved, grading, grades]);
 
   const plan = planToday(scored, available);
-  const hoursById = new Map(plan.picks.map((p) => [p.task.id, p.hours]));
+  const groups = groupByCourse(scored, plan.picks);
   const top = scored[0]?.efficiency ?? 0;
   const [main, ...more] = plan.picks;
   // 아직 시작 전인 일은 순위 대신 따로 보여 준다. 시작이 빠른 순.
@@ -171,8 +183,15 @@ export default function TodayPage() {
         <div className="mt-4 rounded-block bg-brand p-4 text-white">
           <p className="text-xs font-semibold text-white/80">오늘 가장 효율 좋은 {formatHours(available)}</p>
           <div className="mt-3 border-t border-white/20 pt-3">
-            <p className="text-xs font-semibold text-white/80">{main.task.course}</p>
-            <p className="mt-0.5 text-[20px] font-bold leading-snug">{main.task.title}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-white/80">{main.task.course}</p>
+                <p className="mt-0.5 break-words text-[20px] font-bold leading-snug">{main.task.title}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-surface px-3 py-1 font-mono text-lg font-bold leading-6 text-brand">
+                {dDay(main.task.days)}
+              </span>
+            </div>
             <p className="mt-1 font-mono text-xs text-white/80">{meta(main.task)}</p>
             <p className="mt-2 text-[13px] leading-relaxed">{main.task.reason}</p>
             {main.hours < main.task.hours && (
@@ -222,82 +241,114 @@ export default function TodayPage() {
         </Block>
       )}
 
-      {scored.length > 0 && (
+      {groups.length > 0 && (
         <>
           <div className="mt-6 flex items-baseline justify-between px-1">
-            <h2 className="text-[17px] font-bold">오늘 할 일 순위</h2>
-            <span className="text-xs text-muted">효율 높은 순</span>
+            <h2 className="text-[17px] font-bold">과목별 할 일</h2>
+            <span className="text-xs text-muted">{groups.length}과목</span>
           </div>
-          <p className="mt-1 px-1 text-xs text-muted">{formatHours(available)}을 1위부터 예상 소요시간만큼 나눴어요.</p>
+          <p className="mt-1 px-1 text-xs leading-relaxed text-muted">
+            {formatHours(available)}을 효율 높은 일부터 나눴어요. 과목을 누르면 할 일과 순위가 보여요.
+          </p>
           <ul className="mt-2 space-y-2">
-            {scored.slice(0, MAX_CANDIDATES).map((t, i) => {
-              const hours = hoursById.get(t.id);
-              const savedTask = saved.find((d) => d.id === t.id);
+            {groups.map((group, groupIndex) => {
+              const isOpen = openCourses[group.course] ?? groupIndex === 0;
               return (
-              <li key={t.id}>
-                <Block>
-                  <div className="flex items-start gap-2.5">
-                    <span
-                      aria-label={`${i + 1}위`}
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold ${
-                        i === 0 ? "bg-brand text-white" : "bg-divider text-ink"
-                      }`}
+                <li key={group.course}>
+                  <Block padded={false} className="overflow-hidden">
+                    <button
+                      type="button"
+                      aria-expanded={isOpen}
+                      onClick={() => setOpenCourses({ ...openCourses, [group.course]: !isOpen })}
+                      className="flex min-h-14 w-full items-center gap-2 px-3.5 py-3 text-left active:bg-divider"
                     >
-                      {i + 1}
-                    </span>
-                    <p className="min-w-0 flex-1 text-[15px] font-bold">
-                      {t.course} · {t.title}
-                    </p>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-1">
-                    {hours !== undefined
-                      ? badge("bg-brand text-white", `오늘 ${formatHours(hours)}`)
-                      : badge("bg-divider text-muted", "오늘은 미뤄요")}
-                    {badge(LEVEL_CLASS[t.level], `효율 ${t.level}`)}
-                  </div>
-                  <p className="mt-1.5 font-mono text-xs text-muted">{meta(t)}</p>
-                  {savedTask?.memo && (
-                    <p className="mt-1 whitespace-pre-line break-words text-xs leading-relaxed text-muted">{savedTask.memo}</p>
-                  )}
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-divider">
-                    <div
-                      className={`h-full rounded-full ${i === 0 ? "bg-brand" : "bg-[#A89BB0]"}`}
-                      style={{ width: `${top > 0 ? Math.max((t.efficiency / top) * 100, 4) : 0}%` }}
-                    />
-                  </div>
-                  {((i > 0 && hours !== undefined) || savedTask) && (
-                    <div className="mt-1.5 flex items-center justify-between gap-2">
-                      {/* 1위는 위쪽 블록의 '집중 시작'으로 시작한다. */}
-                      {i > 0 && hours !== undefined ? (
-                        <Link
-                          href={focusHref(t, hours)}
-                          className="flex min-h-11 items-center gap-1 text-[13px] font-semibold text-brand"
-                        >
-                          <Timer size={16} strokeWidth={1.8} aria-hidden="true" />이 일로 집중 시작
-                        </Link>
-                      ) : (
-                        <span />
-                      )}
-                      {savedTask && (
-                        <button
-                          type="button"
-                          aria-label={`${t.title} 고치기`}
-                          onClick={() => setTaskSheet({ task: savedTask })}
-                          className="min-h-11 px-1 text-[13px] font-semibold text-muted"
-                        >
-                          고치기
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </Block>
-              </li>
+                      <span className="min-w-0 flex-1">
+                        <span className="block break-words text-[15px] font-bold">{group.course || "과목 없음"}</span>
+                        <span className="mt-0.5 block text-xs text-muted">
+                          할 일 <span className="font-mono">{group.tasks.length}</span>개 ·{" "}
+                          {group.hours > 0 ? `오늘 ${formatHours(group.hours)}` : "오늘은 미뤄요"}
+                        </span>
+                      </span>
+                      <DDay days={group.nearestDays} />
+                      <ChevronDown
+                        size={18}
+                        strokeWidth={1.8}
+                        aria-hidden="true"
+                        className={`shrink-0 text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <ul className="divide-y divide-divider border-t border-divider">
+                        {group.tasks.map(({ task: t, rank, hours }) => {
+                          const savedTask = saved.find((d) => d.id === t.id);
+                          const canFocus = hours !== undefined && t.id !== main?.task.id;
+                          return (
+                            <li key={t.id} className="px-3.5 py-3">
+                              <div className="flex items-start gap-2.5">
+                                <span
+                                  aria-label={`${group.course} 안에서 ${rank}위`}
+                                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold ${
+                                    rank === 1 ? "bg-brand text-white" : "bg-divider text-ink"
+                                  }`}
+                                >
+                                  {rank}
+                                </span>
+                                <p className="min-w-0 flex-1 break-words text-[15px] font-bold">{t.title}</p>
+                                <DDay days={t.days} />
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-1">
+                                {hours !== undefined
+                                  ? badge("bg-brand text-white", `오늘 ${formatHours(hours)}`)
+                                  : badge("bg-divider text-muted", "오늘은 미뤄요")}
+                                {badge(LEVEL_CLASS[t.level], `효율 ${t.level}`)}
+                              </div>
+                              <p className="mt-1.5 font-mono text-xs text-muted">{meta(t)}</p>
+                              {savedTask?.memo && (
+                                <p className="mt-1 whitespace-pre-line break-words text-xs leading-relaxed text-muted">
+                                  {savedTask.memo}
+                                </p>
+                              )}
+                              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-divider">
+                                <div
+                                  className={`h-full rounded-full ${rank === 1 ? "bg-brand" : "bg-[#A89BB0]"}`}
+                                  style={{ width: `${top > 0 ? Math.max((t.efficiency / top) * 100, 4) : 0}%` }}
+                                />
+                              </div>
+                              {(canFocus || savedTask) && (
+                                <div className="mt-1.5 flex items-center justify-between gap-2">
+                                  {/* 오늘의 첫 번째 일은 위쪽 블록의 '집중 시작'으로 시작한다. */}
+                                  {canFocus ? (
+                                    <Link
+                                      href={focusHref(t, hours)}
+                                      className="flex min-h-11 items-center gap-1 text-[13px] font-semibold text-brand"
+                                    >
+                                      <Timer size={16} strokeWidth={1.8} aria-hidden="true" />이 일로 집중 시작
+                                    </Link>
+                                  ) : (
+                                    <span />
+                                  )}
+                                  {savedTask && (
+                                    <button
+                                      type="button"
+                                      aria-label={`${t.title} 고치기`}
+                                      onClick={() => setTaskSheet({ task: savedTask })}
+                                      className="min-h-11 px-1 text-[13px] font-semibold text-muted"
+                                    >
+                                      고치기
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </Block>
+                </li>
               );
             })}
           </ul>
-          {scored.length > MAX_CANDIDATES && (
-            <p className="mt-2 px-1 text-xs text-muted">그 아래 {scored.length - MAX_CANDIDATES}개는 순위에서 뺐어요.</p>
-          )}
         </>
       )}
 
