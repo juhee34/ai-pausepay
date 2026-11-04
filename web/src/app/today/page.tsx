@@ -129,7 +129,7 @@ export default function TodayPage() {
 
   const plan = planToday(scored, available);
   const groups = groupByCourse(scored, plan.picks);
-  const top = scored[0]?.efficiency ?? 0;
+  const top = Math.max(0, ...scored.map((t) => t.efficiency));
   const [main, ...more] = plan.picks;
   // 아직 시작 전인 일은 순위 대신 따로 보여 준다. 시작이 빠른 순.
   const notStarted = today
@@ -181,7 +181,7 @@ export default function TodayPage() {
 
       {today && main && (
         <div className="mt-4 rounded-block bg-brand p-4 text-white">
-          <p className="text-xs font-semibold text-white/80">오늘 가장 효율 좋은 {formatHours(available)}</p>
+          <p className="text-xs font-semibold text-white/80">{main.task.days === 0 ? "오늘 마감부터 먼저" : "오늘 가장 효율 좋은"} {formatHours(available)}</p>
           <div className="mt-3 border-t border-white/20 pt-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -248,7 +248,7 @@ export default function TodayPage() {
             <span className="text-xs text-muted">{groups.length}과목</span>
           </div>
           <p className="mt-1 px-1 text-xs leading-relaxed text-muted">
-            {formatHours(available)}을 효율 높은 일부터 나눴어요. 과목을 누르면 할 일과 순위가 보여요.
+            {formatHours(available)}을 오늘 마감과 효율 높은 일부터 나눴어요. 과목을 누르면 할 일과 순위가 보여요.
           </p>
           <ul className="mt-2 space-y-2">
             {groups.map((group, groupIndex) => {
@@ -391,7 +391,7 @@ export default function TodayPage() {
         효율 = 배점 × (목표 − 예상 득점률) ÷ 예상 소요시간이고, 마감이 3일 안이면 ×1.3, 7일 안이면 ×1.15를 곱해요. 배점은
         강의계획서의 평가 비율을 같은 종류 일정 수로 나눈 값이고, 없으면 중간·기말 30, 과제 10, 퀴즈·기타 5로 잡아요. 예상
         득점률은 시험 대비 팩의 퀴즈 정답률이나 0.6, 목표는 기말 필요 점수에서 정한 점수나 90점이에요. 예상 소요시간은 시험
-        8시간, 과제 3시간, 퀴즈·기타 1시간이고, 직접 넣은 예상 시간이 있으면 그 값을 써요. 시작일이 아직 안 된 일은 순위에서 빼요. 오늘 시간은 1위부터 예상 소요시간만큼 나누고, 모자라면 남은 시간만큼만 넣어요. 이 값은 순서와 시간을 정하는 데만 쓰고 점수를 예측하지는 않아요.
+        8시간, 과제 3시간, 퀴즈·기타 1시간이고, 직접 넣은 예상 시간이 있으면 그 값을 써요. 시작일이 아직 안 된 일은 순위에서 빼요. 오늘 마감인 일은 효율과 상관없이 맨 앞에 두고, 그다음은 효율 높은 순이에요. 오늘 시간은 앞에서부터 예상 소요시간만큼 나누고, 모자라면 남은 시간만큼만 넣어요. 이 값은 순서와 시간을 정하는 데만 쓰고 점수를 예측하지는 않아요.
         {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
       </p>
 

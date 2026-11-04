@@ -31,6 +31,35 @@ test("예시 일정 5개: 손으로 계산한 효율과 순서가 같다 (PRD 2-
   assert.deepEqual(scored.map((t) => t.days), [3, 5, 35, 9, 12]);
 });
 
+test("오늘 마감인 일은 효율이 낮아도 맨 앞이고 시간을 먼저 받는다", () => {
+  const tasks = [
+    { id: "exam", course: "마케팅", title: "기말고사", date: "2026-12-10", kind: "기말" }, // 30 × 0.3 ÷ 8 = 1.125
+    { id: "hw", course: "재무", title: "3장 과제", date: "2026-11-05", kind: "과제", hours: 1, weight: 10 }, // 10 × 0.3 × 1.3 = 3.9
+    { id: "today", course: "재무", title: "오늘 퀴즈", date: TODAY, kind: "퀴즈", weight: 2.5 }, // 2.5 × 0.3 × 1.3 = 0.975
+    { id: "tomorrow", course: "재무", title: "내일 퀴즈", date: "2026-11-04", kind: "퀴즈", weight: 2.5 },
+  ];
+  const scored = scoreTasks(TODAY, tasks, NO_SOURCES);
+  assert.deepEqual(scored.map((t) => t.id), ["today", "hw", "exam", "tomorrow"]); // 내일 마감은 효율대로
+  assert.ok(scored[0].reason.includes("오늘 마감"));
+  assert.ok(Math.abs(scored[0].efficiency - 0.975) < 1e-9); // 효율 숫자는 그대로
+  assert.equal(scored[0].level, "낮음"); // 배지는 가장 큰 효율 3.9 기준 (0.975 ÷ 3.9 = 0.25)
+  assert.equal(scored[1].level, "높음");
+
+  const plan = planToday(scored, 2);
+  assert.deepEqual(plan.picks.map((p) => [p.task.id, p.hours]), [["today", 1], ["hw", 1]]);
+  assert.equal(plan.deferred.id, "exam");
+});
+
+test("오늘 마감이 여러 개면 그 안에서 효율 순이고, 시간이 모자라면 남은 시간만큼 넣는다", () => {
+  const tasks = [
+    { id: "a", course: "x", title: "오늘 과제", date: TODAY, kind: "과제", weight: 5, hours: 3 },
+    { id: "b", course: "y", title: "오늘 퀴즈", date: TODAY, kind: "퀴즈", weight: 5, hours: 1 },
+  ];
+  const scored = scoreTasks(TODAY, tasks, NO_SOURCES);
+  assert.deepEqual(scored.map((t) => t.id), ["b", "a"]);
+  assert.deepEqual(planToday(scored, 2).picks.map((p) => [p.task.id, p.hours]), [["b", 1], ["a", 1]]);
+});
+
 test("과목별로 묶고 순위는 과목 안에서만 매긴다", () => {
   const scored = scoreTasks(TODAY, exampleTasks(TODAY), NO_SOURCES);
   const groups = groupByCourse(scored, planToday(scored, 4).picks);
