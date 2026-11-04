@@ -11,6 +11,10 @@ const filename = fileURLToPath(new URL("../src/lib/firebase-admin.ts", import.me
 const loaded = new Module(filename);
 loaded.filename = filename;
 loaded.paths = Module._nodeModulePaths(filename);
+const originalRequire = loaded.require.bind(loaded);
+loaded.require = (name) => name === "./account-diagnostics"
+  ? { logAccountError: () => {} }
+  : originalRequire(name);
 loaded._compile(ts.transpileModule(fs.readFileSync(filename, "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, filename);

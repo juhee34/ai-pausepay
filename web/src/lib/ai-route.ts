@@ -4,11 +4,13 @@ import { AI_LIMIT_MESSAGE, DAILY_AI_LIMIT, getAiUsageToday, recordAiUse } from "
 import { AccountApiError, getAdminDb, verifiedUid } from "./firebase-admin";
 import { reserveUsage, settleUsage } from "./ai-usage-store";
 import type { AiFeature } from "./ai-usage";
+import { logAccountError } from "./account-diagnostics";
 
 type UsageContext = { feature: AiFeature; usedToday?: number; lease?: Awaited<ReturnType<typeof reserveUsage>>; settled?: boolean };
 const contexts = new WeakMap<NextRequest, UsageContext>();
 
 function usageError(error: unknown) {
+  if (!(error instanceof AccountApiError)) logAccountError("ai-usage", error);
   return NextResponse.json({ error: error instanceof AccountApiError ? error.message : "계정별 사용량을 확인하지 못했어요. 잠시 뒤에 다시 해 주세요." }, { status: error instanceof AccountApiError ? error.status : 503 });
 }
 
