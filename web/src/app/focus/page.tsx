@@ -8,7 +8,7 @@ import Button from "@/components/ui/button";
 import { isHomeActivity, useActivities } from "@/lib/activity-store";
 import { useSavedDeadlines } from "@/lib/deadline-store";
 import { useTimetable } from "@/lib/timetable-store";
-import { focusGoal, hoursLabel, isSameDay, parseGoalHours, type FocusGoal } from "./goal";
+import { focusGoal, hoursLabel, isSameDay, parseGoalHours, suggestHours, type FocusGoal } from "./goal";
 import {
   ALARM_SECONDS,
   ALERT_WINDOW_MS,
@@ -21,7 +21,8 @@ import {
 } from "./alert";
 import {
   BREAK_MINUTES,
-  FOCUS_MINUTES,
+  DEFAULT_FOCUS_HOURS,
+  FOCUS_HOUR_CHOICES,
   MAX_SUBJECT_LENGTH,
   addSubject,
   endSession,
@@ -32,6 +33,7 @@ import {
   getServerPersisted,
   isPersisted,
   removeSubject,
+  sessionMinutes,
   settleSession,
   skipBreak,
   startFocus,
@@ -47,13 +49,11 @@ type Session = NonNullable<FocusData["session"]>;
 const ALERT_NOTICE = `폰 화면을 켜 두고 이 화면을 열어 두면 끝날 때 알람이 울려요. 화면을 누르면 꺼지고, 누르지 않아도 ${ALARM_SECONDS}초 뒤에 멈춰요. 화면이 꺼지면 울리지 않을 수 있고, 아이폰은 진동이 없고 무음 모드에서는 소리도 나지 않아요. 기록은 그대로 저장돼요.`;
 
 function formatClock(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function formatHours(hours: number) {
-  return formatMinutes(Math.round(hours * 60));
+  const rest = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return hours > 0 ? `${hours}:${rest}` : rest;
 }
 
 function formatMinutes(total: number) {
@@ -103,44 +103,32 @@ function useFocusTarget() {
   return course ? { subject: course, label: null, link: {} as FocusLink } : null;
 }
 
-// 오늘의 한 가지에서 정한 시간을 25분 집중 몇 번인지로 보여 준다.
-function GoalCard({ goal, running }: { goal: FocusGoal; running: boolean }) {
-  const { hours, rounds, done } = goal;
-  const finished = done >= rounds;
+// 오늘의 한 가지에서 정한 시간과 오늘 집중한 시간을 보여 준다.
+function GoalCard({ goal }: { goal: FocusGoal }) {
+  const goalMinutes = Math.round(goal.hours * 60);
+  const finished = goal.doneMinutes >= goalMinutes;
   return (
     <div className="rounded-button bg-brand-soft px-3 py-2.5 text-left">
       <p className="text-[13px] font-bold text-brand">
-        오늘 목표 <span className="font-mono">{formatHours(hours)}</span>
+        오늘 목표 <span className="font-mono">{formatMinutes(goalMinutes)}</span>
       </p>
       <p className="mt-0.5 text-xs leading-relaxed">
-        {finished ? (
-          <>
-            {FOCUS_MINUTES}분 집중 <span className="font-mono">{rounds}</span>번을 모두 마쳤어요. 더 해도 기록돼요.
-          </>
-        ) : running ? (
-          <>
-            {FOCUS_MINUTES}분 집중 <span className="font-mono">{rounds}</span>번 중{" "}
-            <span className="font-mono">{done + 1}</span>번째예요.
-          </>
-        ) : (
-          <>
-            {FOCUS_MINUTES}분 집중 <span className="font-mono">{rounds}</span>번 중{" "}
-            <span className="font-mono">{done}</span>번 마쳤어요.
-          </>
-        )}
+        {finished
+          ? "오늘 목표를 채웠어요. 더 해도 기록돼요."
+          : goal.doneMinutes > 0
+            ? `오늘 ${formatMinutes(goal.doneMinutes)} 집중했어요.`
+            : "오늘은 아직 기록이 없어요."}
       </p>
-      <div aria-hidden="true" className="mt-2 flex gap-1">
-        {Array.from({ length: rounds }, (_, i) => (
-          <span key={i} className={`h-1.5 flex-1 rounded-full ${i < done ? "bg-brand" : "bg-surface"}`} />
-        ))}
+      <div aria-hidden="true" className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
+        <div className="h-full bg-brand" style={{ width: `${Math.min(100, (goal.doneMinutes / goalMinutes) * 100)}%` }} />
       </div>
-      <p className="mt-1.5 text-[11px] text-muted">쉬는 시간까지 한 번에 {FOCUS_MINUTES + BREAK_MINUTES}분으로 계산해요.</p>
     </div>
   );
 }
 
 function SubjectPicker({ data, goal }: { data: FocusData; goal: FocusGoal | null }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [pickedHours, setPickedHours] = useState<number | null>(null);
   const [newSubject, setNewSubject] = useState("");
   const target = useFocusTarget();
   const timetable = useTimetable();
@@ -164,6 +152,10 @@ function SubjectPicker({ data, goal }: { data: FocusData; goal: FocusGoal | null
   const canRemove = data.subjects.includes(subject) && !hasRecord && !fromSchedule.includes(subject);
   const targetActive = target !== null && subject === target.subject;
   const pickedActivity = activityOptions.find((a) => a.title === subject);
+  // 직접 고르기 전에는 오늘 목표에서 남은 시간을 골라 둔다.
+  const hours =
+    pickedHours ??
+    (targetActive && goal ? suggestHours(goal, Math.max(...FOCUS_HOUR_CHOICES)) : DEFAULT_FOCUS_HOURS);
   const link: FocusLink = targetActive
     ? target.link
     : pickedActivity
@@ -211,7 +203,7 @@ function SubjectPicker({ data, goal }: { data: FocusData; goal: FocusGoal | null
             )}
             {targetActive && goal && (
               <div className="mt-2">
-                <GoalCard goal={goal} running={false} />
+                <GoalCard goal={goal} />
               </div>
             )}
             {subjects.length > 0 && <div className="mt-2.5 flex flex-wrap gap-2">{subjects.map(chip)}</div>}
@@ -259,8 +251,27 @@ function SubjectPicker({ data, goal }: { data: FocusData; goal: FocusGoal | null
         </form>
       </Block>
 
-      <Button disabled={!subject} onClick={() => startFocus(subject, link)} className="w-full">
-        <span className="font-mono">{FOCUS_MINUTES}</span>분 집중 시작
+      <Block>
+        <h2 className="text-[15px] font-bold">얼마나 집중할까요?</h2>
+        <div role="group" aria-label="집중 시간" className="mt-2.5 flex gap-2">
+          {FOCUS_HOUR_CHOICES.map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              aria-pressed={hours === choice}
+              onClick={() => setPickedHours(choice)}
+              className={`h-11 flex-1 rounded-full text-sm font-semibold ${
+                hours === choice ? "bg-brand text-white" : "border border-line bg-surface text-ink"
+              }`}
+            >
+              {choice}시간
+            </button>
+          ))}
+        </div>
+      </Block>
+
+      <Button disabled={!subject} onClick={() => startFocus(subject, link, hours)} className="w-full">
+        <span className="font-mono">{hours}</span>시간 집중 시작
       </Button>
       <p className="px-1 text-xs leading-relaxed text-muted">{ALERT_NOTICE}</p>
     </div>
@@ -271,7 +282,7 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
   const [confirmingStop, setConfirmingStop] = useState(false);
 
   const isFocus = session.phase === "focus";
-  const totalSeconds = (isFocus ? FOCUS_MINUTES : BREAK_MINUTES) * 60;
+  const totalSeconds = (isFocus ? sessionMinutes(session) : BREAK_MINUTES) * 60;
   const remaining = Math.min(
     totalSeconds,
     Math.max(0, Math.floor((session.endsAt - now) / 1000)),
@@ -293,7 +304,7 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
 
       {goal && (
         <div className="mt-3.5">
-          <GoalCard goal={goal} running={isFocus} />
+          <GoalCard goal={goal} />
         </div>
       )}
 
@@ -320,7 +331,7 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
       {isFocus && confirmingStop && (
         <div className="mt-3.5">
           <p className="text-sm text-muted">
-            {FOCUS_MINUTES}분을 채우지 않으면 이번 시간은 기록되지 않아요.
+            정한 시간을 채우지 않으면 이번 시간은 기록되지 않아요.
           </p>
           <div className="mt-2.5 flex gap-2">
             <Button onClick={() => setConfirmingStop(false)} className="flex-1">
@@ -341,17 +352,22 @@ function DoneCard({ session, goal }: { session: Session; goal: FocusGoal | null 
     <Block className="text-center">
       <p className="text-[17px] font-bold">수고했어요!</p>
       <p className="mt-1 break-words text-sm text-muted">
-        {session.subject} 공부 시간에 <span className="font-mono">{FOCUS_MINUTES}</span>분을
+        {session.subject} 공부 시간에 <span className="font-mono">{formatMinutes(sessionMinutes(session))}</span>을
         더했어요.
       </p>
       {goal && (
         <div className="mt-3">
-          <GoalCard goal={goal} running={false} />
+          <GoalCard goal={goal} />
         </div>
       )}
       <Button
         onClick={() =>
-          startFocus(session.subject, { deadlineId: session.deadlineId, activityId: session.activityId })
+          startFocus(
+            session.subject,
+            { deadlineId: session.deadlineId, activityId: session.activityId },
+            // 옛 25분 타이머에서 이어 하면 1시간으로 시작한다.
+            Math.max(DEFAULT_FOCUS_HOURS, Math.round(sessionMinutes(session) / 60)),
+          )
         }
         className="mt-3.5 w-full"
       >
@@ -429,7 +445,7 @@ function FocusContent() {
   const goalHours = parseGoalHours(useSearchParams().get("hours"));
   const goal =
     target && goalHours !== null
-      ? focusGoal(goalHours, records, now, target, FOCUS_MINUTES + BREAK_MINUTES)
+      ? focusGoal(goalHours, records, now, target)
       : null;
   // 다른 과목을 고르고 시작했으면 목표를 보여 주지 않는다.
   const sessionGoal = session && session.subject === target?.subject ? goal : null;
@@ -465,11 +481,10 @@ function FocusContent() {
       <header className="mb-4 px-1">
         <p className="text-xs font-medium text-muted">집중 모드</p>
         <h1 className="text-[22px] font-bold">
-          <span className="font-mono font-semibold">{FOCUS_MINUTES}</span>분 집중,{" "}
-          <span className="font-mono font-semibold">{BREAK_MINUTES}</span>분 휴식
+          <span className="font-mono font-semibold">1</span>시간 단위로 집중해요
         </h1>
         <p className="mt-1 text-sm text-muted">
-          과목을 고르고 시작하세요. {FOCUS_MINUTES}분을 채우면 공부 시간이 기록돼요.
+          과목과 시간을 고르고 시작하세요. 끝까지 채우면 공부 시간이 기록되고, {BREAK_MINUTES}분 쉬어요.
         </p>
       </header>
 
@@ -510,7 +525,7 @@ function FocusContent() {
         </div>
         {rows.length === 0 ? (
           <Block className="text-sm text-muted">
-            아직 기록이 없어요. {FOCUS_MINUTES}분 집중을 마치면 여기에 쌓여요.
+            아직 기록이 없어요. 집중을 마치면 여기에 쌓여요.
           </Block>
         ) : (
           <Block padded={false}>

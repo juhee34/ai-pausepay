@@ -66,6 +66,32 @@ test("옛 기록과 진행 중인 옛 타이머가 그대로 읽힌다", () => {
   assert.deepEqual(store.getData(), old);
 });
 
+test("고른 시간만큼 타이머가 돌고 그만큼 기록된다", () => {
+  const before = Date.now();
+  store.startFocus("재무관리", {}, 2);
+  const { endsAt, minutes } = store.getData().session;
+  assert.equal(minutes, 120);
+  assert.ok(endsAt >= before + 2 * 60 * 60 * 1000);
+  store.settleSession(endsAt);
+  assert.equal(saved().records[0].minutes, 120);
+});
+
+test("시간을 고르지 않으면 1시간이고, 끝나기 전에 그만두면 기록하지 않는다", () => {
+  store.startFocus("재무관리");
+  assert.equal(store.getData().session.minutes, 60);
+  store.endSession();
+  assert.deepEqual(saved().records, []);
+});
+
+test("진행 중이던 옛 타이머는 25분으로 기록된다", () => {
+  memory.set(
+    "unis-focus",
+    JSON.stringify({ subjects: [], records: [], session: { subject: "통계", phase: "focus", endsAt: 200 } }),
+  );
+  store.settleSession(200);
+  assert.equal(saved().records[0].minutes, 25);
+});
+
 test("연결 정보는 저장소를 다시 읽어도 사라지지 않는다", () => {
   memory.set(
     "unis-focus",

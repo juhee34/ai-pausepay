@@ -2,7 +2,10 @@ import { z } from "zod";
 
 // 집중 모드의 시간 계산과 저장을 맡는다. 모든 기록은 이 브라우저에만 남고 서버로 보내지 않는다.
 
-export const FOCUS_MINUTES = 25;
+export const FOCUS_HOUR_CHOICES = [1, 2, 3, 4] as const;
+export const DEFAULT_FOCUS_HOURS = 1;
+// minutes가 없는 옛 타이머는 25분짜리였다.
+const LEGACY_FOCUS_MINUTES = 25;
 export const BREAK_MINUTES = 5;
 export const MAX_SUBJECT_LENGTH = 30;
 
@@ -26,6 +29,8 @@ const focusDataSchema = z.object({
       phase: z.enum(["focus", "break", "done"]),
       // 남은 초를 세지 않고 끝나는 시각을 저장한다. 화면이 꺼져 있어도 시간이 어긋나지 않는다.
       endsAt: z.number(),
+      // 고른 집중 시간. 옛 타이머에는 없다.
+      minutes: z.number().positive().optional(),
       deadlineId: z.string().optional(),
       activityId: z.string().optional(),
     })
@@ -108,6 +113,10 @@ export function subscribeClock(listener: () => void) {
   };
 }
 
+export function sessionMinutes(session: { minutes?: number }) {
+  return session.minutes ?? LEGACY_FOCUS_MINUTES;
+}
+
 // 초 단위로 끊어서 1초에 한 번만 화면을 다시 그리게 한다.
 export const getNow = () => Math.floor(Date.now() / 1000) * 1000;
 export const getServerNow = () => 0;
@@ -126,7 +135,7 @@ export function settleSession(now: number) {
       ...records,
       {
         subject: session.subject,
-        minutes: FOCUS_MINUTES,
+        minutes: sessionMinutes(session),
         finishedAt: session.endsAt,
         ...(session.deadlineId ? { deadlineId: session.deadlineId } : {}),
         ...(session.activityId ? { activityId: session.activityId } : {}),
@@ -146,7 +155,7 @@ export function settleSession(now: number) {
   return focusEndedAt;
 }
 
-export function startFocus(subject: string, link: FocusLink = {}) {
+export function startFocus(subject: string, link: FocusLink = {}, hours: number = DEFAULT_FOCUS_HOURS) {
   const data = readData();
   if (data.session && data.session.phase !== "done") return;
   writeData({
@@ -154,7 +163,8 @@ export function startFocus(subject: string, link: FocusLink = {}) {
     session: {
       subject,
       phase: "focus",
-      endsAt: Date.now() + FOCUS_MINUTES * 60 * 1000,
+      endsAt: Date.now() + hours * 60 * 60 * 1000,
+      minutes: hours * 60,
       ...link,
     },
   });
@@ -168,7 +178,7 @@ export function skipBreak() {
 }
 
 export function endSession() {
-  // 이미 25분이 지났다면 그만두기 전에 기록부터 남긴다.
+  // 이미 정한 시간이 지났다면 그만두기 전에 기록부터 남긴다.
   settleSession(Date.now());
   writeData({ ...readData(), session: null });
 }
