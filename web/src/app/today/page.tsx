@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Timer } from "lucide-react";
+import { ChevronRight, Plus, Timer } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
+import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
 import { useToday } from "@/lib/briefing";
 import { useSavedDeadlines, type SavedDeadline } from "@/lib/deadline-store";
@@ -84,9 +85,9 @@ export default function TodayPage() {
   // 입력하는 도중이나 잘못 넣었을 때는 마지막으로 맞게 넣은 시간을 계속 쓴다.
   const [available, setAvailable] = useState<number>(DEFAULT_AVAILABLE_HOURS);
   const hoursInvalid = parseAvailableHours(hoursText) === null;
-  const [taskSheet, setTaskSheet] = useState<{ task?: SavedDeadline } | null>(null);
-  // 누른 적 없는 과목은 첫 과목만 펼쳐 둔다.
-  const [openCourses, setOpenCourses] = useState<Record<string, boolean>>({});
+  // fromCourse: 과목 창에서 고치러 왔으면 닫을 때 그 창으로 돌아간다.
+  const [taskSheet, setTaskSheet] = useState<{ task?: SavedDeadline; fromCourse?: string } | null>(null);
+  const [openCourse, setOpenCourse] = useState<string | null>(null);
 
   function changeHours(text: string) {
     setHoursText(text);
@@ -129,6 +130,8 @@ export default function TodayPage() {
 
   const plan = planToday(scored, available);
   const groups = groupByCourse(scored, plan.picks);
+  // 고치다가 그 과목의 일이 모두 사라지면 찾지 못하므로 창을 열지 않는다.
+  const openGroup = groups.find((g) => g.course === openCourse);
   const top = Math.max(0, ...scored.map((t) => t.efficiency));
   const [main, ...more] = plan.picks;
   // 아직 시작 전인 일은 순위 대신 따로 보여 준다. 시작이 빠른 순.
@@ -250,106 +253,103 @@ export default function TodayPage() {
           <p className="mt-1 px-1 text-xs leading-relaxed text-muted">
             {formatHours(available)}을 오늘 마감과 효율 높은 일부터 나눴어요. 과목을 누르면 할 일과 순위가 보여요.
           </p>
-          <ul className="mt-2 space-y-2">
-            {groups.map((group, groupIndex) => {
-              const isOpen = openCourses[group.course] ?? groupIndex === 0;
+          <Block padded={false} className="mt-2 divide-y divide-divider overflow-hidden">
+            {groups.map((group) => (
+              <button
+                key={group.course}
+                type="button"
+                aria-haspopup="dialog"
+                onClick={() => setOpenCourse(group.course)}
+                className="flex min-h-14 w-full items-center gap-2 px-3.5 py-3 text-left active:bg-divider"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block break-words text-[15px] font-bold">{group.course || "과목 없음"}</span>
+                  <span className="mt-0.5 block text-xs text-muted">
+                    할 일 <span className="font-mono">{group.tasks.length}</span>개 ·{" "}
+                    {group.hours > 0 ? `오늘 ${formatHours(group.hours)}` : "오늘은 미뤄요"}
+                  </span>
+                </span>
+                <DDay days={group.nearestDays} />
+                <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-muted" />
+              </button>
+            ))}
+          </Block>
+        </>
+      )}
+
+      {openGroup && (
+        <BottomSheet open onClose={() => setOpenCourse(null)} title={openGroup.course || "과목 없음"}>
+          <p className="-mt-1 text-xs text-muted">
+            할 일 <span className="font-mono">{openGroup.tasks.length}</span>개 ·{" "}
+            {openGroup.hours > 0 ? `오늘 ${formatHours(openGroup.hours)}` : "오늘은 미뤄요"}
+          </p>
+          <ul className="mt-1 divide-y divide-divider">
+            {openGroup.tasks.map(({ task: t, rank, hours }) => {
+              const savedTask = saved.find((d) => d.id === t.id);
+              const canFocus = hours !== undefined && t.id !== main?.task.id;
               return (
-                <li key={group.course}>
-                  <Block padded={false} className="overflow-hidden">
-                    <button
-                      type="button"
-                      aria-expanded={isOpen}
-                      onClick={() => setOpenCourses({ ...openCourses, [group.course]: !isOpen })}
-                      className="flex min-h-14 w-full items-center gap-2 px-3.5 py-3 text-left active:bg-divider"
+                <li key={t.id} className="py-3">
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      aria-label={`${rank}위`}
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold ${
+                        rank === 1 ? "bg-brand text-white" : "bg-divider text-ink"
+                      }`}
                     >
-                      <span className="min-w-0 flex-1">
-                        <span className="block break-words text-[15px] font-bold">{group.course || "과목 없음"}</span>
-                        <span className="mt-0.5 block text-xs text-muted">
-                          할 일 <span className="font-mono">{group.tasks.length}</span>개 ·{" "}
-                          {group.hours > 0 ? `오늘 ${formatHours(group.hours)}` : "오늘은 미뤄요"}
-                        </span>
-                      </span>
-                      <DDay days={group.nearestDays} />
-                      <ChevronDown
-                        size={18}
-                        strokeWidth={1.8}
-                        aria-hidden="true"
-                        className={`shrink-0 text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                    {isOpen && (
-                      <ul className="divide-y divide-divider border-t border-divider">
-                        {group.tasks.map(({ task: t, rank, hours }) => {
-                          const savedTask = saved.find((d) => d.id === t.id);
-                          const canFocus = hours !== undefined && t.id !== main?.task.id;
-                          return (
-                            <li key={t.id} className="px-3.5 py-3">
-                              <div className="flex items-start gap-2.5">
-                                <span
-                                  aria-label={`${group.course} 안에서 ${rank}위`}
-                                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold ${
-                                    rank === 1 ? "bg-brand text-white" : "bg-divider text-ink"
-                                  }`}
-                                >
-                                  {rank}
-                                </span>
-                                <p className="min-w-0 flex-1 break-words text-[15px] font-bold">{t.title}</p>
-                                <DDay days={t.days} />
-                              </div>
-                              <div className="mt-2 flex flex-wrap items-center gap-1">
-                                {hours !== undefined
-                                  ? badge("bg-brand text-white", `오늘 ${formatHours(hours)}`)
-                                  : badge("bg-divider text-muted", "오늘은 미뤄요")}
-                                {badge(LEVEL_CLASS[t.level], `효율 ${t.level}`)}
-                              </div>
-                              <p className="mt-1.5 font-mono text-xs text-muted">{meta(t)}</p>
-                              {savedTask?.memo && (
-                                <p className="mt-1 whitespace-pre-line break-words text-xs leading-relaxed text-muted">
-                                  {savedTask.memo}
-                                </p>
-                              )}
-                              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-divider">
-                                <div
-                                  className={`h-full rounded-full ${rank === 1 ? "bg-brand" : "bg-[#A89BB0]"}`}
-                                  style={{ width: `${top > 0 ? Math.max((t.efficiency / top) * 100, 4) : 0}%` }}
-                                />
-                              </div>
-                              {(canFocus || savedTask) && (
-                                <div className="mt-1.5 flex items-center justify-between gap-2">
-                                  {/* 오늘의 첫 번째 일은 위쪽 블록의 '집중 시작'으로 시작한다. */}
-                                  {canFocus ? (
-                                    <Link
-                                      href={focusHref(t, hours)}
-                                      className="flex min-h-11 items-center gap-1 text-[13px] font-semibold text-brand"
-                                    >
-                                      <Timer size={16} strokeWidth={1.8} aria-hidden="true" />이 일로 집중 시작
-                                    </Link>
-                                  ) : (
-                                    <span />
-                                  )}
-                                  {savedTask && (
-                                    <button
-                                      type="button"
-                                      aria-label={`${t.title} 고치기`}
-                                      onClick={() => setTaskSheet({ task: savedTask })}
-                                      className="min-h-11 px-1 text-[13px] font-semibold text-muted"
-                                    >
-                                      고치기
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </Block>
+                      {rank}
+                    </span>
+                    <p className="min-w-0 flex-1 break-words text-[15px] font-bold">{t.title}</p>
+                    <DDay days={t.days} />
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-1">
+                    {hours !== undefined
+                      ? badge("bg-brand text-white", `오늘 ${formatHours(hours)}`)
+                      : badge("bg-divider text-muted", "오늘은 미뤄요")}
+                    {badge(LEVEL_CLASS[t.level], `효율 ${t.level}`)}
+                  </div>
+                  <p className="mt-1.5 font-mono text-xs text-muted">{meta(t)}</p>
+                  {savedTask?.memo && (
+                    <p className="mt-1 whitespace-pre-line break-words text-xs leading-relaxed text-muted">{savedTask.memo}</p>
+                  )}
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-divider">
+                    <div
+                      className={`h-full rounded-full ${rank === 1 ? "bg-brand" : "bg-[#A89BB0]"}`}
+                      style={{ width: `${top > 0 ? Math.max((t.efficiency / top) * 100, 4) : 0}%` }}
+                    />
+                  </div>
+                  {(canFocus || savedTask) && (
+                    <div className="mt-1.5 flex items-center justify-between gap-2">
+                      {/* 오늘의 첫 번째 일은 위쪽 블록의 '집중 시작'으로 시작한다. */}
+                      {canFocus ? (
+                        <Link
+                          href={focusHref(t, hours)}
+                          className="flex min-h-11 items-center gap-1 text-[13px] font-semibold text-brand"
+                        >
+                          <Timer size={16} strokeWidth={1.8} aria-hidden="true" />이 일로 집중 시작
+                        </Link>
+                      ) : (
+                        <span />
+                      )}
+                      {savedTask && (
+                        <button
+                          type="button"
+                          aria-label={`${t.title} 고치기`}
+                          onClick={() => {
+                            setOpenCourse(null);
+                            setTaskSheet({ task: savedTask, fromCourse: openGroup.course });
+                          }}
+                          className="min-h-11 px-1 text-[13px] font-semibold text-muted"
+                        >
+                          고치기
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}
           </ul>
-        </>
+        </BottomSheet>
       )}
 
       {notStarted.length > 0 && (
@@ -395,7 +395,15 @@ export default function TodayPage() {
         {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
       </p>
 
-      {taskSheet && <TaskFormSheet task={taskSheet.task} onClose={() => setTaskSheet(null)} />}
+      {taskSheet && (
+        <TaskFormSheet
+          task={taskSheet.task}
+          onClose={() => {
+            setOpenCourse(taskSheet.fromCourse ?? null);
+            setTaskSheet(null);
+          }}
+        />
+      )}
     </AppShell>
   );
 }
