@@ -9,6 +9,7 @@ import { logOut, signInWithGoogle, useAccount } from "@/lib/firebase-auth";
 import AccountBackupCard from "./account-backup-card";
 import UsageCard from "./usage-card";
 import CalendarSubscriptionCard from "./calendar-subscription-card";
+import CookieCard from "./cookie-card";
 
 export default function MyPage() {
   const account = useAccount();
@@ -34,7 +35,7 @@ export default function MyPage() {
           </span>
           <div className="min-w-0">
             <h2 className="text-[15px] font-bold">{loading ? "계정 확인 중…" : user ? user.displayName || "우니스 사용자" : "로그인은 선택이에요"}</h2>
-            <p className="mt-0.5 break-words text-xs text-muted">{user ? user.email || "Google로 연결한 계정" : "로그인하지 않아도 모든 기능을 쓸 수 있어요."}</p>
+            <p className="mt-0.5 break-words text-xs text-muted">{user ? user.email || "Google로 연결한 계정" : "로그인하지 않아도 모든 기능을 쓸 수 있어요. 쿠키 충전만 로그인이 필요해요."}</p>
           </div>
         </div>
         <div className="mt-3 border-t border-divider pt-3">
@@ -57,6 +58,8 @@ export default function MyPage() {
           {account.error && <p role="alert" className="mt-3 rounded-callout border border-review-line bg-review-soft p-3 text-sm text-review">{account.error}</p>}
         </div>
       </Block>
+
+      <CookieCard key={user?.uid ?? "guest"} uid={user?.uid ?? null} />
 
       {user && <AccountBackupCard key={user.uid} uid={user.uid} />}
 

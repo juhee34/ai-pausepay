@@ -9,6 +9,7 @@ import { Suspense, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
+import CookieNote from "@/components/ui/cookie-note";
 import SegmentedTabs from "@/components/ui/segmented-tabs";
 import { useToday } from "@/lib/briefing";
 import { downloadCalendarFile } from "@/lib/calendar-file";
@@ -309,6 +310,7 @@ function SyllabusFlow() {
             <Button className="mt-3 w-full" onClick={findDeadlines} disabled={loading}>
               {loading ? "일정 찾는 중… (10~30초)" : "AI로 일정 찾기"}
             </Button>
+            <CookieNote />
           </div>
         )}
       </Block>

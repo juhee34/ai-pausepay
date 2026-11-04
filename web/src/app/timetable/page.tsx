@@ -7,6 +7,7 @@ import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
+import CookieNote from "@/components/ui/cookie-note";
 import CheckRow from "@/components/ui/check-row";
 import { ACCEPTED_TYPES, MAX_UPLOAD_BYTES, isAcceptedType } from "@/lib/syllabus";
 import type { ClassSlot } from "@/lib/timetable";
@@ -122,6 +123,7 @@ export default function TimetablePage() {
               <Button className="mt-3 w-full" onClick={readTimetable} disabled={loading}>
                 {loading ? "시간표 읽는 중… (10초쯤)" : "AI로 읽기"}
               </Button>
+              <CookieNote />
             </div>
           )}
         </Block>

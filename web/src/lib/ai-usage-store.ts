@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { Firestore } from "firebase-admin/firestore";
-import { accountUsagePath } from "./firebase-paths";
+import { COOKIES_PER_AI_USE, availableCookies, canUseCookie, readWallet } from "./cookies";
+import { accountUsagePath, accountWalletPath } from "./firebase-paths";
 import { AccountApiError } from "./firebase-admin";
 import { DAILY_AI_LIMIT, emptyCounts, readCounts, seoulDay, totalCounts, weekStart, type AiFeature, type UsageSummary } from "./ai-usage";
 
-type Lease = { uid: string; day: string; id: string; feature: AiFeature };
+// paid: 무료 횟수를 다 써서 쿠키로 예약한 요청. 쿠키는 성공했을 때만 잔액에서 뺀다.
+type Lease = { uid: string; day: string; id: string; feature: AiFeature; paid: boolean };
 // API의 60초 상한보다 길게 예약. 강제 종료된 예약은 다음 요청에서 회수한다.
 const LEASE_MS = 120_000;
 function pendingLeases(value: unknown, now: number): Record<string, number> {
@@ -15,20 +17,54 @@ export async function reserveUsage(db: Firestore, uid: string, feature: AiFeatur
   const day = seoulDay(now);
   const id = randomUUID();
   const ref = db.doc(accountUsagePath(uid, day).join("/"));
+  const walletRef = db.doc(accountWalletPath(uid).join("/"));
+  let paid = false;
   await db.runTransaction(async (tx) => {
+    paid = false; // 트랜잭션은 다시 실행될 수 있다.
     const data = (await tx.get(ref)).data();
     const counts = readCounts(data?.counts);
     const pending = pendingLeases(data?.pending, now.getTime());
-    if (totalCounts(counts) + Object.keys(pending).length >= DAILY_AI_LIMIT) {
-      throw new AccountApiError(429, "오늘 AI 사용 가능 횟수를 모두 썼거나 요청이 진행 중이에요. 잠시 뒤 또는 내일 다시 써 주세요.");
+    if (totalCounts(counts) + Object.keys(pending).length < DAILY_AI_LIMIT) {
+      pending[id] = now.getTime() + LEASE_MS;
+      tx.set(ref, { counts, pending });
+      return;
     }
-    pending[id] = now.getTime() + LEASE_MS;
-    tx.set(ref, { counts, pending });
+    if (!canUseCookie(feature)) {
+      throw new AccountApiError(429, "오늘 무료 AI 횟수를 모두 썼어요. 내일 다시 써 주세요.");
+    }
+    const wallet = readWallet((await tx.get(walletRef)).data(), now.getTime());
+    if (availableCookies(wallet) < COOKIES_PER_AI_USE) {
+      throw new AccountApiError(429, "오늘 무료 AI 횟수를 모두 썼어요. 내일 다시 쓰거나, 마이페이지에서 쿠키를 충전해 주세요.");
+    }
+    tx.set(walletRef, { ...wallet, pending: { ...wallet.pending, [id]: now.getTime() + LEASE_MS } });
+    paid = true;
   });
-  return { uid, day, id, feature };
+  return { uid, day, id, feature, paid };
 }
 export async function settleUsage(db: Firestore, lease: Lease, success: boolean) {
   const ref = db.doc(accountUsagePath(lease.uid, lease.day).join("/"));
+  if (lease.paid) {
+    const walletRef = db.doc(accountWalletPath(lease.uid).join("/"));
+    await db.runTransaction(async (tx) => {
+      const data = (await tx.get(ref)).data();
+      const stored = (await tx.get(walletRef)).data();
+      const held = { ...(stored?.pending ?? {}) } as Record<string, number>;
+      if (!(lease.id in held)) return; // 다시 실행해도 쿠키를 두 번 빼지 않는다
+      delete held[lease.id];
+      const wallet = readWallet(stored, 0);
+      if (success) {
+        const counts = readCounts(data?.counts);
+        counts[lease.feature]++;
+        tx.set(ref, { counts, pending: data?.pending ?? {} });
+      }
+      tx.set(walletRef, {
+        ...wallet,
+        pending: held,
+        balance: success ? Math.max(0, wallet.balance - COOKIES_PER_AI_USE) : wallet.balance,
+      });
+    });
+    return;
+  }
   await db.runTransaction(async (tx) => {
     const data = (await tx.get(ref)).data();
     const pending = { ...(data?.pending ?? {}) } as Record<string, number>;

@@ -6,6 +6,7 @@ import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
+import CookieNote from "@/components/ui/cookie-note";
 import SegmentedTabs from "@/components/ui/segmented-tabs";
 import { useSavedDeadlines } from "@/lib/deadline-store";
 import { saveExamResult } from "@/lib/exam-results";
@@ -357,6 +358,7 @@ export default function ExamPage() {
             <Button type="submit" disabled={!canSubmit} className="w-full">
               {generating ? "만드는 중…" : "요약과 문제 만들기"}
             </Button>
+            <CookieNote />
 
             {generating && (
               <Block role="status">

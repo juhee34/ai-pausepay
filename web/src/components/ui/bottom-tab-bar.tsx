@@ -9,6 +9,7 @@ import {
   CalendarPlus,
   Calculator,
   CalendarClock,
+  Cookie,
   House,
   Mail,
   Map as MapIcon,
@@ -20,6 +21,8 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
+import { DAILY_AI_LIMIT } from "@/lib/ai-usage";
+import { COOKIES_PER_AI_USE } from "@/lib/cookies";
 import BottomSheet from "./bottom-sheet";
 
 const LEFT_TABS = [
@@ -37,6 +40,7 @@ type FeatureTile = {
   sub: string;
   Icon: LucideIcon;
   ready: boolean;
+  cookie?: boolean; // AI를 써서 무료 횟수 뒤에 쿠키가 필요한 기능
 };
 
 // 가운데 + 를 누르면 나오는 전체 기능 창. 새 기능은 탭을 늘리지 않고 여기에 더한다.
@@ -47,23 +51,23 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
     tiles: [
       { href: "/grades", label: "기말 필요 점수", sub: "목표까지 몇 점?", Icon: Calculator, ready: true },
       { href: "/risk", label: "학기 리스크 지도", sub: "몰리는 주 미리 보기", Icon: MapIcon, ready: true },
-      { href: "/exam", label: "시험 대비", sub: "강의자료로 요약과 문제", Icon: NotebookPen, ready: true },
-      { href: "/mail", label: "교수님 메일", sub: "예의 바른 메일 초안", Icon: Mail, ready: true },
+      { href: "/exam", label: "시험 대비", sub: "강의자료로 요약과 문제", Icon: NotebookPen, ready: true, cookie: true },
+      { href: "/mail", label: "교수님 메일", sub: "예의 바른 메일 초안", Icon: Mail, ready: true, cookie: true },
       { href: "/focus", label: "집중 모드", sub: "30분 단위로 집중", Icon: Timer, ready: true },
     ],
   },
   {
     title: "취업 준비",
     tiles: [
-      { href: "/calendar?type=posting", label: "공고·자격증 올리기", sub: "마감을 일정에 추가", Icon: CalendarPlus, ready: true },
-      { href: "/career/receipts", label: "스펙 영수증", sub: "경험을 한 줄로 정리", Icon: Award, ready: true },
+      { href: "/calendar?type=posting", label: "공고·자격증 올리기", sub: "마감을 일정에 추가", Icon: CalendarPlus, ready: true, cookie: true },
+      { href: "/career/receipts", label: "스펙 영수증", sub: "경험을 한 줄로 정리", Icon: Award, ready: true, cookie: true },
       { href: "/career/skills", label: "역량 공백 지도", sub: "부족한 역량 찾기", Icon: Radar, ready: true },
     ],
   },
   {
     title: "내 정보",
     tiles: [
-      { href: "/timetable", label: "시간표 캡쳐", sub: "캡쳐로 시간표 넣기", Icon: CalendarClock, ready: true },
+      { href: "/timetable", label: "시간표 캡쳐", sub: "캡쳐로 시간표 넣기", Icon: CalendarClock, ready: true, cookie: true },
     ],
   },
 ];
@@ -100,11 +104,19 @@ export default function BottomTabBar() {
     );
   };
 
-  const tileBody = ({ href, label, sub, Icon, ready }: FeatureTile) => (
+  const tileBody = ({ href, label, sub, Icon, ready, cookie }: FeatureTile) => (
     <>
       <Icon size={22} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-bold">{label}</span>
+        <span className="block text-sm font-bold">
+          {label}
+          {cookie && (
+            <>
+              <Cookie size={13} strokeWidth={2} aria-hidden="true" className="ml-1 inline-block align-[-1px] text-brand" />
+              <span className="sr-only">무료 횟수 뒤에 쿠키 필요</span>
+            </>
+          )}
+        </span>
         <span className="mt-0.5 block text-[11px] text-muted">
           {soonHref === href ? "곧 열려요" : sub}
         </span>
@@ -142,6 +154,12 @@ export default function BottomTabBar() {
 
       {/* nav 밖에 두어야 창이 탭바를 덮는다 */}
       <BottomSheet open={moreOpen} onClose={closeMore} title="전체 기능">
+        <p className="-mt-1 mb-3 flex items-start gap-1.5 text-xs leading-relaxed text-muted">
+          <Cookie size={14} strokeWidth={1.8} aria-hidden="true" className="mt-0.5 shrink-0 text-brand" />
+          <span>
+            이 표시가 있는 기능은 하루 무료 {DAILY_AI_LIMIT}회를 다 쓰면 1회에 쿠키 {COOKIES_PER_AI_USE}개가 필요해요.
+          </span>
+        </p>
         <div className="space-y-4">
           {FEATURE_GROUPS.map(({ title, tiles }) => (
             <section key={title}>
