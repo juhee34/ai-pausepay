@@ -2,8 +2,7 @@ import { z } from "zod";
 
 // 집중 모드의 시간 계산과 저장을 맡는다. 모든 기록은 이 브라우저에만 남고 서버로 보내지 않는다.
 
-export const FOCUS_HOUR_CHOICES = [1, 2, 3, 4] as const;
-export const DEFAULT_FOCUS_HOURS = 1;
+const DEFAULT_FOCUS_HOURS = 1;
 export const MIN_RECORD_MINUTES = 1;
 // minutes가 없는 옛 타이머는 25분짜리였다.
 const LEGACY_FOCUS_MINUTES = 25;

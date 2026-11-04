@@ -1,5 +1,6 @@
 "use client";
 
+import { Minus, Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import AppShell from "@/components/ui/app-shell";
@@ -8,7 +9,20 @@ import Button from "@/components/ui/button";
 import { isHomeActivity, useActivities } from "@/lib/activity-store";
 import { useSavedDeadlines } from "@/lib/deadline-store";
 import { useTimetable } from "@/lib/timetable-store";
-import { focusGoal, hoursLabel, isSameDay, parseGoalHours, suggestHours, type FocusGoal } from "./goal";
+import {
+  DEFAULT_FOCUS_HOURS,
+  MAX_FOCUS_HOURS,
+  MIN_FOCUS_HOURS,
+  focusGoal,
+  hoursFromMinutes,
+  hoursLabel,
+  isSameDay,
+  parseFocusHours,
+  parseGoalHours,
+  stepFocusHours,
+  suggestHours,
+  type FocusGoal,
+} from "./goal";
 import {
   ALARM_SECONDS,
   ALERT_WINDOW_MS,
@@ -21,10 +35,8 @@ import {
 } from "./alert";
 import {
   BREAK_MINUTES,
-  DEFAULT_FOCUS_HOURS,
   MIN_RECORD_MINUTES,
   elapsedFocusMinutes,
-  FOCUS_HOUR_CHOICES,
   MAX_SUBJECT_LENGTH,
   addSubject,
   endSession,
@@ -130,7 +142,7 @@ function GoalCard({ goal }: { goal: FocusGoal }) {
 
 function SubjectPicker({ data, goal }: { data: FocusData; goal: FocusGoal | null }) {
   const [selected, setSelected] = useState<string | null>(null);
-  const [pickedHours, setPickedHours] = useState<number | null>(null);
+  const [hoursText, setHoursText] = useState<string | null>(null);
   const [newSubject, setNewSubject] = useState("");
   const target = useFocusTarget();
   const timetable = useTimetable();
@@ -154,10 +166,11 @@ function SubjectPicker({ data, goal }: { data: FocusData; goal: FocusGoal | null
   const canRemove = data.subjects.includes(subject) && !hasRecord && !fromSchedule.includes(subject);
   const targetActive = target !== null && subject === target.subject;
   const pickedActivity = activityOptions.find((a) => a.title === subject);
-  // 직접 고르기 전에는 오늘 목표에서 남은 시간을 골라 둔다.
-  const hours =
-    pickedHours ??
-    (targetActive && goal ? suggestHours(goal, Math.max(...FOCUS_HOUR_CHOICES)) : DEFAULT_FOCUS_HOURS);
+  // 직접 넣기 전에는 오늘 목표에서 남은 시간을 넣어 둔다.
+  const suggested = targetActive && goal ? suggestHours(goal) : DEFAULT_FOCUS_HOURS;
+  const shownHours = hoursText ?? String(suggested);
+  const hours = parseFocusHours(shownHours);
+  const stepBase = hours ?? suggested;
   const link: FocusLink = targetActive
     ? target.link
     : pickedActivity
@@ -254,26 +267,58 @@ function SubjectPicker({ data, goal }: { data: FocusData; goal: FocusGoal | null
       </Block>
 
       <Block>
-        <h2 className="text-[15px] font-bold">얼마나 집중할까요?</h2>
-        <div role="group" aria-label="집중 시간" className="mt-2.5 flex gap-2">
-          {FOCUS_HOUR_CHOICES.map((choice) => (
-            <button
-              key={choice}
-              type="button"
-              aria-pressed={hours === choice}
-              onClick={() => setPickedHours(choice)}
-              className={`h-11 flex-1 rounded-full text-sm font-semibold ${
-                hours === choice ? "bg-brand text-white" : "border border-line bg-surface text-ink"
-              }`}
-            >
-              {choice}시간
-            </button>
-          ))}
+        <label htmlFor="focus-hours" className="block text-[15px] font-bold">
+          얼마나 집중할까요?
+        </label>
+        <div className="mt-2.5 flex items-center gap-2">
+          <button
+            type="button"
+            aria-label="30분 줄이기"
+            disabled={stepBase <= MIN_FOCUS_HOURS}
+            onClick={() => setHoursText(String(stepFocusHours(stepBase, -1)))}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink active:bg-divider disabled:opacity-40"
+          >
+            <Minus size={18} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+          <input
+            id="focus-hours"
+            inputMode="decimal"
+            value={shownHours}
+            onChange={(e) => setHoursText(e.target.value)}
+            aria-invalid={hours === null}
+            aria-describedby="focus-hours-help"
+            className="min-h-11 w-20 min-w-0 rounded-button border border-line bg-surface px-3 py-2.5 text-center font-mono text-base text-ink outline-none focus:border-brand"
+          />
+          <button
+            type="button"
+            aria-label="30분 늘리기"
+            disabled={stepBase >= MAX_FOCUS_HOURS}
+            onClick={() => setHoursText(String(stepFocusHours(stepBase, 1)))}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink active:bg-divider disabled:opacity-40"
+          >
+            <Plus size={18} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+          <span className="text-sm font-semibold">시간</span>
         </div>
+        {hours === null ? (
+          <p id="focus-hours-help" role="alert" className="mt-2 text-xs font-semibold text-review">
+            {MIN_FOCUS_HOURS}시간부터 {MAX_FOCUS_HOURS}시간까지, 30분 단위로 넣어 주세요. (예: 1.5)
+          </p>
+        ) : (
+          <p id="focus-hours-help" className="mt-2 text-xs text-muted">
+            30분 단위로 정해요. 지금은 {formatMinutes(hours * 60)}이에요.
+          </p>
+        )}
       </Block>
 
-      <Button disabled={!subject} onClick={() => startFocus(subject, link, hours)} className="w-full">
-        <span className="font-mono">{hours}</span>시간 집중 시작
+      <Button
+        disabled={!subject || hours === null}
+        onClick={() => {
+          if (hours !== null) startFocus(subject, link, hours);
+        }}
+        className="w-full"
+      >
+        {hours === null ? "집중 시작" : `${formatMinutes(hours * 60)} 집중 시작`}
       </Button>
       <p className="px-1 text-xs leading-relaxed text-muted">{ALERT_NOTICE}</p>
     </div>
@@ -370,8 +415,7 @@ function DoneCard({ session, goal }: { session: Session; goal: FocusGoal | null 
           startFocus(
             session.subject,
             { deadlineId: session.deadlineId, activityId: session.activityId },
-            // 옛 25분 타이머에서 이어 하면 1시간으로 시작한다.
-            Math.max(DEFAULT_FOCUS_HOURS, Math.round(sessionMinutes(session) / 60)),
+            hoursFromMinutes(sessionMinutes(session)),
           )
         }
         className="mt-3.5 w-full"
@@ -486,7 +530,7 @@ function FocusContent() {
       <header className="mb-4 px-1">
         <p className="text-xs font-medium text-muted">집중 모드</p>
         <h1 className="text-[22px] font-bold">
-          <span className="font-mono font-semibold">1</span>시간 단위로 집중해요
+          <span className="font-mono font-semibold">30</span>분 단위로 집중해요
         </h1>
         <p className="mt-1 text-sm text-muted">
           과목과 시간을 고르고 시작하세요. 집중한 시간이 기록되고, 끝까지 마치면 {BREAK_MINUTES}분 쉬어요.
