@@ -8,6 +8,7 @@ import Button from "@/components/ui/button";
 import { logOut, signInWithGoogle, useAccount } from "@/lib/firebase-auth";
 import AccountBackupCard from "./account-backup-card";
 import UsageCard from "./usage-card";
+import CalendarSubscriptionCard from "./calendar-subscription-card";
 
 export default function MyPage() {
   const account = useAccount();
@@ -58,6 +59,8 @@ export default function MyPage() {
       </Block>
 
       {user && <AccountBackupCard key={user.uid} uid={user.uid} />}
+
+      {user && <CalendarSubscriptionCard key={user.uid} uid={user.uid} />}
 
       <UsageCard key={user?.uid ?? "guest"} uid={user?.uid ?? null} />
 
