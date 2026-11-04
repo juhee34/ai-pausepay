@@ -1,5 +1,6 @@
 // 서버 전용. 클라이언트 파일에서 가져오지 않는다.
 // firebase-admin은 쓸 때만 불러온다. 로그인하지 않은 AI 요청은 이 패키지 없이 동작해야 한다.
+import { logAccountError } from "./account-diagnostics";
 
 export class AccountApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -7,7 +8,8 @@ export class AccountApiError extends Error {
 async function loadAdminApp() {
   try {
     return await import("firebase-admin/app");
-  } catch {
+  } catch (error) {
+    if (!(error instanceof AccountApiError)) logAccountError("load-app", error);
     throw new AccountApiError(503, "계정별 AI 사용량 연결을 준비 중이에요. 잠시 뒤에 다시 해 주세요.");
   }
 }
@@ -26,7 +28,7 @@ export function normalizePrivateKey(raw: string | undefined) {
   return match ? `${match[0]}\n` : cleanEnvValue(text);
 }
 
-export async function getAdminApp() {
+async function initializeAdminApp() {
   const { cert, getApps, initializeApp } = await loadAdminApp();
   const existing = getApps().find((app) => app.name === "unis-server");
   if (existing) return existing;
@@ -42,16 +44,34 @@ export async function getAdminApp() {
   }
   try {
     return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) }, "unis-server");
-  } catch {
-    // 키 내용은 남기지 않고 어느 단계인지만 남긴다. Vercel 로그에서 이 줄로 원인을 찾는다.
-    console.error("firebase-admin: FIREBASE_ADMIN_PRIVATE_KEY 형식을 읽지 못함");
+  } catch (error) {
+    if (!(error instanceof AccountApiError)) logAccountError("initialize-app", error);
     throw new AccountApiError(503, "계정 연결 설정을 확인 중이에요. 로그아웃하면 지금도 AI 기능을 쓸 수 있어요.");
+  }
+}
+export async function getAdminApp() {
+  try {
+    return await initializeAdminApp();
+  } catch (error) {
+    if (!(error instanceof AccountApiError)) logAccountError("get-admin-app", error);
+    throw error;
   }
 }
 export async function getAdminDb() {
   const app = await getAdminApp();
-  const { getFirestore } = await import("firebase-admin/firestore");
-  return getFirestore(app);
+  let firestore: typeof import("firebase-admin/firestore");
+  try {
+    firestore = await import("firebase-admin/firestore");
+  } catch (error) {
+    if (!(error instanceof AccountApiError)) logAccountError("load-firestore", error);
+    throw error;
+  }
+  try {
+    return firestore.getFirestore(app);
+  } catch (error) {
+    if (!(error instanceof AccountApiError)) logAccountError("initialize-firestore", error);
+    throw error;
+  }
 }
 
 // uid는 화면 입력이 아닌 Firebase가 검증한 ID 토큰에서만 얻는다.
@@ -62,8 +82,20 @@ export async function verifiedUid(request: Request): Promise<string | null> {
     throw new AccountApiError(401, "로그인을 다시 확인해 주세요.");
   }
   const app = await getAdminApp();
-  const { getAuth } = await import("firebase-admin/auth");
-  const auth = getAuth(app);
+  let authModule: typeof import("firebase-admin/auth");
+  try {
+    authModule = await import("firebase-admin/auth");
+  } catch (error) {
+    if (!(error instanceof AccountApiError)) logAccountError("load-auth", error);
+    throw error;
+  }
+  let auth: ReturnType<typeof authModule.getAuth>;
+  try {
+    auth = authModule.getAuth(app);
+  } catch (error) {
+    if (!(error instanceof AccountApiError)) logAccountError("initialize-auth", error);
+    throw error;
+  }
   try {
     const token = await auth.verifyIdToken(header.slice(7), true);
     if (!token.uid || token.uid.includes("/")) throw new Error("invalid uid");
