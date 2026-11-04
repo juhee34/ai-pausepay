@@ -76,7 +76,55 @@ test("고른 시간만큼 타이머가 돌고 그만큼 기록된다", () => {
   assert.equal(saved().records[0].minutes, 120);
 });
 
-test("시간을 고르지 않으면 1시간이고, 끝나기 전에 그만두면 기록하지 않는다", () => {
+test("중간에 그만두면 집중한 시간만 기록하고 일정 연결도 남는다", () => {
+  store.startFocus("재무관리", { deadlineId: "d1" }, 2);
+  const { endsAt } = store.getData().session;
+  store.endSession(endsAt - 10 * 60 * 1000); // 2시간 중 1시간 50분
+  const [record] = saved().records;
+  assert.equal(record.minutes, 110);
+  assert.equal(record.deadlineId, "d1");
+  assert.equal(record.finishedAt, endsAt - 10 * 60 * 1000);
+  assert.equal(saved().session, null);
+});
+
+test("다 채운 분만 세고, 1분이 안 되면 기록하지 않는다", () => {
+  store.startFocus("재무관리", {}, 1);
+  let { endsAt } = store.getData().session;
+  store.endSession(endsAt - 59 * 60 * 1000 - 1000); // 59초 지남
+  assert.deepEqual(saved().records, []);
+  store.startFocus("재무관리", {}, 1);
+  ({ endsAt } = store.getData().session);
+  store.endSession(endsAt - 58 * 60 * 1000 - 30 * 1000); // 1분 30초 지남
+  assert.equal(saved().records[0].minutes, 1);
+});
+
+test("시간이 다 지난 뒤 그만두면 한 번만 고른 시간으로 기록한다", () => {
+  store.startFocus("재무관리", {}, 1);
+  const { endsAt } = store.getData().session;
+  store.endSession(endsAt + 1000);
+  assert.equal(saved().records.length, 1);
+  assert.equal(saved().records[0].minutes, 60);
+});
+
+test("쉬는 중이나 끝난 뒤에 그만두면 기록을 더하지 않는다", () => {
+  store.startFocus("재무관리", {}, 1);
+  const { endsAt } = store.getData().session;
+  store.settleSession(endsAt);
+  store.endSession(endsAt + 1000);
+  assert.equal(saved().records.length, 1);
+});
+
+test("옛 25분 타이머를 중간에 그만두면 지난 분만 기록한다", () => {
+  const endsAt = 10 * 60 * 1000 + 1000;
+  memory.set(
+    "unis-focus",
+    JSON.stringify({ subjects: [], records: [], session: { subject: "통계", phase: "focus", endsAt } }),
+  );
+  store.endSession(endsAt - 10 * 60 * 1000); // 25분 중 15분
+  assert.equal(saved().records[0].minutes, 15);
+});
+
+test("시간을 고르지 않으면 1시간이고, 바로 그만두면 기록하지 않는다", () => {
   store.startFocus("재무관리");
   assert.equal(store.getData().session.minutes, 60);
   store.endSession();
