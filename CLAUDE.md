@@ -23,7 +23,7 @@
 3. 시험 대비 팩 — `web/src/app/exam`
 4. 교수님 메일 — `web/src/app/mail`
 5. 집중 모드 — `web/src/app/focus` (타이머 완료. 과목명 고르기, 일정 연결, 주차별 막대 추가)
-6. **기말 필요 점수** — `web/src/app/grades` (시안 02, AI 없음, `unis.grades.v1`)
+6. **기말 필요 점수** — `web/src/app/grades`, `web/src/app/api/scores` (시안 02, 계산은 AI 없음, 점수표 파일에서 숫자를 읽을 때만 AI, `unis.grades.v1`)
 7. **학기 리스크 지도** — `web/src/app/risk` (시안 03, AI 없음)
 
 **취업 준비**

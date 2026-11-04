@@ -1,7 +1,7 @@
 // 화면과 서버가 공유하는 집계 기준. 사용자 입력은 저장하지 않는다.
 export const AI_FEATURES = {
   syllabus: "강의계획서", timetable: "시간표 캡쳐", briefing: "오늘의 브리핑",
-  exam: "시험 대비", mail: "교수님 메일", posting: "취준 일정", receipt: "스펙 영수증",
+  exam: "시험 대비", mail: "교수님 메일", posting: "취준 일정", receipt: "스펙 영수증", scores: "점수표 읽기",
 } as const;
 export type AiFeature = keyof typeof AI_FEATURES;
 export const DAILY_AI_LIMIT = 20;

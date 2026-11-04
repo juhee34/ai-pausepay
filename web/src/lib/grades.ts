@@ -121,6 +121,8 @@ export type CutEstimate = {
   classMean: number; // 추정한 전체 평균 (100점 기준)
   averageRate: number; // 입력한 평균의 비율 (0~1). 기말 평균도 이 비율로 본다.
   assumedItems: string[]; // 평균을 몰라 내 점수로 본 항목
+  spread: number; // 계산에 쓴 퍼진 정도 (100점 기준)
+  measuredSpread: boolean; // 점수표의 표준편차로 구했는지
   cuts: GradeCut[];
 };
 
@@ -134,12 +136,26 @@ export function upperZ(sharePercent: number) {
   return p < 0.5 ? z : -z;
 }
 
+// 항목별 표준편차(배점 기준)를 총점 100점 기준 퍼진 정도로 바꾼다.
+// 점수가 고르게 나오는 시험과 기말이 함께 퍼진다고 보고, 표준편차를 모르는 출석·과제 등은 0으로 본다.
+// 예: 중간 30점에 표준편차 6(20%), 기말 60점도 20%로 본다. (6 + 12) ÷ 총점 100 × 100 = 18
+export function spreadFromItems(items: GradingItem[], spreads: GradeScores) {
+  const known = items.filter((item) => !isFinalItem(item.name) && Object.hasOwn(spreads, item.name));
+  const finalWeight = items.filter((item) => isFinalItem(item.name)).reduce((sum, item) => sum + item.weight, 0);
+  const total = items.reduce((sum, item) => sum + item.weight, 0);
+  const knownWeight = known.reduce((sum, item) => sum + item.weight, 0);
+  const knownSpread = known.reduce((sum, item) => sum + Math.min(spreads[item.name], item.weight), 0);
+  if (knownSpread <= 0 || knownWeight <= 0 || finalWeight <= 0 || total <= 0) return null;
+  return round1(((knownSpread + finalWeight * (knownSpread / knownWeight)) / total) * 100);
+}
+
 // 평균을 하나도 안 넣었거나 기말 배점이 없으면 null.
 export function estimateCuts(
   items: GradingItem[],
   scores: GradeScores,
   averages: GradeScores,
   estimate: GradeEstimate = DEFAULT_ESTIMATE,
+  spreads: GradeScores = {},
 ): CutEstimate | null {
   const rows = items.filter((item) => !isFinalItem(item.name));
   const finalWeight = items.filter((item) => isFinalItem(item.name)).reduce((sum, item) => sum + item.weight, 0);
@@ -167,10 +183,12 @@ export function estimateCuts(
   }
   const classMean = (points / total) * 100;
 
+  const measured = spreadFromItems(items, spreads);
+  const spread = measured ?? estimate.spread;
   const cuts = GRADE_LEVELS.map((grade) => {
-    const raw = classMean + upperZ(estimate.shares[grade]) * estimate.spread;
+    const raw = classMean + upperZ(estimate.shares[grade]) * spread;
     const cut = Math.min(100, Math.max(0, round1(raw)));
     return { grade, cut, result: calcRequired(items, scores, cut) };
   });
-  return { classMean: round1(classMean), averageRate, assumedItems, cuts };
+  return { classMean: round1(classMean), averageRate, assumedItems, spread, measuredSpread: measured !== null, cuts };
 }
