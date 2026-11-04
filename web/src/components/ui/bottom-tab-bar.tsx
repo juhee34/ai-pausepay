@@ -133,7 +133,7 @@ export default function BottomTabBar() {
     <>
       <nav
         aria-label="주요 메뉴"
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] print:hidden"
       >
         <ul className="mx-auto flex h-16 max-w-[480px] items-center">
           {LEFT_TABS.map(tab)}

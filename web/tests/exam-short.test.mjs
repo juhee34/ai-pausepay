@@ -21,7 +21,7 @@ function load(relative) {
   return mod.exports;
 }
 const { isShortAnswerCorrect, normalizeAnswer } = load("app/exam/grading.ts");
-const { normalizeExamPack } = load("app/exam/schema.ts");
+const { QUESTION_COUNTS, isQuestionCount, normalizeExamPack, questionMix } = load("app/exam/schema.ts");
 
 test("띄어쓰기, 대소문자, 문장 부호, 전각 글자는 무시한다", () => {
   const accepted = ["기회비용", "Opportunity Cost"];
@@ -48,6 +48,31 @@ const ox = (n) => ({ number: n, type: "ox", question: `문제 ${n}`, choices: ["
 const short = (n, extra = {}) => ({ number: n, type: "short", question: `문제 ${n}`, choices: [], answerIndex: 0, acceptedAnswers: ["기회비용"], explanation: "해설", ...extra });
 const pack = (questions) => ({ summary, terms: [], questions });
 const full = () => [1, 2, 3, 4, 5].map(multiple).concat([ox(6), ox(7), short(8), short(9), short(10)]);
+
+test("문제 수에 맞게 객관식, OX, 단답형을 나눈다", () => {
+  assert.deepEqual(questionMix(5), { multiple: 2, ox: 1, short: 2 });
+  assert.deepEqual(questionMix(10), { multiple: 5, ox: 2, short: 3 });
+  assert.deepEqual(questionMix(15), { multiple: 7, ox: 3, short: 5 });
+  assert.deepEqual(questionMix(20), { multiple: 10, ox: 4, short: 6 });
+  for (const count of QUESTION_COUNTS) {
+    const { multiple, ox, short } = questionMix(count);
+    assert.equal(multiple + ox + short, count);
+    assert.ok(multiple > 0 && ox > 0 && short > 0);
+  }
+});
+
+test("고를 수 있는 문제 수만 받는다", () => {
+  for (const good of [5, 10, 15, 20]) assert.equal(isQuestionCount(good), true);
+  for (const bad of [0, 1, 7, 21, 1000, "10", null, undefined]) assert.equal(isQuestionCount(bad), false);
+});
+
+test("요청한 개수와 다르면 쓰지 않는다", () => {
+  const twenty = [...Array(10).keys()].map((i) => multiple(i + 1)).concat([11, 12, 13, 14].map(ox), [15, 16, 17, 18, 19, 20].map((n) => short(n)));
+  assert.equal(normalizeExamPack(pack(twenty), 20).questions.length, 20);
+  assert.equal(normalizeExamPack(pack(twenty), 10), null);
+  assert.equal(normalizeExamPack(pack(full()), 20), null);
+  assert.equal(normalizeExamPack(pack(full())).questions.length, 10); // 개수를 안 주면 10개
+});
 
 test("객관식, OX, 단답형이 모두 있어야 쓴다", () => {
   const result = normalizeExamPack(pack(full()));
