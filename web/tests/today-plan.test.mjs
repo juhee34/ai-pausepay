@@ -48,10 +48,23 @@ test("시간 칩을 바꾸면 추천이 바뀐다 (PRD 2-1 끝났다는 기준)"
   assert.equal(three.used, 3);
   assert.equal(three.deferred.title, "기말 대비 · 퀴즈 복습");
 
-  // 4시간이면 8시간짜리 기말 복습은 다 못 들어가서 건너뛰고, 1시간이 남는다.
+  // 4시간이면 8시간짜리 기말 복습에 남은 1시간을 나눠 준다. 시간이 남지 않는다.
   const four = planToday(scored, 4);
-  assert.deepEqual(four.picks.map((p) => p.task.title), ["팀 과제 발표자료", "퀴즈 3"]);
-  assert.equal(four.used, 3);
+  assert.deepEqual(four.picks.map((p) => [p.task.title, p.hours]), [
+    ["팀 과제 발표자료", 2],
+    ["퀴즈 3", 1],
+    ["기말 대비 · 퀴즈 복습", 1],
+  ]);
+  assert.equal(four.used, 4);
+  assert.equal(four.deferred.title, "과제 3");
+});
+
+test("할 일을 다 해도 시간이 남으면 남은 시간을 그대로 둔다", () => {
+  const scored = scoreTasks(TODAY, [{ id: "q", course: "x", title: "퀴즈", date: "2026-11-20", kind: "퀴즈" }], NO_SOURCES);
+  const plan = planToday(scored, 4);
+  assert.deepEqual(plan.picks.map((p) => p.hours), [1]);
+  assert.equal(plan.used, 1);
+  assert.equal(plan.deferred, null);
 });
 
 test("평가 비율이 있으면 같은 과목·같은 종류 일정 수로 나누고, 없으면 기본값", () => {

@@ -46,6 +46,11 @@ function meta(task: ScoredTask) {
   return `배점 ${Math.round(task.weight * 10) / 10}% · ${dDay(task.days)} · 약 ${formatHours(task.hours)}`;
 }
 
+// 예시 데이터의 id(ex-1 등)는 일정에 없어서 집중 모드가 과목(course)만 고른다.
+function focusHref(task: ScoredTask, hours: number) {
+  return `/focus?deadline=${encodeURIComponent(task.id)}&course=${encodeURIComponent(task.course)}&hours=${hours}`;
+}
+
 function headerDate(today: string) {
   const [y, m, d] = today.split("-").map(Number);
   const date = new Date(y, m - 1, d);
@@ -87,7 +92,7 @@ export default function TodayPage() {
   }, [today, isExample, saved, grading, grades]);
 
   const plan = planToday(scored, available);
-  const pickedIds = new Set(plan.picks.map((p) => p.task.id));
+  const hoursById = new Map(plan.picks.map((p) => [p.task.id, p.hours]));
   const top = scored[0]?.efficiency ?? 0;
   const [main, ...more] = plan.picks;
 
@@ -149,8 +154,7 @@ export default function TodayPage() {
                 : `${formatHours(plan.used)} 쓰고 ${formatHours(available - plan.used)}이 남아요`}
             </p>
             <Link
-              // 예시 데이터의 id(ex-1 등)는 일정에 없어서 집중 모드가 과목(course)만 고른다.
-              href={`/focus?deadline=${encodeURIComponent(main.task.id)}&course=${encodeURIComponent(main.task.course)}&hours=${main.hours}`}
+              href={focusHref(main.task, main.hours)}
               className="flex min-h-11 shrink-0 items-center gap-1 rounded-button bg-surface px-3 text-[13px] font-semibold text-brand"
             >
               <Timer size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -182,33 +186,59 @@ export default function TodayPage() {
       {scored.length > 0 && (
         <>
           <div className="mt-6 flex items-baseline justify-between px-1">
-            <h2 className="text-[17px] font-bold">후보 {Math.min(scored.length, MAX_CANDIDATES)}개</h2>
+            <h2 className="text-[17px] font-bold">오늘 할 일 순위</h2>
             <span className="text-xs text-muted">효율 높은 순</span>
           </div>
+          <p className="mt-1 px-1 text-xs text-muted">{available}시간을 1위부터 예상 소요시간만큼 나눴어요.</p>
           <ul className="mt-2 space-y-2">
-            {scored.slice(0, MAX_CANDIDATES).map((t, i) => (
+            {scored.slice(0, MAX_CANDIDATES).map((t, i) => {
+              const hours = hoursById.get(t.id);
+              return (
               <li key={t.id}>
                 <Block>
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 text-[15px] font-bold">
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      aria-label={`${i + 1}위`}
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold ${
+                        i === 0 ? "bg-brand text-white" : "bg-divider text-ink"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                    <p className="min-w-0 flex-1 text-[15px] font-bold">
                       {t.course} · {t.title}
                     </p>
-                    <div className="flex shrink-0 gap-1">
-                      {pickedIds.has(t.id) && badge("bg-brand text-white", "오늘 추천")}
-                      {badge(LEVEL_CLASS[t.level], `효율 ${t.level}`)}
-                    </div>
                   </div>
-                  <p className="mt-1 font-mono text-xs text-muted">{meta(t)}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1">
+                    {hours !== undefined
+                      ? badge("bg-brand text-white", `오늘 ${formatHours(hours)}`)
+                      : badge("bg-divider text-muted", "오늘은 미뤄요")}
+                    {badge(LEVEL_CLASS[t.level], `효율 ${t.level}`)}
+                  </div>
+                  <p className="mt-1.5 font-mono text-xs text-muted">{meta(t)}</p>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-divider">
                     <div
                       className={`h-full rounded-full ${i === 0 ? "bg-brand" : "bg-[#A89BB0]"}`}
                       style={{ width: `${top > 0 ? Math.max((t.efficiency / top) * 100, 4) : 0}%` }}
                     />
                   </div>
+                  {/* 1위는 위쪽 블록의 '집중 시작'으로 시작한다. */}
+                  {i > 0 && hours !== undefined && (
+                    <Link
+                      href={focusHref(t, hours)}
+                      className="mt-1.5 flex min-h-11 items-center gap-1 text-[13px] font-semibold text-brand"
+                    >
+                      <Timer size={16} strokeWidth={1.8} aria-hidden="true" />이 일로 집중 시작
+                    </Link>
+                  )}
                 </Block>
               </li>
-            ))}
+              );
+            })}
           </ul>
+          {scored.length > MAX_CANDIDATES && (
+            <p className="mt-2 px-1 text-xs text-muted">그 아래 {scored.length - MAX_CANDIDATES}개는 순위에서 뺐어요.</p>
+          )}
         </>
       )}
 
@@ -224,7 +254,7 @@ export default function TodayPage() {
         효율 = 배점 × (목표 − 예상 득점률) ÷ 예상 소요시간이고, 마감이 3일 안이면 ×1.3, 7일 안이면 ×1.15를 곱해요. 배점은
         강의계획서의 평가 비율을 같은 종류 일정 수로 나눈 값이고, 없으면 중간·기말 30, 과제 10, 퀴즈·기타 5로 잡아요. 예상
         득점률은 시험 대비 팩의 퀴즈 정답률이나 0.6, 목표는 기말 필요 점수에서 정한 점수나 90점이에요. 예상 소요시간은 시험
-        8시간, 과제 3시간, 퀴즈·기타 1시간이에요. 이 값은 순서를 정하는 데만 쓰고 점수를 예측하지는 않아요.
+        8시간, 과제 3시간, 퀴즈·기타 1시간이에요. 오늘 시간은 1위부터 예상 소요시간만큼 나누고, 모자라면 남은 시간만큼만 넣어요. 이 값은 순서와 시간을 정하는 데만 쓰고 점수를 예측하지는 않아요.
         {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
       </p>
     </AppShell>

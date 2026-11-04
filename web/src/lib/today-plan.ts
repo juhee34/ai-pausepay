@@ -104,22 +104,18 @@ export function scoreTasks(today: string, tasks: PlanTask[], sources: PlanSource
   return scored;
 }
 
-// 쓸 수 있는 시간 안에서 효율 높은 일부터 채운다.
-// 1등 일은 시간이 모자라도 그만큼만 하고, 나머지 일은 다 들어갈 때만 넣는다.
-// '오늘 미루는 일'은 고르지 못한 일 중 효율이 가장 높은 일.
+// 쓸 수 있는 시간을 순위가 높은 일부터 예상 소요시간만큼 나눈다.
+// 시간이 모자라면 그 일은 남은 시간만큼만 하고, 남는 시간 없이 다 쓴다.
+// 예시 4시간 → 팀 과제 2시간, 퀴즈 1시간, 기말 복습 1시간 (8시간 중)
+// '오늘 미루는 일'은 시간을 받지 못한 일 중 효율이 가장 높은 일.
 export function planToday(scored: ScoredTask[], available: number): TodayPlan {
   const picks: TodayPlan["picks"] = [];
   let left = available;
   for (const task of scored) {
     if (left <= 0) break;
-    if (picks.length === 0) {
-      const hours = Math.min(task.hours, left);
-      picks.push({ task, hours });
-      left -= hours;
-    } else if (task.hours <= left) {
-      picks.push({ task, hours: task.hours });
-      left -= task.hours;
-    }
+    const hours = Math.min(task.hours, left);
+    picks.push({ task, hours });
+    left -= hours;
   }
   const picked = new Set(picks.map((p) => p.task.id));
   return {
