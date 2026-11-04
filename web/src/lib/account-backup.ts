@@ -71,11 +71,12 @@ export function describeBackup(data: BackupData) {
     `점수 ${c.grades}과목`,
     `평가 비율 ${c.grading}과목`,
     `영수증 ${c.receipts}`,
+    ...(data.targetJob ? [`목표 직무 ${data.targetJob}`] : []),
   ].join(" · ");
 }
 
 export function isBackupEmpty(data: BackupData) {
-  return Object.values(countBackup(data)).every((count) => count === 0) && data.focus.subjects.length === 0;
+  return Object.values(countBackup(data)).every((count) => count === 0) && data.focus.subjects.length === 0 && data.targetJob === undefined;
 }
 
 // 없으면 null. 형식이 틀린 백업은 이 기기에 넣지 않으려고 오류로 알린다.

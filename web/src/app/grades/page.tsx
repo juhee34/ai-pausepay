@@ -1,19 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
+import SegmentedTabs from "@/components/ui/segmented-tabs";
 import { useSavedDeadlines } from "@/lib/deadline-store";
 import {
+  DEFAULT_ESTIMATE,
+  DEFAULT_GRADE,
   DEFAULT_TARGET,
+  GRADE_LEVELS,
   calcRequired,
   convertScore,
+  estimateCuts,
   formatPoints,
   isFinalItem,
+  type GradeEstimate,
   type GradeResult,
   type GradeScores,
   type GradeStatus,
@@ -22,9 +28,11 @@ import {
 import {
   addGradesCourse,
   removeGradesCourse,
+  setGradesAverage,
   setGradesScore,
-  setGradesTarget,
+  setGradesSettings,
   useGrades,
+  type CourseGrades,
 } from "@/lib/grades-store";
 import {
   removeCourseGrading,
@@ -56,6 +64,11 @@ const EXAMPLE_SCORES: Record<string, GradeScores> = {
   마케팅원론: { 중간: 26, 과제: 18, 퀴즈: 10, 출석: 10 },
   회계원리: { 중간: 18, 과제: 12, 퀴즈: 6, 출석: 10 },
 };
+const EXAMPLE_AVERAGES: Record<string, GradeScores> = {
+  경영통계: { 중간: 18 },
+  마케팅원론: { 중간: 21 },
+  회계원리: { 중간: 20 },
+};
 
 const STATUS_CLASS: Record<GradeStatus, string> = {
   여유: "bg-quiz-soft text-quiz",
@@ -85,13 +98,15 @@ function StatusBadge({ status }: { status: GradeStatus }) {
 }
 
 function ResultBlock({
-  course,
+  heading,
   target,
   result,
+  estimated,
 }: {
-  course: string;
+  heading: string;
   target: number;
   result: GradeResult;
+  estimated: boolean;
 }) {
   const { required, requiredPoints, finalWeight, missing, reached, status, maxTotal } = result;
   const overTarget = status === "목표 초과";
@@ -100,7 +115,7 @@ function ResultBlock({
   if (finalWeight <= 0) detail = "기말 배점을 넣으면 계산해요.";
   else if (reached) detail = "기말 없이도 목표를 넘겼어요.";
   else if (overTarget) {
-    detail = `기말을 100점 받아도 총점은 ${formatPoints(maxTotal)}점이에요. 목표 ${target}점에는 ${formatPoints(target - maxTotal)}점 모자라요.`;
+    detail = `기말을 100점 받아도 총점은 ${formatPoints(maxTotal)}점이에요. 목표 ${formatPoints(target)}점에는 ${formatPoints(target - maxTotal)}점 모자라요.`;
   } else if (required !== null) {
     detail = `기말 배점 ${formatPoints(finalWeight)}점 중 ${formatPoints(requiredPoints)}점이 필요해요.`;
   }
@@ -108,7 +123,7 @@ function ResultBlock({
   return (
     <div className="mt-3 rounded-block bg-brand p-4 text-white">
       <p className="text-xs font-semibold text-white/80">
-        {course} · 목표 {target}점이면, 기말에서 최소
+        {heading}
       </p>
       <p className="mt-2 font-mono text-[40px] font-bold leading-none">
         {required === null ? "—" : required.toFixed(1)}
@@ -117,7 +132,9 @@ function ResultBlock({
       <p className="mt-3 text-[13px]">{detail}</p>
       {overTarget && (
         <p className="mt-1 text-xs leading-relaxed text-white/80">
-          상대평가라면 실제 컷은 더 낮을 수 있어요. 슬라이더를 예상 컷에 맞춰 보세요.
+          {estimated
+            ? "추정한 컷이라 실제와 다를 수 있어요. 추정 기준을 고쳐 볼 수 있어요."
+            : "상대평가라면 실제 컷은 더 낮을 수 있어요. 슬라이더를 예상 컷에 맞춰 보세요."}
         </p>
       )}
       {required !== null && missing > 0 && (
@@ -128,6 +145,7 @@ function ResultBlock({
       {status && (
         <span className="mt-3 inline-flex h-[22px] items-center rounded-full bg-white px-2.5 text-[11px] font-bold text-brand">
           {overTarget ? "목표 초과" : `${status} 구간`}
+          {estimated && " · 추정"}
         </span>
       )}
     </div>
@@ -208,38 +226,56 @@ function AddCourseSheet({
 function ScoreSheet({
   item,
   saved,
+  savedAverage,
   onClose,
   onSave,
 }: {
   item: GradingItem;
   saved: number | null;
+  savedAverage: number | null;
   onClose: () => void;
-  onSave: (score: number | null) => void;
+  onSave: (score: number | null, average: number | null) => void;
 }) {
   const [value, setValue] = useState(saved === null ? "" : String(saved));
   const [maxValue, setMaxValue] = useState(String(item.weight));
+  const [averageValue, setAverageValue] = useState(savedAverage === null ? "" : String(savedAverage));
   const got = Number(value);
   const max = Number(maxValue);
+  const average = Number(averageValue);
+  const hasAverage = averageValue.trim() !== "";
   const maxValid = maxValue.trim() !== "" && Number.isFinite(max) && max > 0;
-  const valid = maxValid && value.trim() !== "" && Number.isFinite(got) && got >= 0 && got <= max;
+  const averageValid = !hasAverage || (Number.isFinite(average) && average >= 0 && average <= max);
+  const valid = maxValid && averageValid && value.trim() !== "" && Number.isFinite(got) && got >= 0 && got <= max;
   const score = valid ? convertScore(got, max, item.weight) : 0;
+  const convertedAverage = valid && hasAverage ? convertScore(average, max, item.weight) : null;
 
   return (
-    <BottomSheet open onClose={onClose} title={`${item.name} 받은 점수`}>
+    <BottomSheet open onClose={onClose} title={`${item.name} 점수`}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (valid) onSave(score);
+          if (valid) onSave(score, convertedAverage);
         }}
       >
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <label className="block text-[13px] font-semibold">
-            받은 점수
+            내 점수
             <input
               id="grades-score"
               inputMode="decimal"
               value={value}
               onChange={(e) => setValue(e.target.value)}
+              className={`${inputClass} mt-1.5 font-mono`}
+            />
+          </label>
+          <label className="block text-[13px] font-semibold">
+            평균
+            <input
+              id="grades-average"
+              inputMode="decimal"
+              value={averageValue}
+              onChange={(e) => setAverageValue(e.target.value)}
+              placeholder="선택"
               className={`${inputClass} mt-1.5 font-mono`}
             />
           </label>
@@ -255,26 +291,114 @@ function ScoreSheet({
           </label>
         </div>
         <p className="mt-1.5 text-xs leading-relaxed text-muted">
-          이 항목의 배점은 {formatPoints(item.weight)}점이에요. 100점 만점 시험이면 만점을 100으로 바꿔 주세요.
+          교수님이 알려 주신 그대로 넣어 주세요. 이 항목의 배점은 {formatPoints(item.weight)}점이에요. 평균을 넣으면 학점별 컷을 어림잡아요.
         </p>
         {valid && max !== item.weight && (
           <p role="status" className="mt-1 text-xs font-semibold text-brand">
-            배점 {formatPoints(item.weight)}점 기준으로 {formatPoints(score)}점이에요.
+            배점 {formatPoints(item.weight)}점 기준으로 내 점수 {formatPoints(score)}점
+            {convertedAverage !== null && `, 평균 ${formatPoints(convertedAverage)}점`}이에요.
           </p>
         )}
-        {(value.trim() !== "" || maxValue.trim() !== "") && !valid && (value.trim() !== "" || !maxValid) && (
+        {valid && hasAverage && (
+          <p className="mt-1 text-xs font-semibold">
+            평균보다 {formatPoints(Math.abs(got - average))}점 {got >= average ? "높아요" : "낮아요"}.
+          </p>
+        )}
+        {(value.trim() !== "" || !maxValid || hasAverage) && !valid && (value.trim() !== "" || !maxValid || !averageValid) && (
           <p role="alert" className="mt-1.5 text-xs font-semibold text-review">
-            받은 점수는 0부터 만점 사이, 만점은 0보다 큰 숫자로 넣어 주세요.
+            점수와 평균은 0부터 만점 사이, 만점은 0보다 큰 숫자로 넣어 주세요.
           </p>
         )}
         <Button type="submit" disabled={!valid} className="mt-3 w-full">
           저장
         </Button>
         {saved !== null && (
-          <Button variant="ghost" onClick={() => onSave(null)} className="mt-1 w-full">
+          <Button variant="ghost" onClick={() => onSave(null, savedAverage)} className="mt-1 w-full">
             점수 지우기
           </Button>
         )}
+      </form>
+    </BottomSheet>
+  );
+}
+
+function EstimateSheet({
+  estimate,
+  onClose,
+  onSave,
+}: {
+  estimate: GradeEstimate;
+  onClose: () => void;
+  onSave: (estimate: GradeEstimate) => void;
+}) {
+  const [spread, setSpread] = useState(String(estimate.spread));
+  const [shares, setShares] = useState(() =>
+    Object.fromEntries(GRADE_LEVELS.map((grade) => [grade, String(estimate.shares[grade])])),
+  );
+  const spreadNumber = Number(spread);
+  const shareNumbers = GRADE_LEVELS.map((grade) => Number(shares[grade]));
+  const valid =
+    spread.trim() !== "" &&
+    Number.isFinite(spreadNumber) &&
+    spreadNumber > 0 &&
+    spreadNumber <= 40 &&
+    GRADE_LEVELS.every((grade) => shares[grade].trim() !== "") &&
+    shareNumbers.every((n, i) => Number.isFinite(n) && n > 0 && n < 100 && (i === 0 || n > shareNumbers[i - 1]));
+
+  return (
+    <BottomSheet open onClose={onClose} title="추정 기준">
+      <p className="-mt-1 text-xs leading-relaxed text-muted">
+        아래 기본값은 임시로 넣은 값이에요. 강의계획서나 교수님 안내에 학점 비율과 표준편차가 있으면 그 숫자로 바꿔 주세요.
+      </p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!valid) return;
+          onSave({
+            spread: spreadNumber,
+            shares: Object.fromEntries(GRADE_LEVELS.map((grade, i) => [grade, shareNumbers[i]])) as GradeEstimate["shares"],
+          });
+        }}
+        className="mt-3 space-y-3"
+      >
+        <label className="block text-[13px] font-semibold">
+          점수가 퍼진 정도 (총점 100점 기준 표준편차)
+          <input
+            id="grades-spread"
+            inputMode="decimal"
+            value={spread}
+            onChange={(e) => setSpread(e.target.value)}
+            className={`${inputClass} mt-1.5 font-mono`}
+          />
+        </label>
+        <fieldset>
+          <legend className="text-[13px] font-semibold">그 학점 이상이 전체의 몇 %인가요?</legend>
+          <div className="mt-1.5 grid grid-cols-4 gap-2">
+            {GRADE_LEVELS.map((grade) => (
+              <label key={grade} className="block text-xs font-semibold">
+                {grade}
+                <input
+                  aria-label={`${grade} 이상 비율`}
+                  inputMode="decimal"
+                  value={shares[grade]}
+                  onChange={(e) => setShares({ ...shares, [grade]: e.target.value })}
+                  className={`${inputClass} mt-1 font-mono`}
+                />
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {!valid && (
+          <p role="alert" className="text-xs font-semibold text-review">
+            퍼진 정도는 0보다 크고 40 이하, 비율은 A+부터 차례로 커지는 0~100 사이 숫자로 넣어 주세요.
+          </p>
+        )}
+        <Button type="submit" disabled={!valid} className="w-full">
+          저장
+        </Button>
+        <Button variant="ghost" onClick={() => onSave(DEFAULT_ESTIMATE)} className="w-full">
+          기본값으로 되돌리기
+        </Button>
       </form>
     </BottomSheet>
   );
@@ -402,7 +526,7 @@ function ItemsSheet({
   );
 }
 
-type Sheet = { kind: "course" } | { kind: "items" } | { kind: "score"; item: GradingItem };
+type Sheet = { kind: "course" } | { kind: "items" } | { kind: "estimate" } | { kind: "score"; item: GradingItem };
 
 export default function GradesPage() {
   const deadlines = useSavedDeadlines();
@@ -413,7 +537,7 @@ export default function GradesPage() {
   const hydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   const [selected, setSelected] = useState<string | null>(null);
-  const [exampleTargets, setExampleTargets] = useState<Record<string, number>>({});
+  const [exampleSettings, setExampleSettings] = useState<Record<string, Partial<CourseGrades>>>({});
   const [sheet, setSheet] = useState<Sheet | null>(null);
 
   const myCourses = [
@@ -434,30 +558,52 @@ export default function GradesPage() {
   function itemsOf(name: string) {
     return isExample ? EXAMPLE_ITEMS : (ownValue(grading, name) ?? []);
   }
-  function targetOf(name: string) {
-    return isExample
-      ? (ownValue(exampleTargets, name) ?? DEFAULT_TARGET)
-      : (ownValue(grades, name)?.target ?? DEFAULT_TARGET);
-  }
-  function resultOf(name: string) {
-    const scores = isExample ? EXAMPLE_SCORES[name] : (ownValue(grades, name)?.scores ?? {});
-    return calcRequired(itemsOf(name), scores, targetOf(name));
+  // 과목 하나의 입력과 계산 결과. 상대평가는 고른 학점의 예상 컷을 목표로 삼는다.
+  function viewOf(name: string) {
+    const saved: Partial<CourseGrades> = isExample
+      ? (ownValue(exampleSettings, name) ?? {})
+      : (ownValue(grades, name) ?? {});
+    const scores = isExample ? EXAMPLE_SCORES[name] : (saved.scores ?? {});
+    const averages = isExample ? EXAMPLE_AVERAGES[name] : (saved.averages ?? {});
+    const items = itemsOf(name);
+    const estimate = saved.estimate ?? DEFAULT_ESTIMATE;
+    const mode = saved.mode ?? "relative";
+    const grade = saved.grade ?? DEFAULT_GRADE;
+    const cuts = estimateCuts(items, scores, averages, estimate);
+    const picked = cuts?.cuts.find((c) => c.grade === grade) ?? null;
+    const savedTarget = saved.target ?? DEFAULT_TARGET;
+    const target = mode === "relative" && picked ? picked.cut : savedTarget;
+    return { scores, averages, estimate, mode, grade, cuts, picked, savedTarget, target, result: calcRequired(items, scores, target) };
   }
 
-  function changeTarget(value: number) {
-    if (isExample) setExampleTargets({ ...exampleTargets, [course]: value });
-    else setGradesTarget(course, value);
+  function changeSettings(settings: Partial<CourseGrades>) {
+    if (isExample) setExampleSettings({ ...exampleSettings, [course]: { ...ownValue(exampleSettings, course), ...settings } });
+    else setGradesSettings(course, settings);
   }
 
   const items = itemsOf(course);
-  const target = targetOf(course);
-  const result = resultOf(course);
+  const view = viewOf(course);
+  const { target, result } = view;
+  const showResult = view.mode === "absolute" || view.picked !== null;
+  const roundedPick = view.mode === "relative" && view.picked ? Math.round(view.picked.cut) : null;
+
+  // 오늘의 한 가지가 읽는 목표도 추정한 컷에 맞춰 둔다.
+  useEffect(() => {
+    if (!isExample && roundedPick !== null && roundedPick !== view.savedTarget) {
+      setGradesSettings(course, { target: roundedPick });
+    }
+  }, [isExample, course, roundedPick, view.savedTarget]);
+
   const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
 
   const defenseLines = courses
-    .map((name) => ({ name, result: resultOf(name) }))
-    .sort((a, b) => (b.result.required ?? -1) - (a.result.required ?? -1));
-  const targets = new Set(courses.map(targetOf));
+    .map((name) => {
+      const line = viewOf(name);
+      // 상대평가인데 평균이 없으면 아직 계산할 컷이 없다.
+      const ready = line.mode === "absolute" || line.picked !== null;
+      return { name, line, ready, result: line.result };
+    })
+    .sort((a, b) => (b.ready ? (b.result.required ?? -1) : -1) - (a.ready ? (a.result.required ?? -1) : -1));
 
   return (
     <AppShell>
@@ -479,7 +625,7 @@ export default function GradesPage() {
 
       <h1 className="mt-1 text-[22px] font-bold">최소 점수 계산</h1>
       <p className="mt-1 text-[13px] leading-relaxed text-muted">
-        최소 이 점수만 넘기면 돼요. 목표를 정하면 기말 필요 점수를 거꾸로 계산해요.
+        시험 평균과 내 점수로 학점별 컷을 어림잡아, 기말에 몇 점이 필요한지 거꾸로 계산해요.
       </p>
 
       {hydrated && (
@@ -515,6 +661,78 @@ export default function GradesPage() {
             </p>
           )}
 
+          <div className="mt-3">
+            <SegmentedTabs
+              label="평가 방식"
+              options={[
+                { value: "relative", label: "상대평가 추정" },
+                { value: "absolute", label: "절대평가" },
+              ]}
+              value={view.mode}
+              onChange={(mode) => changeSettings({ mode })}
+            />
+          </div>
+
+          {view.mode === "relative" && (
+            <Block className="mt-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-[15px] font-bold">희망 학점별 기말 필요 점수</h2>
+                <span className="inline-flex h-[22px] shrink-0 items-center rounded-full bg-divider px-2 text-[11px] font-bold text-muted">
+                  추정
+                </span>
+              </div>
+              {view.cuts ? (
+                <>
+                  <ul className="mt-2.5 space-y-1.5">
+                    {view.cuts.cuts.map(({ grade, cut, result: row }) => (
+                      <li key={grade}>
+                        <button
+                          type="button"
+                          aria-pressed={grade === view.grade}
+                          onClick={() => changeSettings({ grade })}
+                          className={`flex min-h-11 w-full items-center gap-2 rounded-button border px-3 py-2 text-left ${
+                            grade === view.grade ? "border-brand bg-brand-soft" : "border-line bg-surface"
+                          }`}
+                        >
+                          <span className="w-8 shrink-0 font-mono text-sm font-bold">{grade}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-mono text-[15px] font-bold">
+                              {row.required === null
+                                ? "—"
+                                : row.required > 100
+                                  ? "기말 만점도 부족"
+                                  : `기말 ${row.required.toFixed(1)}점`}
+                            </span>
+                            <span className="block font-mono text-[11px] text-muted">예상 컷 약 {formatPoints(cut)}점</span>
+                          </span>
+                          {row.status && <StatusBadge status={row.status} />}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2.5 text-xs leading-relaxed text-muted">
+                    전체 평균을 약 <span className="font-mono">{formatPoints(view.cuts.classMean)}</span>점, 퍼진 정도를{" "}
+                    <span className="font-mono">{formatPoints(view.estimate.spread)}</span>점으로 봤어요. 기말 평균은 입력한 평균의 비율(
+                    <span className="font-mono">{Math.round(view.cuts.averageRate * 100)}</span>%)로 봤어요.
+                    {view.cuts.assumedItems.length > 0 && ` 평균을 넣지 않은 ${view.cuts.assumedItems.join(", ")}은(는) 내 점수와 같다고 봤어요.`}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
+                  {items.length === 0
+                    ? "평가 항목을 넣고 시험 평균을 적으면 학점별 컷을 어림잡아요."
+                    : "아래 항목을 눌러 교수님이 알려 주신 평균을 넣으면 학점별 컷을 어림잡아요."}
+                </p>
+              )}
+              {!isExample && (
+                <Button variant="ghost" onClick={() => setSheet({ kind: "estimate" })} className="mt-1 w-full">
+                  추정 기준 고치기
+                </Button>
+              )}
+            </Block>
+          )}
+
+          {view.mode === "absolute" && (
           <Block className="mt-3">
             <div className="flex items-baseline justify-between">
               <label htmlFor="grades-target" className="text-xs font-bold text-brand">
@@ -532,7 +750,7 @@ export default function GradesPage() {
               max={100}
               step={1}
               value={target}
-              onChange={(e) => changeTarget(Number(e.target.value))}
+              onChange={(e) => changeSettings({ target: Number(e.target.value) })}
               className="mt-2 h-11 w-full accent-brand"
             />
             <div className="mt-1 grid grid-cols-4 gap-2">
@@ -541,7 +759,7 @@ export default function GradesPage() {
                   key={label}
                   type="button"
                   aria-pressed={target === value}
-                  onClick={() => changeTarget(value)}
+                  onClick={() => changeSettings({ target: value })}
                   className={`min-h-11 rounded-button border font-mono text-xs font-semibold ${
                     target === value
                       ? "border-brand bg-brand-soft text-brand"
@@ -556,9 +774,21 @@ export default function GradesPage() {
               학점 컷은 교수님마다 달라서, 내가 정한 기준 점수예요.
             </p>
           </Block>
+          )}
 
-          <ResultBlock course={course} target={target} result={result} />
-          {result.required !== null && <PositionBar required={result.required} />}
+          {showResult && (
+            <ResultBlock
+              heading={
+                view.mode === "relative" && view.picked
+                  ? `${course} · ${view.grade} 예상 컷 약 ${formatPoints(view.picked.cut)}점이면, 기말에서 약`
+                  : `${course} · 목표 ${target}점이면, 기말에서 최소`
+              }
+              target={target}
+              result={result}
+              estimated={view.mode === "relative"}
+            />
+          )}
+          {showResult && result.required !== null && <PositionBar required={result.required} />}
 
           <Block className="mt-3">
             <h2 className="text-[15px] font-bold">지금까지 확보한 점수</h2>
@@ -584,6 +814,11 @@ export default function GradesPage() {
                             {formatPoints(row.weight)}
                           </span>
                         </span>
+                        {Object.hasOwn(view.averages, row.name) && (
+                          <span className="mt-0.5 block text-right font-mono text-[11px] text-muted">
+                            평균 {formatPoints(view.averages[row.name])}
+                          </span>
+                        )}
                         <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-divider">
                           <span
                             className="block h-full rounded-full bg-[#A89BB0]"
@@ -631,7 +866,7 @@ export default function GradesPage() {
                 </div>
                 {totalWeight !== 100 && (
                   <p className="mt-2.5 text-xs font-semibold text-review">
-                    배점 합이 {formatPoints(totalWeight)}이라 목표를 {formatPoints(result.targetPoints)}점으로 바꿔 계산했어요. 계획서와 같은지 확인해 주세요.
+                    배점 합이 {formatPoints(totalWeight)}이라 총점 100점 기준으로 바꿔 계산했어요. 계획서와 같은지 확인해 주세요.
                   </p>
                 )}
                 {!isExample && (
@@ -650,16 +885,22 @@ export default function GradesPage() {
           <div className="mt-6 flex items-baseline justify-between gap-3">
             <h2 className="text-[17px] font-bold">과목별 방어선</h2>
             <p className="shrink-0 text-xs text-muted">
-              {targets.size === 1 ? `목표 ${target}점 기준` : "과목별 목표 기준"}
+              과목마다 고른 기준
             </p>
           </div>
           <ul className="mt-2.5 space-y-2">
-            {defenseLines.map(({ name, result: line }) => {
+            {defenseLines.map(({ name, line: settings, ready, result: line }) => {
               let note = "받은 점수를 입력해 주세요";
+              const estimated = settings.mode === "relative" && settings.picked !== null;
               if (line.finalWeight <= 0) note = "평가 항목을 넣어 주세요";
+              else if (!ready) note = "시험 평균을 넣어 주세요";
               else if (line.reached) note = "기말 없이도 목표를 넘겼어요";
               else if (line.status === "목표 초과") note = `기말 만점이면 총점 ${formatPoints(line.maxTotal)}점이에요`;
-              else if (line.required !== null) note = `기말에서 최소 ${line.required.toFixed(1)}점`;
+              else if (line.required !== null) {
+                note = estimated
+                  ? `${settings.grade} 추정 컷이면 기말 약 ${line.required.toFixed(1)}점`
+                  : `기말에서 최소 ${line.required.toFixed(1)}점`;
+              }
               return (
                 <li key={name}>
                   <button
@@ -674,7 +915,7 @@ export default function GradesPage() {
                       <span className="block break-words text-[15px] font-bold">{name}</span>
                       <span className="mt-0.5 block text-xs text-muted">{note}</span>
                     </span>
-                    {line.status && <StatusBadge status={line.status} />}
+                    {ready && line.status && <StatusBadge status={line.status} />}
                   </button>
                 </li>
               );
@@ -691,9 +932,9 @@ export default function GradesPage() {
 
           <p className="mt-4 text-[11px] leading-relaxed text-muted">
             필요 점수 = (목표 총점 − 기말 전까지 확보한 점수) ÷ 기말 배점 × 100이에요. 배점 합이 100이 아니면 목표를 같은 비율로 바꿔 계산해요. 85점 이상이면
-            위험, 70점 이상이면 주의, 100점을 넘으면 목표 초과로 표시해요. 상대평가 과목은 실제 컷에 따라
-            달라질 수 있어요.{isExample && " 화면의 숫자는 모두 예시 데이터예요."} 점수는 이 기기에만
-            저장돼요.
+            위험, 70점 이상이면 주의, 100점을 넘으면 목표 초과로 표시해요. 예상 컷 = 전체 평균 + z × 퍼진 정도예요. 점수가 정규 분포를
+            따른다고 본 추정이라 실제 컷과 다를 수 있어요. 학점 비율과 퍼진 정도의 기본값은 임시 값이에요. 강의계획서나 교수님 안내가 있으면 그 값으로
+            고쳐 주세요.{isExample && " 화면의 숫자는 모두 예시 데이터예요."} 점수는 이 기기에만 저장돼요.
           </p>
         </>
       )}
@@ -729,10 +970,22 @@ export default function GradesPage() {
       {sheet?.kind === "score" && (
         <ScoreSheet
           item={sheet.item}
-          saved={ownValue(ownValue(grades, course)?.scores ?? {}, sheet.item.name) ?? null}
+          saved={ownValue(view.scores, sheet.item.name) ?? null}
+          savedAverage={ownValue(view.averages, sheet.item.name) ?? null}
           onClose={() => setSheet(null)}
-          onSave={(score) => {
+          onSave={(score, average) => {
             setGradesScore(course, sheet.item.name, score);
+            setGradesAverage(course, sheet.item.name, average);
+            setSheet(null);
+          }}
+        />
+      )}
+      {sheet?.kind === "estimate" && (
+        <EstimateSheet
+          estimate={view.estimate}
+          onClose={() => setSheet(null)}
+          onSave={(estimate) => {
+            changeSettings({ estimate });
             setSheet(null);
           }}
         />
