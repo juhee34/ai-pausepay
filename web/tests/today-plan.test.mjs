@@ -14,7 +14,7 @@ loaded._compile(
   }).outputText,
   filename,
 );
-const { scoreTasks, planToday, exampleTasks, DEFAULT_WEIGHT } = loaded.exports;
+const { scoreTasks, planToday, exampleTasks, parseAvailableHours, DEFAULT_WEIGHT } = loaded.exports;
 
 const TODAY = "2026-11-03";
 const NO_SOURCES = { grading: {}, targets: {}, accuracy: {}, allTasks: [] };
@@ -31,7 +31,31 @@ test("예시 일정 5개: 손으로 계산한 효율과 순서가 같다 (PRD 2-
   assert.deepEqual(scored.map((t) => t.days), [3, 5, 35, 9, 12]);
 });
 
-test("시간 칩을 바꾸면 추천이 바뀐다 (PRD 2-1 끝났다는 기준)", () => {
+test("직접 넣은 시간은 0.5~24시간만 받고 소수 한 자리로 맞춘다", () => {
+  assert.equal(parseAvailableHours("2"), 2);
+  assert.equal(parseAvailableHours(" 1.5 "), 1.5);
+  assert.equal(parseAvailableHours("0.5"), 0.5);
+  assert.equal(parseAvailableHours("24"), 24);
+  assert.equal(parseAvailableHours("2.34"), 2.3);
+  for (const bad of ["", " ", "0", "0.4", "-1", "25", "abc", "1시간", "Infinity"]) {
+    assert.equal(parseAvailableHours(bad), null, bad);
+  }
+});
+
+test("4시간이 넘는 시간과 소수 시간도 끝까지 나눈다", () => {
+  const scored = scoreTasks(TODAY, exampleTasks(TODAY), NO_SOURCES);
+  const six = planToday(scored, 6);
+  assert.deepEqual(six.picks.map((p) => p.hours), [2, 1, 3]);
+  assert.equal(six.used, 6);
+  const half = planToday(scored, 2.5);
+  assert.deepEqual(half.picks.map((p) => p.hours), [2, 0.5]);
+  assert.equal(half.used, 2.5);
+  const all = planToday(scored, 24);
+  assert.equal(all.used, 17); // 할 일을 모두 해도 2 + 1 + 8 + 3 + 3시간
+  assert.equal(all.deferred, null);
+});
+
+test("시간을 바꾸면 추천이 바뀐다 (PRD 2-1 끝났다는 기준)", () => {
   const scored = scoreTasks(TODAY, exampleTasks(TODAY), NO_SOURCES);
 
   const one = planToday(scored, 1);

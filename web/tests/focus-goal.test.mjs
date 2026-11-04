@@ -32,7 +32,7 @@ test("남은 시간을 시간 단위로 올림하고 1~4시간 안에서 고른�
 test("주소 값은 쓸 수 있는 시간만 받는다", () => {
   assert.equal(parseGoalHours("2"), 2);
   assert.equal(parseGoalHours("0.5"), 0.5);
-  for (const bad of [null, "", "0", "-1", "abc", "13", "Infinity"]) assert.equal(parseGoalHours(bad), null);
+  for (const bad of [null, "", "0", "-1", "abc", "25", "Infinity"]) assert.equal(parseGoalHours(bad), null);
 });
 
 test("오늘 끝낸 그 일정의 시간만 더한다", () => {

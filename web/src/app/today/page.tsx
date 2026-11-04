@@ -12,9 +12,12 @@ import { useGrades } from "@/lib/grades-store";
 import { useGrading } from "@/lib/grading-store";
 import { weekNumberOf } from "@/lib/risk";
 import {
-  HOUR_CHIPS,
+  DEFAULT_AVAILABLE_HOURS,
+  MAX_AVAILABLE_HOURS,
+  MIN_AVAILABLE_HOURS,
   exampleTasks,
   formatHours,
+  parseAvailableHours,
   planToday,
   scoreTasks,
   type EfficiencyLevel,
@@ -64,7 +67,16 @@ export default function TodayPage() {
   const saved = useSavedDeadlines();
   const grading = useGrading();
   const grades = useGrades();
-  const [available, setAvailable] = useState<number>(2);
+  const [hoursText, setHoursText] = useState(String(DEFAULT_AVAILABLE_HOURS));
+  // 입력하는 도중이나 잘못 넣었을 때는 마지막으로 맞게 넣은 시간을 계속 쓴다.
+  const [available, setAvailable] = useState<number>(DEFAULT_AVAILABLE_HOURS);
+  const hoursInvalid = parseAvailableHours(hoursText) === null;
+
+  function changeHours(text: string) {
+    setHoursText(text);
+    const hours = parseAvailableHours(text);
+    if (hours !== null) setAvailable(hours);
+  }
 
   const isExample = saved.length === 0;
 
@@ -111,26 +123,31 @@ export default function TodayPage() {
       <p className="mt-1 min-h-5 text-[13px] text-muted">{today ? headerDate(today) : ""}</p>
       <p className="mt-1 text-[13px] text-ink/80">시간은 한정돼 있으니, 어디에 쓸지가 곧 학점이에요.</p>
 
-      <h2 className="mt-4 text-xs font-semibold text-brand">오늘 쓸 수 있는 시간</h2>
-      <div role="group" aria-label="오늘 쓸 수 있는 시간" className="mt-2 flex gap-2">
-        {HOUR_CHIPS.map((h) => (
-          <button
-            key={h}
-            type="button"
-            aria-pressed={available === h}
-            onClick={() => setAvailable(h)}
-            className={`h-11 flex-1 rounded-full text-sm font-semibold ${
-              available === h ? "bg-brand text-white" : "border border-line bg-surface text-ink"
-            }`}
-          >
-            {h}시간
-          </button>
-        ))}
+      <label htmlFor="today-hours" className="mt-4 block text-xs font-semibold text-brand">
+        오늘 쓸 수 있는 시간
+      </label>
+      <div className="mt-2 flex items-center gap-2">
+        {/* 글자가 16px보다 작으면 아이폰이 입력할 때 화면을 확대한다. */}
+        <input
+          id="today-hours"
+          inputMode="decimal"
+          value={hoursText}
+          onChange={(e) => changeHours(e.target.value)}
+          aria-invalid={hoursInvalid}
+          aria-describedby={hoursInvalid ? "today-hours-error" : undefined}
+          className="min-h-11 w-24 rounded-button border border-line bg-surface px-3.5 py-2.5 font-mono text-base text-ink outline-none focus:border-brand"
+        />
+        <span className="text-sm font-semibold">시간</span>
       </div>
+      {hoursInvalid && (
+        <p id="today-hours-error" role="alert" className="mt-1.5 text-xs font-semibold text-review">
+          {MIN_AVAILABLE_HOURS}시간부터 {MAX_AVAILABLE_HOURS}시간 사이 숫자로 넣어 주세요. 아래는 {formatHours(available)} 기준이에요.
+        </p>
+      )}
 
       {today && main && (
         <div className="mt-4 rounded-block bg-brand p-4 text-white">
-          <p className="text-xs font-semibold text-white/80">오늘 가장 효율 좋은 {available}시간</p>
+          <p className="text-xs font-semibold text-white/80">오늘 가장 효율 좋은 {formatHours(available)}</p>
           <div className="mt-3 border-t border-white/20 pt-3">
             <p className="text-xs font-semibold text-white/80">{main.task.course}</p>
             <p className="mt-0.5 text-[20px] font-bold leading-snug">{main.task.title}</p>
@@ -150,7 +167,7 @@ export default function TodayPage() {
           <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/20 pt-3">
             <p className="text-[13px]">
               {plan.used === available
-                ? `${available}시간을 모두 써요`
+                ? `${formatHours(available)}을 모두 써요`
                 : `${formatHours(plan.used)} 쓰고 ${formatHours(available - plan.used)}이 남아요`}
             </p>
             <Link
@@ -189,7 +206,7 @@ export default function TodayPage() {
             <h2 className="text-[17px] font-bold">오늘 할 일 순위</h2>
             <span className="text-xs text-muted">효율 높은 순</span>
           </div>
-          <p className="mt-1 px-1 text-xs text-muted">{available}시간을 1위부터 예상 소요시간만큼 나눴어요.</p>
+          <p className="mt-1 px-1 text-xs text-muted">{formatHours(available)}을 1위부터 예상 소요시간만큼 나눴어요.</p>
           <ul className="mt-2 space-y-2">
             {scored.slice(0, MAX_CANDIDATES).map((t, i) => {
               const hours = hoursById.get(t.id);

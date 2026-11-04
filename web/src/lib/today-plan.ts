@@ -56,7 +56,19 @@ export const DEFAULT_WEIGHT: Record<DeadlineKind, number> = { 중간: 30, 기말
 export const DEFAULT_HOURS: Record<DeadlineKind, number> = { 중간: 8, 기말: 8, 과제: 3, 퀴즈: 1, 기타: 1 };
 export const DEFAULT_TARGET_RATE = 0.9;
 export const DEFAULT_EXPECTED_RATE = 0.6;
-export const HOUR_CHIPS = [1, 2, 3, 4] as const;
+export const DEFAULT_AVAILABLE_HOURS = 2;
+export const MIN_AVAILABLE_HOURS = 0.5;
+export const MAX_AVAILABLE_HOURS = 24;
+
+// 직접 넣은 시간을 읽는다. 소수 한 자리까지 쓰고, 쓸 수 없는 값이면 null.
+export function parseAvailableHours(text: string) {
+  const trimmed = text.trim();
+  if (trimmed === "") return null;
+  const value = Number(trimmed);
+  if (!Number.isFinite(value)) return null;
+  const hours = Math.round(value * 10) / 10;
+  return hours >= MIN_AVAILABLE_HOURS && hours <= MAX_AVAILABLE_HOURS ? hours : null;
+}
 
 function daysBetween(from: string, to: string) {
   const [fy, fm, fd] = from.split("-").map(Number);

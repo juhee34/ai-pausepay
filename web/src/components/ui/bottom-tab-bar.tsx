@@ -24,7 +24,7 @@ import BottomSheet from "./bottom-sheet";
 
 const LEFT_TABS = [
   { href: "/", label: "홈", Icon: House },
-  { href: "/today", label: "오늘", Icon: Sparkles },
+  { href: "/today", label: "우선순위", Icon: Sparkles },
 ];
 const RIGHT_TABS = [
   { href: "/focus", label: "집중", Icon: Timer },

@@ -5,7 +5,7 @@
 // 목표 1.5시간, 기록 없음 → 2시간을 고른다 (시간 단위로 올림)
 // 목표를 넘겼거나 4시간보다 길면 → 1시간, 4시간으로 맞춘다
 
-export const MAX_GOAL_HOURS = 12;
+export const MAX_GOAL_HOURS = 24;
 
 export type GoalRecord = {
   subject: string;
