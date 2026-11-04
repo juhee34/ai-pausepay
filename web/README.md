@@ -197,6 +197,11 @@ npx firebase-tools emulators:exec --only firestore --project demo-unis-login "no
 최종 완료는 실제 Firebase 설정 후 배포 주소에서 두 폰으로 확인한 때입니다.
 연결 방식 참고: [Admin SDK 설정](https://firebase.google.com/docs/admin/setup), [ID 토큰 검증](https://firebase.google.com/docs/auth/admin/verify-id-tokens), [Firestore 트랜잭션](https://firebase.google.com/docs/firestore/manage-data/transactions).
 
+## 역량 공백 지도의 목표 직무 백업
+
+`unis.targetJob.v1`의 목표 직무도 파일·계정 백업에 선택 항목 `targetJob`으로 포함합니다. 옛 백업에 이 칸이 없어도 읽으며, 가져올 기기에 이미 고른 직무가 있으면 유지합니다. 목표 직무만 골랐어도 백업할 수 있습니다.
+이 변경을 배포할 때 **Firebase 콘솔에 최신 `firestore.rules`도 적용**해야 합니다. 백업의 필수 8개 항목은 그대로이며, 선택 항목으로 허용한 직무 이름만 받습니다. 기존 8개 항목만 허용한 규칙이 남아 있으면 목표 직무가 포함된 계정 백업이 거절됩니다. 사용량·구독 토큰의 접근 권한은 그대로입니다.
+
 ## 개발 환경 변경과 프로젝트 종료 시 정리
 
 이 계정 기능 작업은 프로젝트 안에 Firebase 패키지·테스트 도구·설정 파일을 추가했습니다.
