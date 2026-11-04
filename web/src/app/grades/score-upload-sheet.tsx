@@ -1,13 +1,15 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState } from "react";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
 import CookieNote from "@/components/ui/cookie-note";
 import { aiFetch } from "@/lib/ai-fetch";
 import { convertScore, formatPoints, type GradingItem } from "@/lib/grades";
-import { resolveScoreSheet, scoreStats } from "@/lib/score-sheet";
-import { MAX_UPLOAD_BYTES, isAcceptedType } from "@/lib/syllabus";
+import { MAX_SCORE_FILES, resolveScoreSheet, scoreFilesError, scoreStats } from "@/lib/score-sheet";
+import { shrinkImage } from "@/lib/shrink-image";
+import { isAcceptedType } from "@/lib/syllabus";
 
 // 글자가 16px보다 작으면 아이폰이 입력할 때 화면을 확대한다.
 const inputClass =
@@ -22,6 +24,10 @@ type ReadResult = {
 };
 
 export type ScoreSheetApply = { item: string; score: number | null; average: number; spread: number | null };
+
+function formatMb(bytes: number) {
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
 
 const text = (value: number | null) => (value === null ? "" : String(value));
 
@@ -38,7 +44,8 @@ export default function ScoreUploadSheet({
   onApply: (result: ScoreSheetApply) => void;
 }) {
   const [itemName, setItemName] = useState(firstItem);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [preparing, setPreparing] = useState(false);
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [read, setRead] = useState(false);
@@ -52,30 +59,29 @@ export default function ScoreUploadSheet({
   const item = items.find((i) => i.name === itemName) ?? items[0];
   const { values, error: formError } = resolveScoreSheet({ maxScore, myScore, average, stdDev, scoreList });
 
-  function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0] ?? null;
+  const filesProblem = files.length > 0 ? scoreFilesError(files.map((f) => f.size)) : null;
+
+  // 고른 파일은 목록에 더한다. 사진은 줄여서 넣고, 맞지 않는 파일은 빼고 알려 준다.
+  async function pickFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
     setError(null);
-    setFile(null);
-    if (!picked) return;
-    if (!isAcceptedType(picked.type)) {
-      setError("PDF나 PNG·JPG 이미지만 올릴 수 있어요.");
-      return;
-    }
-    if (picked.size > MAX_UPLOAD_BYTES) {
-      setError("파일이 4MB보다 커요. 점수 부분만 다시 캡쳐해 주세요.");
-      return;
-    }
-    setFile(picked);
+    if (picked.length === 0) return;
+    const accepted = picked.filter((f) => isAcceptedType(f.type));
+    if (accepted.length < picked.length) setError("PDF나 PNG·JPG 이미지만 올릴 수 있어요. 맞지 않는 파일은 뺐어요.");
+    setPreparing(true);
+    const shrunk = await Promise.all(accepted.map(shrinkImage));
+    setFiles((current) => [...current, ...shrunk]);
+    setPreparing(false);
   }
 
   async function readFile() {
-    if (!file) return;
+    if (files.length === 0 || filesProblem) return;
     setReading(true);
     setError(null);
     try {
       const body = new FormData();
-      body.append("file", file);
+      files.forEach((f) => body.append("file", f));
       body.append("item", item.name);
       const response = await aiFetch("/api/scores", { method: "POST", body });
       const data = await response.json().catch(() => null);
@@ -136,26 +142,52 @@ export default function ScoreUploadSheet({
           </fieldset>
           <label
             className={`mt-3 flex min-h-11 items-center justify-center rounded-button bg-canvas px-4 text-[15px] font-semibold active:bg-divider has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand ${
-              reading ? "opacity-40" : "cursor-pointer"
+              reading || preparing || files.length >= MAX_SCORE_FILES ? "opacity-40" : "cursor-pointer"
             }`}
           >
-            {file ? "다른 파일 고르기" : "사진이나 PDF 고르기"}
+            {preparing ? "사진 줄이는 중…" : files.length > 0 ? "파일 더 고르기" : "사진이나 PDF 고르기"}
             <input
               type="file"
+              multiple
               accept="application/pdf,image/png,image/jpeg"
-              onChange={pickFile}
-              disabled={reading}
+              onChange={(e) => void pickFiles(e)}
+              disabled={reading || preparing || files.length >= MAX_SCORE_FILES}
               className="sr-only"
             />
           </label>
-          <p className="mt-1.5 text-center text-xs text-muted">PDF · PNG · JPG, 4MB까지</p>
-          {file && <p className="mt-2 truncate text-sm font-semibold">{file.name}</p>}
+          <p className="mt-1.5 text-center text-xs text-muted">
+            PDF · PNG · JPG, {MAX_SCORE_FILES}개까지, 합쳐서 4MB까지. 사진은 자동으로 줄여요.
+          </p>
+          {files.length > 0 && (
+            <ul className="mt-2 divide-y divide-divider">
+              {files.map((f, index) => (
+                <li key={`${f.name}-${index}`} className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">{f.name}</span>
+                  <span className="shrink-0 font-mono text-xs text-muted">{formatMb(f.size)}</span>
+                  <button
+                    type="button"
+                    aria-label={`${f.name} 빼기`}
+                    disabled={reading}
+                    onClick={() => setFiles((current) => current.filter((_, i) => i !== index))}
+                    className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center text-muted"
+                  >
+                    <X size={16} strokeWidth={1.8} aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {filesProblem && (
+            <p role="alert" className="mt-2 text-xs font-semibold text-review">
+              {filesProblem}
+            </p>
+          )}
           {error && (
             <p role="alert" className="mt-2 text-xs font-semibold text-review">
               {error}
             </p>
           )}
-          <Button className="mt-3 w-full" disabled={!file || reading} onClick={() => void readFile()}>
+          <Button className="mt-3 w-full" disabled={files.length === 0 || Boolean(filesProblem) || reading || preparing} onClick={() => void readFile()}>
             {reading ? "점수 읽는 중… (10~30초)" : "AI로 점수 읽기"}
           </Button>
           <CookieNote />
@@ -164,6 +196,7 @@ export default function ScoreUploadSheet({
         <>
           <p className="-mt-1 text-xs leading-relaxed text-muted">
             AI가 읽은 숫자라 틀릴 수 있어요. 원본과 비교하고 고쳐 주세요. <span className="font-semibold text-ink">{item.name}</span> 점수로 저장해요.
+            {files.length > 1 && " 여러 장에 같은 학생이 겹쳤다면 전체 점수에 두 번 들어가지 않았는지 봐 주세요."}
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {[

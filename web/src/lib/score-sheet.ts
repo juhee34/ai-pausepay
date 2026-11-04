@@ -6,6 +6,19 @@
 
 export const MAX_SCORE_LIST = 500;
 export const MIN_SCORES_FOR_STATS = 2;
+// 한 번에 올리는 파일. 합친 크기는 요청 제한(4.5MB) 안이어야 한다.
+export const MAX_SCORE_FILES = 5;
+export const MAX_SCORE_FILES_BYTES = 4 * 1024 * 1024;
+
+// 파일 개수와 합친 크기를 검사한다. 문제가 없으면 null.
+export function scoreFilesError(sizes: number[]) {
+  if (sizes.length === 0) return "파일을 골라 주세요.";
+  if (sizes.length > MAX_SCORE_FILES) return `파일은 ${MAX_SCORE_FILES}개까지 올릴 수 있어요.`;
+  if (sizes.reduce((sum, size) => sum + size, 0) > MAX_SCORE_FILES_BYTES) {
+    return "파일을 합쳐서 4MB까지 올릴 수 있어요. 파일을 빼거나 점수 부분만 다시 캡쳐해 주세요.";
+  }
+  return null;
+}
 
 export type ScoreSheetInput = {
   maxScore: string;

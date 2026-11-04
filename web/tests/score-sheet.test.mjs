@@ -15,10 +15,21 @@ function load(relative) {
   }).outputText, filename);
   return mod.exports;
 }
-const { parseScoreList, rankOf, resolveScoreSheet, scoreStats } = load("score-sheet.ts");
+const { MAX_SCORE_FILES, MAX_SCORE_FILES_BYTES, parseScoreList, rankOf, resolveScoreSheet, scoreFilesError, scoreStats } = load("score-sheet.ts");
 const { estimateCuts, spreadFromItems } = load("grades.ts");
 
 const base = { maxScore: "30", myScore: "", average: "", stdDev: "", scoreList: "" };
+
+test("파일은 5개까지, 합쳐서 4MB까지 받는다", () => {
+  assert.equal(MAX_SCORE_FILES, 5);
+  assert.equal(scoreFilesError([1000]), null);
+  assert.equal(scoreFilesError([1000, 2000, 3000, 4000, 5000]), null);
+  assert.equal(scoreFilesError([MAX_SCORE_FILES_BYTES]), null);
+  assert.match(scoreFilesError([]), /골라/);
+  assert.match(scoreFilesError([1, 1, 1, 1, 1, 1]), /5개/);
+  assert.match(scoreFilesError([MAX_SCORE_FILES_BYTES, 1]), /4MB/);
+  assert.match(scoreFilesError([3 * 1024 * 1024, 2 * 1024 * 1024]), /4MB/);
+});
 
 test("쉼표, 공백, 줄바꿈으로 나누고 숫자가 아닌 조각을 알려 준다", () => {
   assert.deepEqual(parseScoreList("10, 20\n30 15.5;7").scores, [10, 20, 30, 15.5, 7]);
