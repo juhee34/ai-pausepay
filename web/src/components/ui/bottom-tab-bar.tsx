@@ -16,6 +16,7 @@ import {
   NotebookPen,
   Plus,
   Radar,
+  ScrollText,
   Sparkles,
   Timer,
   UserRound,
@@ -54,6 +55,7 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
       { href: "/exam", label: "시험 대비", sub: "강의자료로 요약과 문제", Icon: NotebookPen, ready: true, cookie: true },
       { href: "/mail", label: "교수님 메일", sub: "예의 바른 메일 초안", Icon: Mail, ready: true, cookie: true },
       { href: "/focus", label: "집중 모드", sub: "30분 단위로 집중", Icon: Timer, ready: true },
+      { href: "/report", label: "학기 결산서", sub: "시간과 학점 돌아보기", Icon: ScrollText, ready: true },
     ],
   },
   {
