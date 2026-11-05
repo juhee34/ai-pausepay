@@ -107,7 +107,7 @@ const RECEIPT = {
   action: "a",
   result: "r",
   oneLiner: "한 줄",
-  competencies: ["협업"],
+  competencies: ["협업·리더십"],
   createdAt: 1,
 };
 

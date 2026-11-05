@@ -8,7 +8,7 @@ import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import { stageOf, useActivities } from "@/lib/activity-store";
 import { useToday } from "@/lib/briefing";
-import { JOB_COMPETENCIES } from "@/lib/competencies";
+import { COMPETENCY_SOURCE_NOTE, JOB_COMPETENCIES } from "@/lib/competencies";
 import { useReceipts } from "@/lib/receipt-store";
 import {
   FILLED_RECEIPTS,
@@ -31,11 +31,11 @@ const EXAMPLE_ACTIVITIES: GapActivity[] = [
   { id: "team", title: "경영통계 팀과제", experience: true },
 ];
 const EXAMPLE_RECEIPTS: GapReceipt[] = [
-  { activityId: "contest", competencies: ["시장 분석", "기획력"] },
-  { activityId: "contest", competencies: ["시장 분석", "기획력", "협업"] },
-  { activityId: "contest", competencies: ["발표·설득"] },
-  { activityId: "promo", competencies: ["콘텐츠 제작", "커뮤니케이션"] },
-  { activityId: "promo", competencies: ["협업", "커뮤니케이션"] },
+  { activityId: "contest", competencies: ["시장·소비자 분석", "마케팅 전략 기획"] },
+  { activityId: "contest", competencies: ["시장·소비자 분석", "마케팅 전략 기획", "협업·리더십"] },
+  { activityId: "contest", competencies: ["소통"] },
+  { activityId: "promo", competencies: ["콘텐츠 기획·제작", "소통"] },
+  { activityId: "promo", competencies: ["협업·리더십", "소통"] },
   { activityId: "english", competencies: ["외국어"] },
 ];
 const EXAMPLE_RECORDS: GapFocusRecord[] = [
@@ -324,7 +324,7 @@ export default function SkillGapPage() {
 
           <p className="mt-4 text-[11px] leading-relaxed text-muted">
             그 역량이 적힌 영수증이 {FILLED_RECEIPTS}장 이상이면 채움, 1장이면 보강 필요, 없으면 비어 있음이에요. 시간은 그 영수증이
-            연결된 활동에 집중 모드로 기록한 시간의 합이고, 같은 활동은 한 번만 더해요. 직무별 필요 역량은 임시 표예요.
+            연결된 활동에 집중 모드로 기록한 시간의 합이고, 같은 활동은 한 번만 더해요. {COMPETENCY_SOURCE_NOTE}
             {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
           </p>
         </>

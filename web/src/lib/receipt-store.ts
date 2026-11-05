@@ -4,6 +4,7 @@
 // 구조는 deadline-store.ts와 같다.
 
 import { useSyncExternalStore } from "react";
+import { normalizeCompetencies } from "./competencies";
 import type { ReceiptAnswers, ReceiptStar } from "./receipt";
 
 export type Receipt = ReceiptStar & {
@@ -41,10 +42,14 @@ export function isReceipt(value: unknown): value is Receipt {
   );
 }
 
+// 옛 임시 표의 역량 이름은 읽을 때 새 이름으로 바꾼다 (competencies.ts). 저장 형식은 그대로이고,
+// 다음에 저장할 때 새 이름으로 써진다. 파일 가져오기·계정 백업 받기로 들어온 영수증도 여기를 지난다.
 function read(): Receipt[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(RECEIPTS_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter(isReceipt) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter(isReceipt).map((r) => ({ ...r, competencies: normalizeCompetencies(r.competencies) }))
+      : [];
   } catch {
     return [];
   }
