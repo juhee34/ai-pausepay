@@ -1,6 +1,6 @@
 "use client";
 
-// 일정, 대외활동, 시간표, 집중 모드 공부 기록, 시험 대비 결과, 점수, 평가 비율, 스펙 영수증을 파일로 내보내고 다시 불러온다.
+// 일정, 대외활동, 시간표, 집중 모드 공부 기록, 시험 대비 결과, 점수, 평가 비율, 스펙 영수증, 학기 결산 입력을 파일로 내보내고 다시 불러온다.
 // 파일은 이 기기 안에서만 만들고 읽으며 서버로 보내지 않는다. 계정 백업(account-backup.ts)은 같은 검사를 쓴다.
 // 저장소 파일(deadline-store.ts, activity-store.ts)은 화면 안에 사본을 들고 있으므로,
 // 가져온 뒤에는 페이지를 새로 고쳐야 화면에 반영된다.
@@ -17,6 +17,8 @@ import {
 import { GRADES_KEY, isCourseGrades, type GradesData } from "./grades-store";
 import { GRADING_KEY, isGradingList, type GradingData } from "./grading-store";
 import { RECEIPTS_KEY, isReceipt, type Receipt } from "./receipt-store";
+import type { SemesterData } from "./semester-report";
+import { SEMESTER_KEY, isSemesterCourse } from "./semester-store";
 import { DEADLINE_KINDS } from "./syllabus";
 import { isClassSlot, type ClassSlot } from "./timetable";
 import { TARGET_JOBS, TARGET_JOB_KEY, readTargetJob, type TargetJob } from "./target-job-store";
@@ -44,6 +46,7 @@ export type BackupData = {
   grading: GradingData;
   receipts: Receipt[];
   targetJob?: TargetJob;
+  semester?: SemesterData;
 };
 
 const EMPTY_FOCUS: FocusBackup = { subjects: [], records: [] };
@@ -152,6 +155,7 @@ function readFocus(): FocusData {
 function readCurrent(): BackupData {
   const { subjects, records } = readFocus();
   const targetJob = readTargetJob();
+  const semester = readRecord(SEMESTER_KEY, isSemesterCourse);
   return {
     deadlines: readList(DEADLINES_KEY, isDeadline),
     activities: readList(ACTIVITIES_KEY, isActivity),
@@ -162,6 +166,8 @@ function readCurrent(): BackupData {
     grading: readRecord(GRADING_KEY, isGradingList),
     receipts: readList(RECEIPTS_KEY, isReceipt),
     ...(targetJob ? { targetJob } : {}),
+    // 입력한 적이 없으면 칸을 만들지 않는다.
+    ...(Object.keys(semester).length > 0 ? { semester } : {}),
   };
 }
 
@@ -171,9 +177,10 @@ export function readBackupData() {
 }
 
 export function hasBackupData() {
-  const { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, targetJob } = readCurrent();
+  const { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, targetJob, semester } = readCurrent();
   return (
     targetJob !== undefined ||
+    semester !== undefined ||
     receipts.length > 0 ||
     Object.keys(grades).length > 0 ||
     Object.keys(grading).length > 0 ||
@@ -256,11 +263,12 @@ export function parseBackup(text: string): BackupData | null {
   const grades = parseOptionalRecord(file.grades, isCourseGrades);
   const grading = parseOptionalRecord(file.grading, isGradingList);
   const receipts = parseOptionalList(file.receipts, isReceipt);
-  if (!timetable || !examResults || !grades || !grading || !receipts) return null;
+  const semester = parseOptionalRecord(file.semester, isSemesterCourse);
+  if (!timetable || !examResults || !grades || !grading || !receipts || !semester) return null;
 
   const targetJob = file.targetJob;
   if (targetJob !== undefined && !TARGET_JOBS.includes(targetJob as TargetJob)) return null;
-  return { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, ...(targetJob !== undefined ? { targetJob: targetJob as TargetJob } : {}) };
+  return { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, ...(targetJob !== undefined ? { targetJob: targetJob as TargetJob } : {}), ...(Object.keys(semester).length > 0 ? { semester } : {}) };
 }
 
 // 계정 백업에서 받은 값을 파일과 똑같이 검사한다.
@@ -351,6 +359,7 @@ export function importBackup(data: BackupData) {
   const examResults = mergeExamResults(current.examResults, data.examResults);
   const grades = mergeRecord(current.grades, data.grades);
   const grading = mergeRecord(current.grading, data.grading);
+  const semester = mergeRecord(current.semester ?? {}, data.semester ?? {});
   // 같은 영수증(id)은 이 기기 것을 그대로 두고 없는 것만 더한다.
   const knownReceipts = new Set(current.receipts.map((r) => r.id));
   const freshReceipts = data.receipts.filter((r) => !knownReceipts.has(r.id));
@@ -374,6 +383,7 @@ export function importBackup(data: BackupData) {
     GRADING_KEY,
     RECEIPTS_KEY,
     TARGET_JOB_KEY,
+    SEMESTER_KEY,
   ];
   const previous = keys.map((key) => localStorage.getItem(key));
   try {
@@ -387,6 +397,7 @@ export function importBackup(data: BackupData) {
     }
     if (grades.added > 0) localStorage.setItem(GRADES_KEY, JSON.stringify(grades.merged));
     if (grading.added > 0) localStorage.setItem(GRADING_KEY, JSON.stringify(grading.merged));
+    if (semester.added > 0) localStorage.setItem(SEMESTER_KEY, JSON.stringify(semester.merged));
     if (freshReceipts.length > 0) {
       const receipts = [...current.receipts, ...freshReceipts].sort((a, b) => b.createdAt - a.createdAt);
       localStorage.setItem(RECEIPTS_KEY, JSON.stringify(receipts));
@@ -403,6 +414,7 @@ export function importBackup(data: BackupData) {
     addedExamResults: examResults.added,
     addedGrades: grades.added,
     addedGrading: grading.added,
+    addedSemester: semester.added,
     addedReceipts: freshReceipts.length,
     targetJobAdded,
     timetableAdded,
@@ -411,6 +423,7 @@ export function importBackup(data: BackupData) {
       targetJobAdded ||
       grades.added > 0 ||
       grading.added > 0 ||
+      semester.added > 0 ||
       freshReceipts.length > 0 ||
       deadlines.added > 0 ||
       activities.added > 0 ||
@@ -429,6 +442,7 @@ export function describeImport(result: ReturnType<typeof importBackup>) {
     result.addedExamResults > 0 && `시험 결과 ${result.addedExamResults}개`,
     result.addedGrades > 0 && `점수 ${result.addedGrades}과목`,
     result.addedGrading > 0 && `평가 비율 ${result.addedGrading}과목`,
+    result.addedSemester > 0 && `학기 결산 ${result.addedSemester}과목`,
     result.addedReceipts > 0 && `영수증 ${result.addedReceipts}장`,
     result.timetableAdded && "시간표",
     result.targetJobAdded && "목표 직무",
