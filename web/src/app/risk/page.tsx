@@ -40,11 +40,12 @@ const EXAMPLE_DEADLINES: RiskDeadline[] = [
 ];
 
 // 칸 색 4단계: 예상 공부 시간이 길수록 진하다 (docs/DESIGN.md '칸·막대')
+// 직접 넣은 시간은 2.5처럼 소수일 수 있어서, 범례는 위쪽 끝만 적는다 (2.5시간 → '~4시간').
 const LEVELS = [
-  { max: 2, className: "bg-[#F8EEF1] text-ink", label: "2시간 이하" },
-  { max: 4, className: "bg-[#E8BFCB] text-ink", label: "3~4시간" },
-  { max: 8, className: "bg-[#C25C7A] text-white", label: "5~8시간" },
-  { max: Infinity, className: "bg-[#8C1D40] text-white", label: "9시간 이상" },
+  { max: 2, className: "bg-[#F8EEF1] text-ink", label: "~2시간" },
+  { max: 4, className: "bg-[#E8BFCB] text-ink", label: "~4시간" },
+  { max: 8, className: "bg-[#C25C7A] text-white", label: "~8시간" },
+  { max: Infinity, className: "bg-[#8C1D40] text-white", label: "8시간 넘게" },
 ];
 
 function cellClass(hours: number) {
