@@ -17,6 +17,7 @@ loaded._compile(
 );
 const { buildGapMap, formatFocusTime, statusOf } = loaded.exports;
 
+// 계산 규칙만 시험하는 이름표라 옛 임시 표 이름을 그대로 둔다. 실제 표로 하는 시험은 tests/competencies.test.mjs.
 const REQUIRED = ["시장 분석", "기획력", "콘텐츠 제작", "데이터 분석", "발표·설득", "협업", "문제 정의", "커뮤니케이션"];
 const activities = [
   { id: "a", title: "교내 마케팅 공모전", experience: true },
