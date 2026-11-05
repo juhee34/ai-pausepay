@@ -18,10 +18,11 @@ function fixture(failAt, failure = new Error("test-only failure")) {
       cert: () => { fail("cert"); return {}; },
       initializeApp: () => ({ name: "unis-server" }),
     },
-    "firebase-admin/auth": { getAuth: () => {
-      fail("initialize-auth");
-      return { verifyIdToken: async () => { throw new Error("test-only invalid token"); } };
-    } },
+    // 로그인 확인은 firebase-admin/auth 대신 jose로 한다 (firebase-admin.ts의 verifiedUid).
+    jose: {
+      createRemoteJWKSet: () => ({}),
+      jwtVerify: async () => { throw new Error("test-only invalid token"); },
+    },
     "firebase-admin/firestore": { getFirestore: () => { fail("initialize-firestore"); return {}; } },
   };
   function load(relative) {
@@ -82,7 +83,7 @@ test("토큰이 없으면 SDK를 불러오지 않고, 가짜 토큰은 기존 40
 test("auth 모듈 로드 실패는 401로 숨기지 않고 단계 로그와 기존 503을 유지한다", async () => {
   await capture(async (logs) => {
     const error = new Error("require() of ES Module /var/task/node_modules/jose/dist/webapi/index.js not supported\nrequest=private test text");
-    const f = fixture("load-auth", error);
+    const f = fixture("load-jose", error);
     const { GET } = f.load("app/api/usage/route.ts");
     const response = await GET(new NextRequest("https://unis.test/api/usage", { headers: { Authorization: "Bearer fake.token.value" } }));
     assert.equal(response.status, 503);
@@ -100,7 +101,6 @@ test("app·초기화·firestore에서 어느 단계가 실패했는지 구분한
     ["cert", "initialize-app", "getAdminApp"],
     ["load-firestore", "load-firestore", "getAdminDb"],
     ["initialize-firestore", "initialize-firestore", "getAdminDb"],
-    ["initialize-auth", "initialize-auth", "verifiedUid"],
   ]) {
     await capture(async (logs) => {
       const f = fixture(failure, new TypeError("Cannot read properties of undefined\nprivate request text"));
@@ -116,7 +116,7 @@ test("app·초기화·firestore에서 어느 단계가 실패했는지 구분한
 
 test("AI 공통 오류 경로도 같은 제한된 로그를 기록한다", async () => {
   await capture(async (logs) => {
-    const f = fixture("load-auth", new Error("Cannot find module 'jose'\nrequest=private text"));
+    const f = fixture("load-jose", new Error("Cannot find module 'jose'\nrequest=private text"));
     const { checkAiLimit, withAiUsage } = f.load("lib/ai-route.ts");
     const handler = withAiUsage("timetable", async (request) => {
       const limit = await checkAiLimit(request);
@@ -131,7 +131,9 @@ test("AI 공통 오류 경로도 같은 제한된 로그를 기록한다", async
 
 test("예상한 AccountApiError는 바깥 오류 로그에 중복 기록하지 않는다", async () => {
   await capture(async (logs) => {
-    delete process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+    // 토큰 확인에는 프로젝트 ID만 쓴다. 없으면 준비 중 안내(AccountApiError)다.
+    delete process.env.FIREBASE_ADMIN_PROJECT_ID;
+    delete process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
     const f = fixture();
     const { GET } = f.load("app/api/usage/route.ts");
     const response = await GET(new NextRequest("https://unis.test/api/usage", { headers: { Authorization: "Bearer fake.token.value" } }));

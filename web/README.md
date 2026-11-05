@@ -257,8 +257,8 @@ Firestore 에뮬레이터가 연결되면 같은 새 테스트 파일에서 실�
 | `account:load-app` | `firebase-admin/app` 불러오기 |
 | `account:get-admin-app` | 기존 앱 조회 등 앱 준비 과정의 미분류 오류 |
 | `account:initialize-app` | `cert()`·`initializeApp()` 초기화 |
-| `account:load-auth` | `firebase-admin/auth` 불러오기 |
-| `account:initialize-auth` | `getAuth(app)` 초기화 |
+| `account:load-auth` | 로그인 확인 도구 `jose` 불러오기 (`firebase-admin/auth`는 Vercel에서 jose를 require하다 실패해 쓰지 않음) |
+| `account:verify-token` | 구글 공개 키를 받아 오지 못함 (토큰 잘못은 로그 없이 401) |
 | `account:load-firestore` | `firebase-admin/firestore` 불러오기 |
 | `account:initialize-firestore` | `getFirestore(app)` 초기화 |
 | `account:ai-usage` | AI 공통 사용량 처리의 미분류 오류 |
