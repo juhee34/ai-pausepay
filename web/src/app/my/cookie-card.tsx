@@ -80,14 +80,21 @@ export default function CookieCard({ uid }: { uid: string | null }) {
         </div>
         {uid && (
           <p className="font-mono text-xl font-semibold">
-            {loading ? "…" : (wallet?.balance ?? "-")}
+            {loading ? "…" : wallet ? wallet.free + wallet.balance : "-"}
             <span className="ml-0.5 text-xs font-normal">개</span>
           </p>
         )}
       </div>
+      {uid && wallet && (
+        <p className="mt-1 text-right text-xs text-muted">
+          무료 <span className="font-mono font-semibold text-ink">{wallet.free}</span>개 + 충전{" "}
+          <span className="font-mono font-semibold text-ink">{wallet.balance}</span>개
+        </p>
+      )}
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        AI 기능은 하루 {DAILY_AI_LIMIT}회까지 무료예요. 다 쓰면 1회에 쿠키 {COOKIES_PER_AI_USE}개로 이어서 쓸 수 있어요. 일정 계산 화면은 쿠키가 필요 없어요.
+        AI 기능을 한 번 쓸 때마다 쿠키 {COOKIES_PER_AI_USE}개를 써요. 매일 무료 쿠키 {DAILY_AI_LIMIT}개로 시작하고, 다 쓰면 충전한 쿠키를 써요. 무료 쿠키는 매일 0시에 다시 채워져요.
       </p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">홈의 자동 브리핑과 계산 화면은 쿠키를 쓰지 않아요.</p>
       {uid ? (
         <>
           {error && (
@@ -113,7 +120,9 @@ export default function CookieCard({ uid }: { uid: string | null }) {
           </Button>
         </>
       ) : (
-        <p className="mt-2 text-xs leading-relaxed text-muted">쿠키는 계정에 저장돼요. 위에서 로그인하면 충전할 수 있어요.</p>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          로그인하지 않아도 이 기기에서 매일 무료 쿠키 {DAILY_AI_LIMIT}개를 써요. 충전한 쿠키는 계정에 저장돼서, 위에서 로그인하면 충전할 수 있어요.
+        </p>
       )}
 
       {sheetOpen && wallet && (

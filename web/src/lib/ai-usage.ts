@@ -27,6 +27,19 @@ export function readCounts(value: unknown): FeatureCounts {
   return counts;
 }
 export const totalCounts = (counts: FeatureCounts) => Object.values(counts).reduce((a, b) => a + b, 0);
+
+// 매일 무료 쿠키 DAILY_AI_LIMIT개. AI 기능을 한 번 쓸 때마다 1개씩 쓴다.
+// 홈을 열면 자동으로 도는 브리핑은 무료 쿠키를 쓰지 않고 따로 센다. 화면은 하루 3번까지 부르고, 서버는 5번에서 막는다.
+export const BRIEFING_DAILY_LIMIT = 5;
+// 브리핑 예약은 id 앞에 'b-'를 붙여 무료 쿠키 예약과 구분한다.
+export const BRIEFING_LEASE_PREFIX = "b-";
+export const isBriefingLease = (id: string) => id.startsWith(BRIEFING_LEASE_PREFIX);
+// 무료 쿠키를 쓴 횟수: 브리핑을 뺀 성공 횟수. 충전한 쿠키로 쓴 횟수도 들어가지만, 그때는 이미 무료 쿠키가 0개다.
+export const freeCounted = (counts: FeatureCounts) => totalCounts(counts) - counts.briefing;
+export function freeCookiesLeft(counts: FeatureCounts, pendingIds: string[]) {
+  const pending = pendingIds.filter((id) => !isBriefingLease(id)).length;
+  return Math.max(0, DAILY_AI_LIMIT - freeCounted(counts) - pending);
+}
 export type UsageSummary = {
   today: string; weekStart: string; dailyLimit: number; usedToday: number;
   remaining: number; todayCounts: FeatureCounts; weekCounts: FeatureCounts;

@@ -132,13 +132,64 @@ test("서버가 끊겨 만료된 예약은 쿠키를 묶어 두지 않고 빼지
   assert.equal(db.docs.get(WALLET).balance, 0);
 });
 
-test("자동으로 불리는 브리핑은 쿠키가 있어도 쓰지 않는다", async () => {
+test("자동으로 불리는 브리핑은 쿠키를 쓰지 않고, 무료 쿠키를 다 써도 따로 받는다", async () => {
   assert.equal(canUseCookie("briefing"), false);
   assert.equal(canUseCookie("exam"), true);
   const db = exhausted(5);
-  await assert.rejects(() => reserveUsage(db, "alice", "briefing", now), { status: 429 });
+  const lease = await reserveUsage(db, "alice", "briefing", now);
+  assert.equal(lease.paid, false);
+  await settleUsage(db, lease, true);
   assert.equal(db.docs.get(WALLET).balance, 5);
   assert.deepEqual(db.docs.get(WALLET).pending, {});
+});
+
+test("브리핑은 무료 쿠키를 줄이지 않는다", async () => {
+  const db = database();
+  for (let i = 0; i < 3; i++) await settleUsage(db, await reserveUsage(db, "alice", "briefing", now), true);
+  const summary = await usageSummary(db, "alice", now);
+  assert.equal(summary.todayCounts.briefing, 3);
+  assert.equal(summary.remaining, 20);
+  assert.equal((await walletSummary(db, "alice", now)).free, 20);
+});
+
+test("브리핑은 하루 5번에서 막히고, 그래도 무료 쿠키는 그대로 쓴다", async () => {
+  const { BRIEFING_DAILY_LIMIT } = load("lib/ai-usage.ts");
+  const db = database();
+  const results = await Promise.allSettled(Array.from({ length: BRIEFING_DAILY_LIMIT + 1 }, () => reserveUsage(db, "alice", "briefing", now)));
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, BRIEFING_DAILY_LIMIT);
+  assert.match(results.find((r) => r.status === "rejected").reason.message, /브리핑/);
+  const exam = await reserveUsage(db, "alice", "exam", now);
+  assert.equal(exam.paid, false);
+});
+
+test("쿠키 칸은 남은 무료 쿠키와 충전한 쿠키를 따로 준다", async () => {
+  const db = database();
+  db.docs.set(`users/alice/usage/${day}`, { counts: { ...emptyCounts(), exam: 5, briefing: 2 }, pending: {} });
+  db.docs.set(WALLET, { balance: 3, pending: {} });
+  const summary = await walletSummary(db, "alice", now);
+  assert.equal(summary.free, 15);
+  assert.equal(summary.balance, 3);
+  const bought = await mockPurchase(db, "alice", "small", now);
+  assert.equal(bought.free, 15);
+  assert.equal(bought.balance, 8);
+  assert.equal((await walletSummary(exhausted(2), "alice", now)).free, 0);
+});
+
+test("로그인하지 않은 기기는 브리핑을 무료 쿠키와 다른 이름으로 센다", async () => {
+  const previous = process.env.AI_LIMIT_SECRET;
+  process.env.AI_LIMIT_SECRET = "test-only-secret";
+  try {
+    const { getAiUsageToday, recordAiUse } = load("lib/ai-limit.ts");
+    const response = NextResponse.json({});
+    recordAiUse(response, 0, "briefing");
+    const set = response.cookies.getAll();
+    assert.deepEqual(set.map((c) => c.name), ["unis_ai_briefing"]);
+    const request = new NextRequest("https://unis.test/api/briefing", { headers: { cookie: `unis_ai_briefing=${set[0].value}` } });
+    assert.equal(getAiUsageToday(request, "briefing"), 1);
+    assert.equal(getAiUsageToday(request), 0);
+  } finally {
+    if (previous === undefined) delete process.env.AI_LIMIT_SECRET; else process.env.AI_LIMIT_SECRET = previous;
+  }
 });
 
 test("모의 충전은 상품만큼 넣고, 다른 계정과 섞이지 않는다", async () => {

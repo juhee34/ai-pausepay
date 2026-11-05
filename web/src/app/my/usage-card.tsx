@@ -60,8 +60,8 @@ export default function UsageCard({ uid }: { uid: string | null }) {
           {data && !error && (
             <>
               <dl className="mt-3 grid grid-cols-3 gap-2 rounded-callout bg-canvas p-3 text-center">
-                {[["오늘", data.usedToday], ["이번 주", totalCounts(data.weekCounts)], ["오늘 남음", data.remaining]].map(([label, count]) => (
-                  <div key={label}><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 font-mono text-xl font-semibold">{count}<span className="ml-0.5 text-xs font-normal">회</span></dd></div>
+                {[["오늘", data.usedToday, "회"], ["이번 주", totalCounts(data.weekCounts), "회"], ["남은 무료 쿠키", data.remaining, "개"]].map(([label, count, unit]) => (
+                  <div key={label}><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 font-mono text-xl font-semibold">{count}<span className="ml-0.5 text-xs font-normal">{unit}</span></dd></div>
                 ))}
               </dl>
               <table className="mt-3 w-full text-left text-xs">
@@ -71,7 +71,7 @@ export default function UsageCard({ uid }: { uid: string | null }) {
                   <tr key={feature} className="border-t border-divider"><th scope="row" className="py-2.5 font-medium">{AI_FEATURES[feature]}</th><td className="text-right font-mono">{data.todayCounts[feature]}</td><td className="text-right font-mono">{data.weekCounts[feature]}</td></tr>
                 ))}</tbody>
               </table>
-              <p className="mt-2 text-[11px] leading-relaxed text-muted">{data.today} · 이번 주 {data.weekStart}부터<br />한국 시간 자정에 하루 {data.dailyLimit}회로 다시 시작해요. 진행 중인 요청은 남은 횟수에서 잠시 빠져요.</p>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted">{data.today} · 이번 주 {data.weekStart}부터<br />무료 쿠키는 한국 시간 자정에 {data.dailyLimit}개로 다시 채워져요. 자동 브리핑은 쿠키를 쓰지 않아요. 진행 중인 요청은 남은 쿠키에서 잠시 빠져요.</p>
             </>
           )}
           <Button variant="secondary" className="mt-3 w-full" disabled={loading} onClick={() => { setLoading(true); setRevision((n) => n + 1); }}>
