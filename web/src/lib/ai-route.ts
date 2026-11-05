@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse, type NextRequest } from "next/server";
-import { AI_LIMIT_MESSAGE, DAILY_AI_LIMIT, getAiUsageToday, recordAiUse } from "./ai-limit";
+import {
+  AI_LIMIT_MESSAGE, BRIEFING_DAILY_LIMIT, BRIEFING_LIMIT_MESSAGE, DAILY_AI_LIMIT, getAiUsageToday, recordAiUse, type AiCounter,
+} from "./ai-limit";
 import { AccountApiError, getAdminDb, verifiedUid } from "./firebase-admin";
 import { reserveUsage, settleUsage } from "./ai-usage-store";
 import type { AiFeature } from "./ai-usage";
@@ -8,6 +10,8 @@ import { logAccountError } from "./account-diagnostics";
 
 type UsageContext = { feature: AiFeature; usedToday?: number; lease?: Awaited<ReturnType<typeof reserveUsage>>; settled?: boolean };
 const contexts = new WeakMap<NextRequest, UsageContext>();
+
+const counterOf = (feature: AiFeature): AiCounter => (feature === "briefing" ? "briefing" : "ai");
 
 function usageError(error: unknown) {
   if (!(error instanceof AccountApiError)) logAccountError("ai-usage", error);
@@ -45,7 +49,7 @@ export async function completeAiUse(response: NextResponse, request: NextRequest
       return usageError(error);
     }
   } else {
-    recordAiUse(response, context.usedToday ?? 0);
+    recordAiUse(response, context.usedToday ?? 0, counterOf(context.feature));
   }
   return response;
 }
@@ -68,9 +72,11 @@ export async function checkAiLimit(request: NextRequest): Promise<{ usedToday: n
       return { usedToday: 0 };
     }
   } catch (error) { return usageError(error); }
-  const usedToday = getAiUsageToday(request);
-  if (usedToday >= DAILY_AI_LIMIT) {
-    return NextResponse.json({ error: AI_LIMIT_MESSAGE }, { status: 429 });
+  // 로그인하지 않은 기기: 무료 쿠키와 자동 브리핑을 따로 센다.
+  const counter = counterOf(context.feature);
+  const usedToday = getAiUsageToday(request, counter);
+  if (usedToday >= (counter === "briefing" ? BRIEFING_DAILY_LIMIT : DAILY_AI_LIMIT)) {
+    return NextResponse.json({ error: counter === "briefing" ? BRIEFING_LIMIT_MESSAGE : AI_LIMIT_MESSAGE }, { status: 429 });
   }
   context.usedToday = usedToday;
   return { usedToday };

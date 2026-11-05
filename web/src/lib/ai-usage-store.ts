@@ -3,9 +3,17 @@ import type { Firestore } from "firebase-admin/firestore";
 import { COOKIES_PER_AI_USE, availableCookies, canUseCookie, readWallet } from "./cookies";
 import { accountUsagePath, accountWalletPath } from "./firebase-paths";
 import { AccountApiError } from "./firebase-admin";
-import { DAILY_AI_LIMIT, emptyCounts, readCounts, seoulDay, totalCounts, weekStart, type AiFeature, type UsageSummary } from "./ai-usage";
+import {
+  BRIEFING_DAILY_LIMIT, BRIEFING_LEASE_PREFIX, DAILY_AI_LIMIT, emptyCounts, freeCookiesLeft, isBriefingLease,
+  readCounts, seoulDay, totalCounts, weekStart, type AiFeature, type FeatureCounts, type UsageSummary,
+} from "./ai-usage";
 
-// paid: 무료 횟수를 다 써서 쿠키로 예약한 요청. 쿠키는 성공했을 때만 잔액에서 뺀다.
+// 오늘 남은 무료 쿠키. 쿠키 칸(cookie-store.ts)도 이 값을 쓴다.
+export function freeCookiesOf(data: { counts?: unknown; pending?: unknown } | undefined, now: number) {
+  return freeCookiesLeft(readCounts(data?.counts), Object.keys(pendingLeases(data?.pending, now)));
+}
+
+// paid: 무료 쿠키를 다 써서 충전한 쿠키로 예약한 요청. 쿠키는 성공했을 때만 잔액에서 뺀다.
 type Lease = { uid: string; day: string; id: string; feature: AiFeature; paid: boolean };
 // API의 60초 상한보다 길게 예약. 강제 종료된 예약은 다음 요청에서 회수한다.
 const LEASE_MS = 120_000;
@@ -15,7 +23,7 @@ function pendingLeases(value: unknown, now: number): Record<string, number> {
 }
 export async function reserveUsage(db: Firestore, uid: string, feature: AiFeature, now = new Date()): Promise<Lease> {
   const day = seoulDay(now);
-  const id = randomUUID();
+  const id = feature === "briefing" ? `${BRIEFING_LEASE_PREFIX}${randomUUID()}` : randomUUID();
   const ref = db.doc(accountUsagePath(uid, day).join("/"));
   const walletRef = db.doc(accountWalletPath(uid).join("/"));
   let paid = false;
@@ -24,17 +32,26 @@ export async function reserveUsage(db: Firestore, uid: string, feature: AiFeatur
     const data = (await tx.get(ref)).data();
     const counts = readCounts(data?.counts);
     const pending = pendingLeases(data?.pending, now.getTime());
-    if (totalCounts(counts) + Object.keys(pending).length < DAILY_AI_LIMIT) {
+    // 자동 브리핑은 무료 쿠키를 쓰지 않고 따로 센다.
+    if (feature === "briefing") {
+      if (counts.briefing + Object.keys(pending).filter(isBriefingLease).length >= BRIEFING_DAILY_LIMIT) {
+        throw new AccountApiError(429, "오늘 브리핑을 모두 받았어요. 내일 다시 받아요.");
+      }
+      pending[id] = now.getTime() + LEASE_MS;
+      tx.set(ref, { counts, pending });
+      return;
+    }
+    if (freeCookiesLeft(counts, Object.keys(pending)) > 0) {
       pending[id] = now.getTime() + LEASE_MS;
       tx.set(ref, { counts, pending });
       return;
     }
     if (!canUseCookie(feature)) {
-      throw new AccountApiError(429, "오늘 무료 AI 횟수를 모두 썼어요. 내일 다시 써 주세요.");
+      throw new AccountApiError(429, `오늘 무료 쿠키 ${DAILY_AI_LIMIT}개를 모두 썼어요. 내일 다시 써 주세요.`);
     }
     const wallet = readWallet((await tx.get(walletRef)).data(), now.getTime());
     if (availableCookies(wallet) < COOKIES_PER_AI_USE) {
-      throw new AccountApiError(429, "오늘 무료 AI 횟수를 모두 썼어요. 내일 다시 쓰거나, 마이페이지에서 쿠키를 충전해 주세요.");
+      throw new AccountApiError(429, `오늘 무료 쿠키 ${DAILY_AI_LIMIT}개를 모두 썼어요. 내일 다시 쓰거나, 마이페이지에서 쿠키를 충전해 주세요.`);
     }
     tx.set(walletRef, { ...wallet, pending: { ...wallet.pending, [id]: now.getTime() + LEASE_MS } });
     paid = true;
@@ -79,15 +96,16 @@ export async function usageSummary(db: Firestore, uid: string, now = new Date())
   const today = seoulDay(now);
   const start = weekStart(today);
   const snapshot = await db.collection(`users/${uid}/usage`).where("__name__", ">=", start).where("__name__", "<=", today).get();
-  let todayCounts = emptyCounts();
+  let todayCounts: FeatureCounts = emptyCounts();
   const weekCounts = emptyCounts();
-  let pending = 0;
+  let pendingIds: string[] = [];
   for (const doc of snapshot.docs) {
     const data = doc.data();
     const counts = readCounts(data.counts);
-    if (doc.id === today) { todayCounts = counts; pending = Object.keys(pendingLeases(data.pending, now.getTime())).length; }
+    if (doc.id === today) { todayCounts = counts; pendingIds = Object.keys(pendingLeases(data.pending, now.getTime())); }
     for (const key of Object.keys(weekCounts) as AiFeature[]) weekCounts[key] += counts[key];
   }
+  // remaining은 오늘 남은 무료 쿠키다. 브리핑은 빼고 센다.
   const usedToday = totalCounts(todayCounts);
-  return { today, weekStart: start, dailyLimit: DAILY_AI_LIMIT, usedToday, remaining: Math.max(0, DAILY_AI_LIMIT - usedToday - pending), todayCounts, weekCounts };
+  return { today, weekStart: start, dailyLimit: DAILY_AI_LIMIT, usedToday, remaining: freeCookiesLeft(todayCounts, pendingIds), todayCounts, weekCounts };
 }

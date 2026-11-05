@@ -1,6 +1,7 @@
 // 쿠키 상품과 규칙. 화면과 서버가 같이 쓴다. 가격과 개수는 임시 값이라 이 파일만 고치면 된다.
 //
-// 쿠키는 하루 무료 AI 횟수를 다 쓴 뒤에 1회에 1개를 쓴다. 지금은 모의 결제라 돈이 나가지 않는다.
+// AI 기능을 한 번 쓸 때마다 쿠키 1개. 매일 무료 쿠키 20개를 먼저 쓰고, 다 쓰면 충전한 쿠키를 쓴다.
+// 자동 브리핑은 쿠키를 쓰지 않는다. 지금은 모의 결제라 돈이 나가지 않는다.
 // 돈을 받지 않는 만큼 AI 비용이 끝없이 나가지 않도록 하루에 넣을 수 있는 양을 제한한다.
 
 import type { AiFeature } from "./ai-usage";
@@ -33,7 +34,8 @@ export type Wallet = {
 };
 
 export type WalletSummary = {
-  balance: number;
+  free: number; // 오늘 남은 무료 쿠키 (매일 0시에 DAILY_AI_LIMIT개로 다시 채워짐)
+  balance: number; // 충전한 쿠키
   available: number; // 진행 중인 요청을 뺀 잔액
   purchasedToday: number;
   dailyCap: number;

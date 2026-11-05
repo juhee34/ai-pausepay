@@ -157,7 +157,7 @@ export default function BottomTabBar() {
         <p className="-mt-1 mb-3 flex items-start gap-1.5 text-xs leading-relaxed text-muted">
           <Cookie size={14} strokeWidth={1.8} aria-hidden="true" className="mt-0.5 shrink-0 text-brand" />
           <span>
-            이 표시가 있는 기능은 하루 무료 {DAILY_AI_LIMIT}회를 다 쓰면 1회에 쿠키 {COOKIES_PER_AI_USE}개가 필요해요.
+            이 표시가 있는 기능은 한 번에 쿠키 {COOKIES_PER_AI_USE}개를 써요. 매일 무료 쿠키 {DAILY_AI_LIMIT}개로 시작해요.
           </span>
         </p>
         <div className="space-y-4">
