@@ -75,23 +75,3 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
-
-/* PDF로 저장할 때: 흰 종이에 검은 글자, 탭바 자리 여백 없음 */
-@media print {
-  @page {
-    margin: 16mm 15mm;
-  }
-  html,
-  body {
-    background: #fff !important;
-    color: #1c1a1e !important;
-  }
-  body {
-    display: block !important;
-    padding-bottom: 0 !important;
-  }
-  main {
-    max-width: none !important;
-    padding: 0 !important;
-  }
-}
