@@ -10,7 +10,7 @@ const MODULE_NAMES = new Set([
   "lru-cache", "lru-memoizer", "limiter", "debug", "protobufjs", "gaxios", "gtoken",
 ]);
 const STAGES = new Set([
-  "load-app", "get-admin-app", "initialize-app", "load-auth", "initialize-auth",
+  "load-app", "get-admin-app", "initialize-app", "load-auth", "verify-token",
   "load-firestore", "initialize-firestore", "ai-usage", "usage-route",
 ]);
 

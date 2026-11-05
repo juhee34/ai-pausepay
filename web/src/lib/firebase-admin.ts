@@ -74,6 +74,43 @@ export async function getAdminDb() {
   }
 }
 
+// Firebase ID 토큰은 firebase-admin/auth 대신 jose로 직접 확인한다.
+// firebase-admin/auth는 안에서 jose(ESM 전용)를 require로 불러오는데, Vercel에서는 Node 24에서도 실패했다
+// (로그: account:load-auth … require() of ES Module jose not supported). 우리 코드가 import하면 빌드에 함께 묶인다.
+// 확인 항목은 Firebase 문서 'Verify ID tokens using a third-party JWT library'와 같다.
+// 로그아웃된 토큰을 바로 막는 확인(revocation)은 빠진다. 토큰은 1시간 뒤 저절로 만료된다.
+const FIREBASE_KEYS_URL = new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com");
+const MAX_UID_LENGTH = 128;
+const CLOCK_SKEW_SECONDS = 5;
+
+type Jose = typeof import("jose");
+type KeySet = Parameters<Jose["jwtVerify"]>[1];
+let firebaseKeys: KeySet | null = null;
+
+// 맞으면 uid를 돌려주고, 아니면 예외를 던진다. keys는 시험에서 가짜 키를 넣을 때만 쓴다.
+export async function verifyFirebaseIdToken(token: string, projectId: string, jose: Jose, keys?: KeySet) {
+  const keySet = keys ?? (firebaseKeys ??= jose.createRemoteJWKSet(FIREBASE_KEYS_URL));
+  const { payload } = await jose.jwtVerify(token, keySet, {
+    algorithms: ["RS256"],
+    issuer: `https://securetoken.google.com/${projectId}`,
+    audience: projectId,
+    requiredClaims: ["exp", "iat", "sub", "auth_time"],
+    clockTolerance: CLOCK_SKEW_SECONDS,
+  });
+  const now = Math.floor(Date.now() / 1000) + CLOCK_SKEW_SECONDS;
+  const uid = payload.sub;
+  if (typeof uid !== "string" || !uid || uid.length > MAX_UID_LENGTH || uid.includes("/")) throw new Error("invalid uid");
+  if (typeof payload.iat !== "number" || payload.iat > now) throw new Error("issued in the future");
+  if (typeof payload.auth_time !== "number" || payload.auth_time > now) throw new Error("signed in in the future");
+  return uid;
+}
+
+// 구글 공개 키를 받아 오지 못한 것은 토큰 잘못이 아니라 잠깐의 연결 문제다.
+function isKeyFetchError(error: unknown) {
+  const code = error && typeof error === "object" && "code" in error ? error.code : "";
+  return code === "ERR_JWKS_TIMEOUT" || (error instanceof TypeError && /fetch/i.test(error.message));
+}
+
 // uid는 화면 입력이 아닌 Firebase가 검증한 ID 토큰에서만 얻는다.
 export async function verifiedUid(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization");
@@ -81,26 +118,24 @@ export async function verifiedUid(request: Request): Promise<string | null> {
   if (!/^Bearer \S+$/.test(header) || header.length > 8192) {
     throw new AccountApiError(401, "로그인을 다시 확인해 주세요.");
   }
-  const app = await getAdminApp();
-  let authModule: typeof import("firebase-admin/auth");
+  const projectId = cleanEnvValue(process.env.FIREBASE_ADMIN_PROJECT_ID) ?? cleanEnvValue(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+  if (!projectId) {
+    throw new AccountApiError(503, "계정별 AI 사용량 연결을 준비 중이에요. 잠시 뒤에 다시 해 주세요.");
+  }
+  let jose: Jose;
   try {
-    authModule = await import("firebase-admin/auth");
+    jose = await import("jose");
   } catch (error) {
     if (!(error instanceof AccountApiError)) logAccountError("load-auth", error);
     throw error;
   }
-  let auth: ReturnType<typeof authModule.getAuth>;
   try {
-    auth = authModule.getAuth(app);
+    return await verifyFirebaseIdToken(header.slice(7), projectId, jose);
   } catch (error) {
-    if (!(error instanceof AccountApiError)) logAccountError("initialize-auth", error);
-    throw error;
-  }
-  try {
-    const token = await auth.verifyIdToken(header.slice(7), true);
-    if (!token.uid || token.uid.includes("/")) throw new Error("invalid uid");
-    return token.uid;
-  } catch {
+    if (isKeyFetchError(error)) {
+      logAccountError("verify-token", error);
+      throw new AccountApiError(503, "로그인 확인이 잠시 늦어요. 잠시 뒤에 다시 해 주세요.");
+    }
     throw new AccountApiError(401, "로그인 확인이 만료됐어요. 다시 로그인해 주세요.");
   }
 }
