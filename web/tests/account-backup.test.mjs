@@ -84,6 +84,33 @@ test("목표 직무는 파일·계정 백업으로 복원하고 기존 선택과
   assert.deepEqual(backup.parseBackupData(old), old);
 });
 
+test("리스크 지도의 공부 시간 기준은 파일·계정 백업으로 옮기고, 이 기기에서 정한 값은 유지한다", async () => {
+  store.clear();
+  store.set("unis.studyHours.v1", JSON.stringify({ exam: 6, weekly: 20 }));
+  assert.equal(backup.hasBackupData(), true);
+  // 계정 백업은 기록이 하나도 없으면 막으므로 일정도 하나 둔다 (account-backup.ts)
+  store.set("unis.deadlines.v1", JSON.stringify([{ id: "d1", title: "가상 과제", course: "가상 과목", when: "", date: "2026-11-20", kind: "과제" }]));
+  const data = backup.readBackupData();
+  assert.deepEqual(data.studyHours, { exam: 6, weekly: 20 });
+  assert.deepEqual(backup.parseBackup(JSON.stringify({ app: "unis", version: 1, ...data })).studyHours, { exam: 6, weekly: 20 });
+  assert.equal(backup.parseBackupData({ ...data, studyHours: { exam: -1 } }), null);
+  assert.equal(backup.parseBackupData({ ...data, studyHours: { sleep: 8 } }), null);
+  await account.uploadAccountBackup("test-user");
+  assert.deepEqual(remote.data.studyHours, { exam: 6, weekly: 20 });
+  const restored = await account.readAccountBackup("test-user");
+  store.clear();
+  const result = backup.importBackup(restored.data);
+  assert.equal(result.studyHoursAdded, true);
+  assert.match(backup.describeImport(result), /공부 시간 기준/);
+  assert.equal(store.get("unis.studyHours.v1"), JSON.stringify({ exam: 6, weekly: 20 }));
+  store.set("unis.studyHours.v1", JSON.stringify({ quiz: 2 }));
+  assert.equal(backup.importBackup(restored.data).studyHoursAdded, false);
+  assert.equal(store.get("unis.studyHours.v1"), JSON.stringify({ quiz: 2 }));
+  // 이상한 저장값은 백업에 넣지 않는다
+  store.set("unis.studyHours.v1", "{\"exam\":1.3}");
+  assert.equal(backup.readBackupData().studyHours, undefined);
+});
+
 test("복원 도중 저장이 실패하면 목표 직무도 되돌린다", () => {
   const data = { ...backup.readBackupData(), targetJob: "데이터 분석" };
   const original = localStorage.setItem;

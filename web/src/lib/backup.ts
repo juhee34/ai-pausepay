@@ -20,6 +20,8 @@ import { RECEIPTS_KEY, isReceipt, type Receipt } from "./receipt-store";
 import { DEADLINE_KINDS } from "./syllabus";
 import { isClassSlot, type ClassSlot } from "./timetable";
 import { TARGET_JOBS, TARGET_JOB_KEY, readTargetJob, type TargetJob } from "./target-job-store";
+import { isStudyHours, type StudyHours } from "./risk";
+import { STUDY_HOURS_KEY, readStudyHours } from "./study-hours-store";
 
 const DEADLINES_KEY = "unis.deadlines.v1";
 const ACTIVITIES_KEY = "unis.activities.v1";
@@ -44,6 +46,7 @@ export type BackupData = {
   grading: GradingData;
   receipts: Receipt[];
   targetJob?: TargetJob;
+  studyHours?: StudyHours; // 학기 리스크 지도의 내 공부 시간 기준. 정한 사람만
 };
 
 const EMPTY_FOCUS: FocusBackup = { subjects: [], records: [] };
@@ -152,6 +155,7 @@ function readFocus(): FocusData {
 function readCurrent(): BackupData {
   const { subjects, records } = readFocus();
   const targetJob = readTargetJob();
+  const studyHours = readStudyHours();
   return {
     deadlines: readList(DEADLINES_KEY, isDeadline),
     activities: readList(ACTIVITIES_KEY, isActivity),
@@ -162,6 +166,7 @@ function readCurrent(): BackupData {
     grading: readRecord(GRADING_KEY, isGradingList),
     receipts: readList(RECEIPTS_KEY, isReceipt),
     ...(targetJob ? { targetJob } : {}),
+    ...(studyHours ? { studyHours } : {}),
   };
 }
 
@@ -171,9 +176,10 @@ export function readBackupData() {
 }
 
 export function hasBackupData() {
-  const { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, targetJob } = readCurrent();
+  const { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, targetJob, studyHours } = readCurrent();
   return (
     targetJob !== undefined ||
+    studyHours !== undefined ||
     receipts.length > 0 ||
     Object.keys(grades).length > 0 ||
     Object.keys(grading).length > 0 ||
@@ -260,7 +266,13 @@ export function parseBackup(text: string): BackupData | null {
 
   const targetJob = file.targetJob;
   if (targetJob !== undefined && !TARGET_JOBS.includes(targetJob as TargetJob)) return null;
-  return { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, ...(targetJob !== undefined ? { targetJob: targetJob as TargetJob } : {}) };
+  const studyHours = file.studyHours;
+  if (studyHours !== undefined && !isStudyHours(studyHours)) return null;
+  return {
+    deadlines, activities, focus, timetable, examResults, grades, grading, receipts,
+    ...(targetJob !== undefined ? { targetJob: targetJob as TargetJob } : {}),
+    ...(studyHours !== undefined && Object.keys(studyHours).length > 0 ? { studyHours } : {}),
+  };
 }
 
 // 계정 백업에서 받은 값을 파일과 똑같이 검사한다.
@@ -356,6 +368,8 @@ export function importBackup(data: BackupData) {
   const freshReceipts = data.receipts.filter((r) => !knownReceipts.has(r.id));
   // 이미 고른 직무는 유지하고, 없는 기기에만 복원한다.
   const targetJobAdded = current.targetJob === undefined && data.targetJob !== undefined;
+  // 공부 시간 기준도 이 기기에서 정한 게 없을 때만 넣는다.
+  const studyHoursAdded = current.studyHours === undefined && data.studyHours !== undefined;
 
   // 시간표는 학기당 하나라 섞지 않는다. 이 기기에 없을 때만 파일 것을 넣는다.
   const timetableAdded = current.timetable.length === 0 && data.timetable.length > 0;
@@ -374,10 +388,12 @@ export function importBackup(data: BackupData) {
     GRADING_KEY,
     RECEIPTS_KEY,
     TARGET_JOB_KEY,
+    STUDY_HOURS_KEY,
   ];
   const previous = keys.map((key) => localStorage.getItem(key));
   try {
     if (targetJobAdded) localStorage.setItem(TARGET_JOB_KEY, data.targetJob!);
+    if (studyHoursAdded) localStorage.setItem(STUDY_HOURS_KEY, JSON.stringify(data.studyHours));
     localStorage.setItem(DEADLINES_KEY, JSON.stringify(deadlines.merged));
     localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(activities.merged));
     if (focus.changed) localStorage.setItem(FOCUS_KEY, JSON.stringify(focus.merged));
@@ -405,10 +421,12 @@ export function importBackup(data: BackupData) {
     addedGrading: grading.added,
     addedReceipts: freshReceipts.length,
     targetJobAdded,
+    studyHoursAdded,
     timetableAdded,
     timetableKept,
     changed:
       targetJobAdded ||
+      studyHoursAdded ||
       grades.added > 0 ||
       grading.added > 0 ||
       freshReceipts.length > 0 ||
@@ -432,6 +450,7 @@ export function describeImport(result: ReturnType<typeof importBackup>) {
     result.addedReceipts > 0 && `영수증 ${result.addedReceipts}장`,
     result.timetableAdded && "시간표",
     result.targetJobAdded && "목표 직무",
+    result.studyHoursAdded && "공부 시간 기준",
   ].filter(Boolean);
   return parts.length > 0 ? parts.join(", ") : "기록";
 }
