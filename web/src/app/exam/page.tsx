@@ -2,7 +2,7 @@
 
 import { aiFetch } from "@/lib/ai-fetch";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
@@ -13,6 +13,7 @@ import { useSavedDeadlines } from "@/lib/deadline-store";
 import { saveExamResult, updateExamResultCorrect } from "@/lib/exam-results";
 import { useTimetable } from "@/lib/timetable-store";
 import { useToday } from "@/lib/briefing";
+import { pdfFileName, saveElementAsPdf } from "@/lib/save-pdf";
 import PrintSheet from "./print-sheet";
 import { isShortAnswerCorrect } from "./grading";
 import {
@@ -67,7 +68,9 @@ export default function ExamPage() {
   const [course, setCourse] = useState("");
   const [questionCount, setQuestionCount] = useState<QuestionCount>(QUIZ_SIZE);
   const today = useToday();
-  const [printError, setPrintError] = useState<string | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [savingPdf, setSavingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const deadlines = useSavedDeadlines();
   const timetable = useTimetable();
@@ -221,18 +224,17 @@ export default function ExamPage() {
     }
   }
 
-  // 브라우저 인쇄 창을 연다. 제목은 PDF로 저장할 때 파일 이름이 된다.
-  function savePdf() {
-    setPrintError(null);
-    const title = document.title;
-    const name = course.trim();
-    document.title = name ? `우니스 시험 대비 ${name}` : "우니스 시험 대비";
-    window.addEventListener("afterprint", () => { document.title = title; }, { once: true });
+  // 정리본을 PDF 파일로 만들어 바로 내려받는다.
+  async function savePdf() {
+    if (!sheetRef.current || savingPdf) return;
+    setPdfError(null);
+    setSavingPdf(true);
     try {
-      window.print();
+      await saveElementAsPdf(sheetRef.current, pdfFileName(`우니스 시험 대비 ${course}`));
     } catch {
-      document.title = title;
-      setPrintError("이 화면에서는 인쇄 창을 열 수 없어요. 사파리나 크롬으로 다시 열어 주세요.");
+      setPdfError("PDF를 만들지 못했어요. 사파리나 크롬으로 열어 다시 해 주세요.");
+    } finally {
+      setSavingPdf(false);
     }
   }
 
@@ -461,7 +463,7 @@ export default function ExamPage() {
         </>
       ) : (
         <>
-          <div className="print:hidden">
+          <div>
           <BrandLabel />
           <header className="mb-4 px-1">
             <h1 className="text-[22px] font-bold">
@@ -693,15 +695,15 @@ export default function ExamPage() {
             </Button>
           )}
 
-          <Button variant="secondary" onClick={savePdf} className="mt-2.5 w-full !bg-surface">
-            요약 노트와 문제 PDF로 저장
+          <Button variant="secondary" onClick={savePdf} disabled={savingPdf} className="mt-2.5 w-full !bg-surface">
+            {savingPdf ? "PDF 만드는 중…" : "요약 노트와 문제 PDF로 저장"}
           </Button>
           <p className="mt-1.5 px-1 text-xs leading-relaxed text-muted">
-            인쇄 창이 열리면 대상에서 &apos;PDF로 저장&apos;을 골라 주세요. 아이폰은 공유 버튼으로 저장해요. 정답과 해설은 뒤쪽에 따로 들어가요. 개인 공부용으로만 써 주세요.
+            누르면 PDF 파일을 내려받아요. 정답과 해설은 뒤쪽에 따로 들어가요. 카카오톡 같은 앱 안에서는 저장이 막힐 수 있으니, 받아지지 않으면 사파리나 크롬으로 열어 주세요. 개인 공부용으로만 써 주세요.
           </p>
-          {printError && (
+          {pdfError && (
             <p role="alert" className="mt-1.5 px-1 text-xs font-semibold text-review">
-              {printError}
+              {pdfError}
             </p>
           )}
 
@@ -709,14 +711,19 @@ export default function ExamPage() {
             다른 자료 넣기
           </Button>
           </div>
-          <PrintSheet pack={pack} course={course.trim()} today={today ?? ""} />
+          {/* 화면 밖에 두는 PDF 재료. 종이 너비(A4에서 좌우 여백을 뺀 180mm)로 그린다. */}
+          <div aria-hidden="true" className="pointer-events-none fixed top-0 left-[-10000px] w-[180mm]">
+            <div ref={sheetRef}>
+              <PrintSheet pack={pack} course={course.trim()} today={today ?? ""} />
+            </div>
+          </div>
         </>
       )}
 
       {error && (
         <div
           role="alert"
-          className="mt-2.5 rounded-callout border border-review-line bg-review-soft p-3.5 text-sm text-review print:hidden"
+          className="mt-2.5 rounded-callout border border-review-line bg-review-soft p-3.5 text-sm text-review"
         >
           {error}
         </div>

@@ -17,12 +17,13 @@ function answerText(question: ExamPack["questions"][number]) {
   return question.type === "ox" ? choice : `${CHOICE_MARKS[question.answerIndex]} ${choice}`;
 }
 
-// 인쇄할 때만 보이는 정리본. 브라우저의 인쇄 창에서 PDF로 저장한다.
+// PDF 파일의 재료가 되는 정리본. 화면 밖에 두고, 저장 버튼을 누르면 그림으로 찍어 PDF로 만든다.
+// data-pdf-* 표시는 쪽을 나눌 때 쓴다 (lib/save-pdf.ts).
 // 정답은 문제를 풀 때 보이지 않게 뒤쪽 새 쪽에 모은다.
 export default function PrintSheet({ pack, course, today }: { pack: ExamPack; course: string; today: string }) {
   return (
-    <article className="hidden text-[11pt] leading-relaxed text-ink print:block">
-      <header className="border-b-2 border-ink pb-2">
+    <article className="bg-white text-[11pt] leading-relaxed text-ink">
+      <header data-pdf-block data-pdf-keep className="border-b-2 border-ink pb-2">
         <p className="text-[9pt] font-semibold">우니스 시험 대비</p>
         <h1 className="text-[18pt] font-bold">{course || "요약 노트와 문제"}</h1>
         <p className="text-[9pt]">
@@ -31,10 +32,10 @@ export default function PrintSheet({ pack, course, today }: { pack: ExamPack; co
       </header>
 
       <section className="mt-4">
-        <h2 className="text-[13pt] font-bold">요약 노트</h2>
-        <ol className="mt-1.5 list-decimal space-y-1 pl-5">
+        <h2 data-pdf-block data-pdf-keep className="text-[13pt] font-bold">요약 노트</h2>
+        <ol className="mt-1.5 list-decimal space-y-1 pl-7">
           {pack.summary.map((line) => (
-            <li key={line} className="break-inside-avoid">
+            <li key={line} data-pdf-block>
               {line}
             </li>
           ))}
@@ -43,10 +44,10 @@ export default function PrintSheet({ pack, course, today }: { pack: ExamPack; co
 
       {pack.terms.length > 0 && (
         <section className="mt-4">
-          <h2 className="text-[13pt] font-bold">어려운 말 풀이</h2>
+          <h2 data-pdf-block data-pdf-keep className="text-[13pt] font-bold">어려운 말 풀이</h2>
           <dl className="mt-1.5 space-y-1">
             {pack.terms.map((item) => (
-              <div key={item.term} className="break-inside-avoid">
+              <div key={item.term} data-pdf-block>
                 <dt className="inline font-semibold">{item.term}: </dt>
                 <dd className="inline">{item.meaning}</dd>
               </div>
@@ -55,11 +56,13 @@ export default function PrintSheet({ pack, course, today }: { pack: ExamPack; co
         </section>
       )}
 
-      <section className="mt-5 break-before-page">
-        <h2 className="text-[13pt] font-bold">시험 대비 문제</h2>
+      <section className="mt-5">
+        <h2 data-pdf-block data-pdf-break data-pdf-keep className="text-[13pt] font-bold">
+          시험 대비 문제
+        </h2>
         <ol className="mt-2 space-y-3.5">
           {pack.questions.map((question, index) => (
-            <li key={index} className="break-inside-avoid">
+            <li key={index} data-pdf-block>
               <p className="font-semibold">
                 {index + 1}. <span className="text-[9pt] font-medium">[{TYPE_LABEL[question.type]}]</span>{" "}
                 {question.question}
@@ -80,11 +83,13 @@ export default function PrintSheet({ pack, course, today }: { pack: ExamPack; co
         </ol>
       </section>
 
-      <section className="mt-5 break-before-page">
-        <h2 className="text-[13pt] font-bold">정답과 해설</h2>
+      <section className="mt-5">
+        <h2 data-pdf-block data-pdf-break data-pdf-keep className="text-[13pt] font-bold">
+          정답과 해설
+        </h2>
         <ol className="mt-2 space-y-2.5">
           {pack.questions.map((question, index) => (
-            <li key={index} className="break-inside-avoid">
+            <li key={index} data-pdf-block>
               <p className="font-semibold">
                 {index + 1}. {answerText(question)}
               </p>
@@ -92,7 +97,7 @@ export default function PrintSheet({ pack, course, today }: { pack: ExamPack; co
             </li>
           ))}
         </ol>
-        <p className="mt-5 border-t border-line pt-2 text-[8.5pt]">
+        <p data-pdf-block className="mt-5 border-t border-line pt-2 text-[8.5pt]">
           AI가 만든 내용이라 틀릴 수 있어요. 헷갈리면 강의자료에서 확인해 주세요. 개인 공부용이에요. 강의자료의 저작권은 교수님과 저작권자에게 있으니 다른 곳에 올리거나 나눠 주지 말아 주세요.
         </p>
       </section>
