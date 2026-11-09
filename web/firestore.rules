@@ -13,9 +13,18 @@ service cloud.firestore {
         && request.resource.data.version == 1
         && request.resource.data.updatedAt == request.time
         && request.resource.data.data.keys().hasAll(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts'])
-        && request.resource.data.data.keys().hasOnly(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts', 'targetJob', 'semester'])
+        && request.resource.data.data.keys().hasOnly(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts', 'targetJob', 'studyHours', 'semester'])
         && (!('targetJob' in request.resource.data.data)
           || request.resource.data.data.targetJob in ['마케팅 기획', '데이터 분석', '서비스 기획', '재무·회계'])
+        // 학기 리스크 지도의 공부 시간 기준(선택). 정해진 이름의 숫자 칸만
+        && (!('studyHours' in request.resource.data.data)
+          || (request.resource.data.data.studyHours is map
+            && request.resource.data.data.studyHours.keys().hasOnly(['exam', 'assignment', 'quiz', 'other', 'weekly'])
+            && (!('exam' in request.resource.data.data.studyHours) || request.resource.data.data.studyHours.exam is number)
+            && (!('assignment' in request.resource.data.data.studyHours) || request.resource.data.data.studyHours.assignment is number)
+            && (!('quiz' in request.resource.data.data.studyHours) || request.resource.data.data.studyHours.quiz is number)
+            && (!('other' in request.resource.data.data.studyHours) || request.resource.data.data.studyHours.other is number)
+            && (!('weekly' in request.resource.data.data.studyHours) || request.resource.data.data.studyHours.weekly is number)))
         && (!('semester' in request.resource.data.data) || request.resource.data.data.semester is map)
         && request.resource.data.data.deadlines is list
         && request.resource.data.data.activities is list

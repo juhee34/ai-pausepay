@@ -4,7 +4,7 @@ import { z } from "zod";
 import { completeAiUse, withAiUsage } from "@/lib/ai-route";
 import { CLAUDE_REQUEST_OPTIONS, checkAiLimit, claudeErrorResponse } from "@/lib/ai-route";
 import { getAnthropic } from "@/lib/claude";
-import { ALL_COMPETENCIES } from "@/lib/competencies";
+import { ALL_COMPETENCIES, competencyGuide } from "@/lib/competencies";
 import {
   MAX_COMPETENCIES,
   MAX_ONE_LINER,
@@ -64,7 +64,7 @@ task: 홍보팀에서 인스타그램 게시물과 일정 관리를 맡았습니
 action: 인스타그램 게시물을 만들고 게시 일정을 관리했습니다.
 result: 작년보다 많은 학생이 축제에 참여했고, 대상에 맞는 메시지가 중요하다는 것을 배웠습니다. ${NEED_NUMBER_NOTE}
 oneLiner: 학생회 홍보팀에서 인스타그램 홍보를 맡아 축제 참여를 작년보다 늘렸습니다.
-competencies: 콘텐츠 제작, 협업`;
+competencies: 콘텐츠 기획·제작, 협업·리더십`;
 
 export const POST = withAiUsage("receipt", async (request: NextRequest) => {
   const parsed = ReceiptRequestSchema.safeParse(await request.json().catch(() => null));
@@ -94,7 +94,8 @@ export const POST = withAiUsage("receipt", async (request: NextRequest) => {
         messages: [
           {
             role: "user",
-            content: `고를 수 있는 역량: ${ALL_COMPETENCIES.join(", ")}
+            content: `고를 수 있는 역량 (이름: 뜻, 이름은 그대로 씁니다):
+${competencyGuide()}
 
 <경험>
 활동 이름: ${title}
