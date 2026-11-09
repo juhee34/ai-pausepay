@@ -57,6 +57,7 @@ export function countBackup(data: BackupData) {
     grades: Object.keys(data.grades).length,
     grading: Object.keys(data.grading).length,
     receipts: data.receipts.length,
+    semester: Object.keys(data.semester ?? {}).length,
   };
 }
 
@@ -71,6 +72,7 @@ export function describeBackup(data: BackupData) {
     `점수 ${c.grades}과목`,
     `평가 비율 ${c.grading}과목`,
     `영수증 ${c.receipts}`,
+    ...(c.semester > 0 ? [`학기 결산 ${c.semester}과목`] : []),
     ...(data.targetJob ? [`목표 직무 ${data.targetJob}`] : []),
   ].join(" · ");
 }

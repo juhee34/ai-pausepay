@@ -163,6 +163,21 @@ test("올리는 문서는 firestore.rules의 형식과 같고 진행 중인 타�
   assert.equal(remote.data.deadlines.length, 1, "형식이 틀린 일정은 올리지 않는다");
 });
 
+test("학기 결산의 학점·성적은 있을 때만 올리고 다시 받을 수 있다", async () => {
+  store.set("unis.semester.v1", JSON.stringify({ 회계: { credits: 2, grade: "A0" }, 깨진값: { credits: "많이" } }));
+  await account.uploadAccountBackup("alice");
+  assert.deepEqual(remote.data.semester, { 회계: { credits: 2, grade: "A0" } }, "형식이 틀린 값은 올리지 않는다");
+
+  const data = JSON.parse(JSON.stringify(remote.data));
+  store.delete("unis.semester.v1");
+  const parsed = backup.parseBackupData(data);
+  assert.deepEqual(parsed.semester, { 회계: { credits: 2, grade: "A0" } });
+  const result = backup.importBackup(parsed);
+  assert.equal(result.addedSemester, 1);
+  assert.deepEqual(JSON.parse(store.get("unis.semester.v1")), { 회계: { credits: 2, grade: "A0" } });
+  assert.equal(backup.parseBackupData({ ...data, semester: { 회계: { credits: -1 } } }), null);
+});
+
 test("Firestore가 받지 못하는 undefined를 올리지 않는다", async () => {
   store.set("unis.deadlines.v1", JSON.stringify([DEADLINE]));
   await account.uploadAccountBackup("alice");

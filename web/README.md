@@ -110,7 +110,8 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
   data: {
     deadlines: [], activities: [], timetable: [], examResults: [], receipts: [],
     focus: { subjects: [], records: [] },
-    grades: {}, grading: {}
+    grades: {}, grading: {},
+    // 있을 때만: targetJob, semester (학기 결산의 과목별 학점·예상 성적)
   }
 }
 ```
