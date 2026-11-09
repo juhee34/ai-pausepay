@@ -1,35 +1,26 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
-import { getData, getServerData, subscribeData } from "@/app/focus/store";
+import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
-import { useToday } from "@/lib/briefing";
-import { useSavedDeadlines } from "@/lib/deadline-store";
 import {
   CREDIT_CHOICES,
   DEFAULT_CREDITS,
-  EXAMPLE_COURSES,
   LETTER_GRADES,
   MAX_GPA,
   MIN_REPORT_WEEKS,
   SEMESTER_LABEL,
-  buildCourseReport,
-  collectCourseInputs,
   formatHours,
-  isSemesterOver,
-  recordedWeeks,
-  reportWeek,
-  semesterRecords,
   type CourseBadge,
   type CourseReport,
   type LetterGrade,
   type SemesterCourse,
 } from "@/lib/semester-report";
-import { setSemesterCourse, useSemesterData } from "@/lib/semester-store";
-import { useTimetable } from "@/lib/timetable-store";
+import { setSemesterCourse } from "@/lib/semester-store";
+import { useSemesterSnapshot } from "./use-semester";
 
 const BADGES: Record<CourseBadge, { label: string; className: string }> = {
   best: { label: "가성비 1위", className: "bg-brand-soft text-brand" },
@@ -136,21 +127,8 @@ function CourseSheet({
 
 // 학기 결산서: 집중 모드 시간과 학점·예상 성적으로 학점당 시간과 과목별 가성비를 코드로 계산한다.
 export default function ReportPage() {
-  const today = useToday();
-  const deadlines = useSavedDeadlines();
-  const timetable = useTimetable();
-  const settings = useSemesterData();
-  const focus = useSyncExternalStore(subscribeData, getData, getServerData);
+  const { today, settings, weeks, isExample, report, over, lastWeek } = useSemesterSnapshot();
   const [editing, setEditing] = useState<string | null>(null);
-
-  const records = semesterRecords(focus.records, deadlines);
-  const weeks = recordedWeeks(records);
-  const isExample = weeks < MIN_REPORT_WEEKS;
-  const report = buildCourseReport(
-    isExample ? EXAMPLE_COURSES : collectCourseInputs(timetable, deadlines, records, settings),
-  );
-  const over = isExample || (today !== null && isSemesterOver(today));
-  const lastWeek = isExample || !today ? 16 : reportWeek(today);
   let rank = 0;
 
   const editingValue = editing
@@ -286,6 +264,14 @@ export default function ReportPage() {
           </div>
         </Block>
       )}
+
+      <Link
+        href="/report/flow"
+        className="mt-4 flex min-h-11 w-full items-center justify-between rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
+      >
+        시간이 어디에 쓰였는지 보기
+        <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
+      </Link>
 
       <p className="mt-4 text-[11px] leading-relaxed text-muted">
         가성비 지수 = 예상 평점 ÷ 학점당 투입 시간 × 100. 과목 난이도와 평가 방식은 반영하지 않아요. 평점은 직접 입력한 예상 성적 기준이고, 집중 모드를 켠
