@@ -39,9 +39,13 @@ export function splitPages(blocks: PdfBlock[], totalHeight: number, pageHeight: 
 }
 
 // 파일 이름에 쓸 수 없는 글자를 뺀다.
-export function pdfFileName(title: string) {
+export function safeFileName(title: string, extension: string) {
   const safe = title.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim();
-  return `${safe || "우니스"}.pdf`;
+  return `${safe || "우니스"}.${extension}`;
+}
+
+export function pdfFileName(title: string) {
+  return safeFileName(title, "pdf");
 }
 
 const PAGE_WIDTH_MM = 210;
