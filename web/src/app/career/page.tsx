@@ -21,9 +21,10 @@ import { ActivityDetailSheet, ActivityFormSheet, formatPeriod } from "./activity
 
 type Tab = Exclude<ActivityStage, "rejected">;
 
+// 시간 순서. 불합격은 아래에 접어 둔다.
 const TABS: { value: Tab; label: string }[] = [
-  { value: "active", label: STAGE_LABEL.active },
   { value: "applied", label: STAGE_LABEL.applied },
+  { value: "active", label: STAGE_LABEL.active },
   { value: "done", label: STAGE_LABEL.done },
 ];
 
@@ -74,7 +75,8 @@ function ActivityRow({
   );
 }
 
-// 대외활동 목록: 지원 → 진행 → 끝남(+ 불합격 보관). AI 없이 이 기기 브라우저에만 저장한다.
+// 취업 탭: 스펙 영수증·역량 공백 지도로 가는 길과 대외활동 목록(준비 중 → 활동 중 → 종료, + 불합격 보관).
+// AI 없이 이 기기 브라우저에만 저장한다.
 export default function CareerPage() {
   const today = useToday();
   const activities = useActivities();
@@ -95,13 +97,13 @@ export default function CareerPage() {
     <AppShell>
       <BrandLabel />
       <header className="flex items-center justify-between gap-3 px-1">
-        <h1 className="text-[22px] font-bold">대외활동</h1>
+        <h1 className="text-[22px] font-bold">취업</h1>
         <Button onClick={() => setSheet({ kind: "add" })} className="shrink-0 !px-3 text-sm">
           <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
-          추가
+          활동 추가
         </Button>
       </header>
-      <p className="mt-1 px-1 text-[13px] text-muted">지원부터 끝날 때까지 한곳에서 챙겨요.</p>
+      <p className="mt-1 px-1 text-[13px] text-muted">대외활동, 스펙 영수증, 역량 공백 지도를 한곳에서 챙겨요.</p>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         {CAREER_LINKS.map(({ href, label, Icon }) => (
@@ -119,7 +121,8 @@ export default function CareerPage() {
 
       {today && (
         <>
-          <div className="mt-4">
+          <h2 className="mt-5 px-1 text-[15px] font-bold">대외활동</h2>
+          <div className="mt-2">
             <SegmentedTabs label="활동 단계" options={TABS} value={tab} onChange={setTab} />
           </div>
 
@@ -169,7 +172,8 @@ export default function CareerPage() {
 
       {sheet?.kind === "add" && (
         <ActivityFormSheet
-          defaultStage={tab}
+          // 새로 넣는 활동은 대부분 지원 전이라 준비 중에서 시작한다.
+          defaultStage="applied"
           onClose={() => setSheet(null)}
           onSaved={(stage) => {
             showStage(stage);

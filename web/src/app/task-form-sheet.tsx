@@ -3,7 +3,13 @@
 import { useState, type ReactNode } from "react";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
-import { addDeadlines, updateDeadline, useSavedDeadlines, type SavedDeadline } from "@/lib/deadline-store";
+import {
+  addDeadlines,
+  removeDeadline,
+  updateDeadline,
+  useSavedDeadlines,
+  type SavedDeadline,
+} from "@/lib/deadline-store";
 import { useGrading } from "@/lib/grading-store";
 import { DEADLINE_KINDS, type DeadlineKind } from "@/lib/syllabus";
 import { MAX_TASK_COURSE, MAX_TASK_MEMO, MAX_TASK_TITLE, parseTaskForm, type TaskFormErrors } from "@/lib/task-form";
@@ -25,6 +31,13 @@ function FieldError({ children }: { children?: ReactNode }) {
       {children}
     </span>
   );
+}
+
+// 지우기 전에 한 번 묻는다. 할 일로 기록한 집중 시간은 그대로 남는다.
+export function confirmRemoveTask(task: SavedDeadline) {
+  if (!window.confirm(`"${task.title}" 할 일을 지울까요? 되돌릴 수 없어요.`)) return false;
+  removeDeadline(task.id);
+  return true;
 }
 
 // 과제·퀴즈 같은 할 일을 직접 넣거나 고치는 창. task가 있으면 고치기다.
@@ -183,6 +196,17 @@ export default function TaskFormSheet({ task, onClose }: { task?: SavedDeadline;
         <Button type="submit" className="w-full">
           저장
         </Button>
+        {task && (
+          <button
+            type="button"
+            onClick={() => {
+              if (confirmRemoveTask(task)) onClose();
+            }}
+            className="min-h-11 w-full rounded-button text-sm font-semibold text-review active:bg-review-soft"
+          >
+            이 할 일 지우기
+          </button>
+        )}
       </form>
     </BottomSheet>
   );

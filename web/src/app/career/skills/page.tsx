@@ -143,12 +143,9 @@ export default function SkillGapPage() {
   return (
     <AppShell>
       <div className="flex min-h-7 items-center justify-between">
-        <Link
-          href="/career/receipts"
-          className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-xs font-semibold text-brand"
-        >
+        <Link href="/career" className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
           <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-          스펙 영수증
+          취업
         </Link>
         {today && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">

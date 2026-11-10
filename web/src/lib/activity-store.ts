@@ -8,13 +8,15 @@ import { ACTIVITY_KINDS, type ActivityKind } from "./activity-kinds";
 
 export { ACTIVITY_KINDS, type ActivityKind };
 
-export const ACTIVITY_STAGES = ["active", "applied", "done", "rejected"] as const;
+// 시간 순서: 지원 준비 → (불합격) → 활동 → 종료. 화면의 단계 고르기가 이 순서를 쓴다.
+// 저장 값은 옛 기록과 같게 두고 보이는 이름만 바꿨다 (applied = 준비 중, done = 종료).
+export const ACTIVITY_STAGES = ["applied", "rejected", "active", "done"] as const;
 export type ActivityStage = (typeof ACTIVITY_STAGES)[number];
 export const STAGE_LABEL: Record<ActivityStage, string> = {
-  active: "진행 중",
-  applied: "지원 중",
-  done: "끝남",
+  applied: "준비 중",
   rejected: "불합격",
+  active: "활동 중",
+  done: "종료",
 };
 
 // 단계·기관 같은 칸은 나중에 더해서 모두 선택이다. 옛 카드에는 없다.
@@ -86,7 +88,7 @@ export function isHomeActivity(a: Activity) {
   return !a.fromPosting && stage !== "done" && stage !== "rejected";
 }
 
-// 단계가 없는 옛 카드는 '진행 중'으로 읽는다.
+// 단계가 없는 옛 카드는 '활동 중'(active)으로 읽는다.
 export function stageOf(a: Activity): ActivityStage {
   return a.stage ?? "active";
 }

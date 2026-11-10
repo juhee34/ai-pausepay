@@ -1,10 +1,9 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { ChevronLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import AppShell from "@/components/ui/app-shell";
-import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
@@ -113,7 +112,10 @@ export default function ReceiptsPage() {
 
   return (
     <AppShell>
-      <BrandLabel />
+      <Link href="/career" className="-ml-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
+        <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
+        취업
+      </Link>
       <header className="flex items-center justify-between gap-3 px-1">
         <h1 className="text-[22px] font-bold">스펙 영수증</h1>
         <Link

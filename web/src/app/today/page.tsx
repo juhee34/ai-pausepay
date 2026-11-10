@@ -28,7 +28,7 @@ import {
   type ScoredTask,
 } from "@/lib/today-plan";
 
-import TaskFormSheet from "../task-form-sheet";
+import TaskFormSheet, { confirmRemoveTask } from "../task-form-sheet";
 
 const LEVEL_CLASS: Record<EfficiencyLevel, string> = {
   높음: "bg-brand-soft text-brand",
@@ -331,17 +331,27 @@ export default function TodayPage() {
                         <span />
                       )}
                       {savedTask && (
-                        <button
-                          type="button"
-                          aria-label={`${t.title} 고치기`}
-                          onClick={() => {
-                            setOpenCourse(null);
-                            setTaskSheet({ task: savedTask, fromCourse: openGroup.course });
-                          }}
-                          className="min-h-11 px-1 text-[13px] font-semibold text-muted"
-                        >
-                          고치기
-                        </button>
+                        <span className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label={`${t.title} 지우기`}
+                            onClick={() => confirmRemoveTask(savedTask)}
+                            className="min-h-11 px-1.5 text-[13px] font-semibold text-review"
+                          >
+                            지우기
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`${t.title} 고치기`}
+                            onClick={() => {
+                              setOpenCourse(null);
+                              setTaskSheet({ task: savedTask, fromCourse: openGroup.course });
+                            }}
+                            className="min-h-11 px-1.5 text-[13px] font-semibold text-muted"
+                          >
+                            고치기
+                          </button>
+                        </span>
                       )}
                     </div>
                   )}
