@@ -13,7 +13,7 @@ service cloud.firestore {
         && request.resource.data.version == 1
         && request.resource.data.updatedAt == request.time
         && request.resource.data.data.keys().hasAll(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts'])
-        && request.resource.data.data.keys().hasOnly(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts', 'targetJob', 'studyHours', 'semester'])
+        && request.resource.data.data.keys().hasOnly(['deadlines', 'activities', 'focus', 'timetable', 'examResults', 'grades', 'grading', 'receipts', 'targetJob', 'studyHours', 'semester', 'jobPicks'])
         && (!('targetJob' in request.resource.data.data)
           || request.resource.data.data.targetJob in ['마케팅 기획', '데이터 분석', '서비스 기획', '재무·회계'])
         // 학기 리스크 지도의 공부 시간 기준(선택). 정해진 이름의 숫자 칸만
@@ -26,6 +26,12 @@ service cloud.firestore {
             && (!('other' in request.resource.data.data.studyHours) || request.resource.data.data.studyHours.other is number)
             && (!('weekly' in request.resource.data.data.studyHours) || request.resource.data.data.studyHours.weekly is number)))
         && (!('semester' in request.resource.data.data) || request.resource.data.data.semester is map)
+        // 역량 공백 지도에서 추가·삭제한 직무(선택)
+        && (!('jobPicks' in request.resource.data.data)
+          || (request.resource.data.data.jobPicks is map
+            && request.resource.data.data.jobPicks.keys().hasOnly(['added', 'removed'])
+            && request.resource.data.data.jobPicks.added is list
+            && request.resource.data.data.jobPicks.removed is list))
         && request.resource.data.data.deadlines is list
         && request.resource.data.data.activities is list
         && request.resource.data.data.timetable is list

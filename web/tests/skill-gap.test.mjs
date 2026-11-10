@@ -101,3 +101,53 @@ test("상태 경계와 시간 표시", () => {
   assert.equal(formatFocusTime(60), "1시간");
   assert.equal(formatFocusTime(100), "1.7시간");
 });
+
+const { jobChips, jobScores, recommendJobs } = loaded.exports;
+const JOBS = {
+  마케팅: ["시장", "콘텐츠", "협업"],
+  데이터: ["통계", "시각화", "협업"],
+  서비스: ["사용자 조사", "문서", "협업"],
+  재무: ["결산", "엑셀", "협업"],
+};
+const ALL = Object.keys(JOBS);
+
+test("직무 점수는 영수증이 있는 필요 역량 칸 수다", () => {
+  const scores = jobScores(JOBS, [{ competencies: ["통계", "시각화"] }, { competencies: ["통계", "협업"] }]);
+  assert.deepEqual(scores, [
+    { job: "마케팅", score: 1 },
+    { job: "데이터", score: 3 },
+    { job: "서비스", score: 1 },
+    { job: "재무", score: 1 },
+  ]);
+});
+
+test("추천은 점수 순으로 최대 3개, 같으면 표 순서다", () => {
+  assert.deepEqual(recommendJobs(JOBS, [{ competencies: ["통계", "시각화", "협업"] }]), ["데이터", "마케팅", "서비스"]);
+  assert.deepEqual(recommendJobs(JOBS, [{ competencies: ["결산", "엑셀"] }, { competencies: ["사용자 조사"] }]), ["재무", "서비스"]);
+});
+
+test("점수가 있는 직무만 추천하고, 모두 0이면 추천하지 않는다", () => {
+  assert.deepEqual(recommendJobs(JOBS, [{ competencies: ["결산"] }], ["협업"]), ["재무"]);
+  assert.deepEqual(recommendJobs(JOBS, [{ competencies: ["외국어"] }]), []);
+  assert.deepEqual(recommendJobs(JOBS, []), []);
+});
+
+test("칩은 추천에서 지운 직무를 빼고 추가한 직무와 전에 고른 직무를 더한다", () => {
+  assert.deepEqual(jobChips(["데이터", "서비스"], { added: [], removed: [] }, ALL), ["데이터", "서비스"]);
+  assert.deepEqual(jobChips(["데이터", "서비스"], { added: ["재무"], removed: ["서비스"] }, ALL), ["데이터", "재무"]);
+  assert.deepEqual(jobChips(["데이터"], { added: ["데이터"], removed: [] }, ALL, "서비스"), ["데이터", "서비스"]);
+  // 지운 직무는 전에 골랐어도 다시 나오지 않는다
+  assert.deepEqual(jobChips(["데이터"], { added: [], removed: ["서비스"] }, ALL, "서비스"), ["데이터"]);
+});
+
+test("모두 지워지면 지우지 않은 첫 직무 하나를 남기고, 표에 없는 이름은 뺀다", () => {
+  assert.deepEqual(jobChips(["마케팅"], { added: [], removed: ["마케팅"] }, ALL), ["데이터"]);
+  assert.deepEqual(jobChips([], { added: ["없는 직무"], removed: ALL }, ALL), ["마케팅"]);
+});
+
+test("공통 역량은 추천 점수에 세지 않는다", () => {
+  const receipts = [{ competencies: ["통계", "협업"] }];
+  assert.deepEqual(jobScores(JOBS, receipts, ["협업"]).map((s) => s.score), [0, 1, 0, 0]);
+  assert.deepEqual(recommendJobs(JOBS, receipts, ["협업"]), ["데이터"]);
+  assert.deepEqual(recommendJobs(JOBS, [{ competencies: ["협업"] }], ["협업"]), []);
+});

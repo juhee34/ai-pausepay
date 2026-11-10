@@ -1,27 +1,38 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { getData, getServerData, subscribeData } from "@/app/focus/store";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
+import BottomSheet from "@/components/ui/bottom-sheet";
 import { stageOf, useActivities } from "@/lib/activity-store";
 import { useToday } from "@/lib/briefing";
-import { COMPETENCY_SOURCE_NOTE, JOB_COMPETENCIES } from "@/lib/competencies";
+import { COMMON_COMPETENCIES, COMPETENCY_SOURCE_NOTE, JOB_COMPETENCIES } from "@/lib/competencies";
 import { useReceipts } from "@/lib/receipt-store";
 import {
   FILLED_RECEIPTS,
   MAX_FIRST_TO_FILL,
   buildGapMap,
   formatFocusTime,
+  jobChips,
+  recommendJobs,
   type GapActivity,
   type GapCell,
   type GapFocusRecord,
   type GapReceipt,
   type GapStatus,
 } from "@/lib/skill-gap";
-import { TARGET_JOBS, setTargetJob, useTargetJob } from "@/lib/target-job-store";
+import {
+  TARGET_JOBS,
+  addTargetJob,
+  removeTargetJob,
+  setTargetJob,
+  useJobPicks,
+  useSavedTargetJob,
+  type TargetJob,
+} from "@/lib/target-job-store";
 
 // 내 활동과 영수증이 없을 때 보여 주는 예시. 저장하지 않는다.
 const EXAMPLE_ACTIVITIES: GapActivity[] = [
@@ -123,9 +134,17 @@ export default function SkillGapPage() {
   const activities = useActivities();
   const receipts = useReceipts();
   const focus = useSyncExternalStore(subscribeData, getData, getServerData);
-  const job = useTargetJob();
+  const saved = useSavedTargetJob();
+  const picks = useJobPicks();
+  const [adding, setAdding] = useState(false);
 
   const isExample = activities.length === 0 && receipts.length === 0;
+  // 내 영수증이 있으면 겹치는 직무를 추천하고, 없으면 마케팅 기획을 샘플로 보여 준다.
+  const recommended = isExample ? [] : (recommendJobs(JOB_COMPETENCIES, receipts, COMMON_COMPETENCIES) as TargetJob[]);
+  const base = recommended.length > 0 ? recommended : [TARGET_JOBS[0]];
+  const chips = jobChips(base, picks, TARGET_JOBS, saved ?? undefined) as TargetJob[];
+  const job = saved && chips.includes(saved) ? saved : chips[0];
+  const addable = TARGET_JOBS.filter((name) => !chips.includes(name));
   const map = isExample
     ? buildGapMap(JOB_COMPETENCIES[job], EXAMPLE_ACTIVITIES, EXAMPLE_RECEIPTS, EXAMPLE_RECORDS)
     : buildGapMap(
@@ -167,20 +186,54 @@ export default function SkillGapPage() {
 
           <h2 className="mt-4 text-xs font-semibold text-brand">목표 직무</h2>
           <div role="group" aria-label="목표 직무" className="mt-2 flex flex-wrap gap-2">
-            {TARGET_JOBS.map((name) => (
+            {chips.map((name) => {
+              const selected = name === job;
+              return (
+                <span
+                  key={name}
+                  className={`flex min-h-10 items-center rounded-full border ${
+                    selected ? "border-brand bg-brand text-white" : "border-line bg-surface text-ink"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setTargetJob(name)}
+                    className={`min-h-10 pl-3.5 text-sm font-semibold ${chips.length > 1 ? "pr-0.5" : "pr-3.5"}`}
+                  >
+                    {name}
+                  </button>
+                  {chips.length > 1 && (
+                    <button
+                      type="button"
+                      aria-label={`${name} 목표에서 빼기`}
+                      onClick={() => removeTargetJob(name)}
+                      className={`flex h-10 w-9 items-center justify-center rounded-r-full ${selected ? "text-white/80" : "text-muted"}`}
+                    >
+                      <X size={15} strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+            {addable.length > 0 && (
               <button
-                key={name}
                 type="button"
-                aria-pressed={name === job}
-                onClick={() => setTargetJob(name)}
-                className={`relative min-h-10 rounded-full border px-3.5 text-sm font-semibold after:absolute after:-inset-y-0.5 after:inset-x-0 ${
-                  name === job ? "border-brand bg-brand text-white" : "border-line bg-surface text-ink"
-                }`}
+                onClick={() => setAdding(true)}
+                className="flex min-h-10 items-center gap-1 rounded-full border border-dashed border-brand bg-surface px-3.5 text-sm font-semibold text-brand active:bg-brand-soft"
               >
-                {name}
+                <Plus size={16} strokeWidth={2} aria-hidden="true" />
+                직무 추가
               </button>
-            ))}
+            )}
           </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted">
+            {isExample
+              ? "예시 직무예요. 스펙 영수증을 쓰면 내 기록에 맞는 직무를 추천해 드려요."
+              : recommended.length > 0
+                ? "내 영수증과 겹치는 직무를 골라 뒀어요. ＋로 더하고 X로 뺄 수 있어요."
+                : "영수증에 역량이 쌓이면 맞는 직무를 추천해 드려요. ＋로 직접 고를 수도 있어요."}
+          </p>
 
           <Block className="mt-3">
             <p className="text-sm font-bold">
@@ -325,10 +378,32 @@ export default function SkillGapPage() {
           <p className="mt-4 text-[11px] leading-relaxed text-muted">
             그 역량이 적힌 영수증이 {FILLED_RECEIPTS}장 이상이면 채움, 1장이면 보강 필요, 없으면 비어 있음이에요. 시간은 그 영수증이
             연결된 활동에 집중 모드로 기록한 시간의 합이고, 같은 활동은 한 번만 더해요. {COMPETENCY_SOURCE_NOTE}
-            {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
+            {isExample && " 화면의 숫자는 모두 예시 데이터예요."} 추천 직무는 공통 역량(문제 해결·협업·리더십·소통)을 뺀 직무 역량 중 내 영수증이 있는 칸이 많은 순으로 최대 3개예요.
           </p>
         </>
       )}
+
+      <BottomSheet open={adding} onClose={() => setAdding(false)} title="목표 직무 추가">
+        <ul className="space-y-2">
+          {addable.map((name) => (
+            <li key={name}>
+              <button
+                type="button"
+                onClick={() => {
+                  addTargetJob(name);
+                  setAdding(false);
+                }}
+                className="w-full rounded-[14px] bg-canvas p-3 text-left active:bg-divider"
+              >
+                <span className="text-sm font-bold">{name}</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted">
+                  {JOB_COMPETENCIES[name].slice(0, 5).join(" · ")}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </BottomSheet>
     </AppShell>
   );
 }

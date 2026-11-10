@@ -114,3 +114,48 @@ export function buildGapMap(
     },
   };
 }
+
+// ── 목표 직무 추천과 칩 목록 ──
+// 직무마다 필요한 역량 중 내 영수증이 1장 이상 있는 칸 수를 센다. 많은 순, 같으면 표 순서.
+// 모든 직무에 들어 있는 공통 역량(ignore)은 직무를 가르지 못하니 세지 않는다.
+// 점수가 있는 직무만 최대 3개 고른다. 점수가 모두 0이면 추천하지 않는다 (샘플 직무를 억지로 채우지 않는다).
+export const MAX_RECOMMENDED_JOBS = 3;
+
+export function jobScores(
+  jobs: Record<string, readonly string[]>,
+  receipts: GapReceipt[],
+  ignore: readonly string[] = [],
+) {
+  const written = new Set(receipts.flatMap((r) => r.competencies).filter((name) => !ignore.includes(name)));
+  return Object.entries(jobs).map(([job, required]) => ({
+    job,
+    score: required.filter((name) => written.has(name)).length,
+  }));
+}
+
+export function recommendJobs(
+  jobs: Record<string, readonly string[]>,
+  receipts: GapReceipt[],
+  ignore: readonly string[] = [],
+): string[] {
+  const ranked = jobScores(jobs, receipts, ignore)
+    .map((entry, index) => ({ ...entry, index }))
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  return ranked
+    .filter((entry) => entry.score > 0)
+    .slice(0, MAX_RECOMMENDED_JOBS)
+    .map((entry) => entry.job);
+}
+
+export type JobPicks = { added: string[]; removed: string[] };
+
+// 화면에 보일 직무 칩. 추천(또는 샘플)에서 지운 직무를 빼고, 직접 추가한 직무와 전에 고른 직무를 더한다.
+// 모두 지워져 비면 지우지 않은 첫 직무 하나를 남긴다.
+export function jobChips(base: string[], picks: JobPicks, allJobs: string[], saved?: string): string[] {
+  const removed = new Set(picks.removed);
+  const chips = [...base.filter((job) => !removed.has(job)), ...picks.added];
+  if (saved && !removed.has(saved)) chips.push(saved);
+  const unique = [...new Set(chips)].filter((job) => allJobs.includes(job));
+  if (unique.length > 0) return unique;
+  return [allJobs.find((job) => !removed.has(job)) ?? allJobs[0]];
+}
