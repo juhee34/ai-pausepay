@@ -111,7 +111,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
     deadlines: [], activities: [], timetable: [], examResults: [], receipts: [],
     focus: { subjects: [], records: [] },
     grades: {}, grading: {},
-    // 있을 때만: targetJob, semester (학기 결산의 과목별 학점·예상 성적)
+    // 있을 때만: targetJob, jobPicks (공백 지도에서 추가·삭제한 직무), semester (학기 결산의 과목별 학점·예상 성적)
   }
 }
 ```

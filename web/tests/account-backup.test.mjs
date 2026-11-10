@@ -178,6 +178,23 @@ test("학기 결산의 학점·성적은 있을 때만 올리고 다시 받을 �
   assert.equal(backup.parseBackupData({ ...data, semester: { 회계: { credits: -1 } } }), null);
 });
 
+test("목표 직무 목록은 바꾼 사람만 올리고, 이 기기에서 바꾼 적이 없을 때만 받는다", async () => {
+  store.set("unis.targetJobPicks.v1", JSON.stringify({ added: ["재무·회계"], removed: ["마케팅 기획"] }));
+  await account.uploadAccountBackup("alice");
+  assert.deepEqual(remote.data.jobPicks, { added: ["재무·회계"], removed: ["마케팅 기획"] });
+
+  const data = JSON.parse(JSON.stringify(remote.data));
+  store.delete("unis.targetJobPicks.v1");
+  const parsed = backup.parseBackupData(data);
+  assert.equal(backup.importBackup(parsed).jobPicksAdded, true);
+  assert.deepEqual(JSON.parse(store.get("unis.targetJobPicks.v1")), { added: ["재무·회계"], removed: ["마케팅 기획"] });
+
+  store.set("unis.targetJobPicks.v1", JSON.stringify({ added: [], removed: [] }));
+  assert.equal(backup.importBackup(parsed).jobPicksAdded, false, "이 기기 목록은 덮어쓰지 않는다");
+  assert.equal(backup.parseBackupData({ ...data, jobPicks: { added: ["없는 직무"], removed: [] } }), null);
+  store.delete("unis.targetJobPicks.v1");
+});
+
 test("Firestore가 받지 못하는 undefined를 올리지 않는다", async () => {
   store.set("unis.deadlines.v1", JSON.stringify([DEADLINE]));
   await account.uploadAccountBackup("alice");
