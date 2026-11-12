@@ -2,10 +2,10 @@
 
 import { aiFetch } from "@/lib/ai-fetch";
 
-import { ImageUp } from "lucide-react";
+import { ChevronLeft, ImageUp } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
-import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import CookieNote from "@/components/ui/cookie-note";
@@ -96,7 +96,11 @@ export default function TimetablePage() {
 
   return (
     <AppShell>
-      <BrandLabel />
+      <Link href="/" className="-ml-1 mb-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
+        <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
+        홈
+      </Link>
+      <p className="px-1 text-xs font-medium text-muted">시간표</p>
       <h1 className="px-1 text-[22px] font-bold">KLAS 시간표 올리기</h1>
       <p className="mt-1 px-1 text-sm text-muted">
         KLAS 시간표 화면을 캡쳐해서 올리면 수업 시간을 읽어 홈에 보여 드려요.

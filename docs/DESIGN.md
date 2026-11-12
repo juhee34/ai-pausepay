@@ -72,7 +72,7 @@
     | 묶음 | 타일 (주소) |
     |---|---|
     | 학교 | 기말 필요 점수 `/grades` · 학기 리스크 지도 `/risk` · 시험 대비 `/exam` · 교수님 메일 `/mail` · 집중 모드 `/focus` |
-    | 취업 준비 | 공고·자격증 올리기 `/calendar?type=posting` · 스펙 영수증 `/career/receipts` · 역량 공백 지도 `/career/skills` |
+    | 취업 준비 | 공고·자격증 올리기 `/career/posting` · 스펙 영수증 `/career/receipts` · 역량 공백 지도 `/career/skills` |
     | 내 정보 | 시간표 캡쳐 `/timetable` |
 
     아직 없는 화면의 타일은 흐리게 + '준비 중' 배지(누르면 "곧 열려요"). 탭바에 있는 기능(오늘의 한 가지·대외활동·마이페이지)은 이 창에 다시 넣지 않습니다.

@@ -1,6 +1,6 @@
 "use client";
 
-// 일정, 대외활동, 시간표, 집중 모드 공부 기록, 시험 대비 결과, 점수, 평가 비율, 스펙 영수증, 학기 결산 입력을 파일로 내보내고 다시 불러온다.
+// 일정, 대외활동, 시간표, 집중 모드 공부 기록, 시험 대비 결과, 점수, 평가 비율, 스펙 영수증, 학기 결산 입력, 만든 직무를 파일로 내보내고 다시 불러온다.
 // 파일은 이 기기 안에서만 만들고 읽으며 서버로 보내지 않는다. 계정 백업(account-backup.ts)은 같은 검사를 쓴다.
 // 저장소 파일(deadline-store.ts, activity-store.ts)은 화면 안에 사본을 들고 있으므로,
 // 가져온 뒤에는 페이지를 새로 고쳐야 화면에 반영된다.
@@ -23,14 +23,15 @@ import { DEADLINE_KINDS } from "./syllabus";
 import { isClassSlot, type ClassSlot } from "./timetable";
 import {
   JOB_PICKS_KEY,
-  TARGET_JOBS,
   TARGET_JOB_KEY,
   isJobPicks,
+  isTargetJob,
   readJobPicks,
   readTargetJob,
   type JobPicks,
   type TargetJob,
 } from "./target-job-store";
+import { CUSTOM_JOBS_KEY, MAX_CUSTOM_JOBS, isCustomJob, readCustomJobs, type CustomJob } from "./custom-job-store";
 import { isStudyHours, type StudyHours } from "./risk";
 import { STUDY_HOURS_KEY, readStudyHours } from "./study-hours-store";
 
@@ -56,6 +57,8 @@ export type BackupData = {
   grades: GradesData;
   grading: GradingData;
   receipts: Receipt[];
+  // 만든 직무가 있을 때만 넣는다. 없으면 칸 자체를 빼서 옛 계정 백업 규칙과 맞춘다.
+  customJobs?: CustomJob[];
   targetJob?: TargetJob;
   jobPicks?: JobPicks; // 역량 공백 지도에서 ＋로 추가하고 X로 지운 직무. 바꾼 사람만
   semester?: SemesterData;
@@ -171,6 +174,7 @@ function readCurrent(): BackupData {
   const jobPicks = readJobPicks();
   const semester = readRecord(SEMESTER_KEY, isSemesterCourse);
   const studyHours = readStudyHours();
+  const customJobs = readCustomJobs();
   return {
     deadlines: readList(DEADLINES_KEY, isDeadline),
     activities: readList(ACTIVITIES_KEY, isActivity),
@@ -180,6 +184,7 @@ function readCurrent(): BackupData {
     grades: readRecord(GRADES_KEY, isCourseGrades),
     grading: readRecord(GRADING_KEY, isGradingList),
     receipts: readList(RECEIPTS_KEY, isReceipt),
+    ...(customJobs.length > 0 ? { customJobs } : {}),
     ...(targetJob ? { targetJob } : {}),
     ...(jobPicks ? { jobPicks } : {}),
     // 입력한 적이 없으면 칸을 만들지 않는다.
@@ -194,12 +199,13 @@ export function readBackupData() {
 }
 
 export function hasBackupData() {
-  const { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, targetJob, jobPicks, studyHours, semester } = readCurrent();
+  const { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, customJobs, targetJob, jobPicks, studyHours, semester } = readCurrent();
   return (
     targetJob !== undefined ||
     jobPicks !== undefined ||
     studyHours !== undefined ||
     semester !== undefined ||
+    (customJobs?.length ?? 0) > 0 ||
     receipts.length > 0 ||
     Object.keys(grades).length > 0 ||
     Object.keys(grading).length > 0 ||
@@ -283,17 +289,20 @@ export function parseBackup(text: string): BackupData | null {
   const grading = parseOptionalRecord(file.grading, isGradingList);
   const receipts = parseOptionalList(file.receipts, isReceipt);
   const semester = parseOptionalRecord(file.semester, isSemesterCourse);
-  if (!timetable || !examResults || !grades || !grading || !receipts || !semester) return null;
+  const customJobs = parseOptionalList(file.customJobs, isCustomJob);
+  if (!timetable || !examResults || !grades || !grading || !receipts || !semester || !customJobs) return null;
+  if (customJobs.length > MAX_CUSTOM_JOBS) return null;
 
-  const targetJob = file.targetJob;
-  if (targetJob !== undefined && !TARGET_JOBS.includes(targetJob as TargetJob)) return null;
+  // 목표 직무를 알 수 없으면(지워진 만든 직무 등) 그 칸만 빼고 나머지는 받는다.
+  const targetJob = isTargetJob(file.targetJob, customJobs) ? file.targetJob : undefined;
   const studyHours = file.studyHours;
   if (studyHours !== undefined && !isStudyHours(studyHours)) return null;
   const jobPicks = file.jobPicks;
   if (jobPicks !== undefined && !isJobPicks(jobPicks)) return null;
   return {
     deadlines, activities, focus, timetable, examResults, grades, grading, receipts,
-    ...(targetJob !== undefined ? { targetJob: targetJob as TargetJob } : {}),
+    ...(customJobs.length > 0 ? { customJobs } : {}),
+    ...(targetJob !== undefined ? { targetJob } : {}),
     ...(jobPicks !== undefined ? { jobPicks } : {}),
     ...(studyHours !== undefined && Object.keys(studyHours).length > 0 ? { studyHours } : {}),
     ...(Object.keys(semester).length > 0 ? { semester } : {}),
@@ -392,8 +401,14 @@ export function importBackup(data: BackupData) {
   // 같은 영수증(id)은 이 기기 것을 그대로 두고 없는 것만 더한다.
   const knownReceipts = new Set(current.receipts.map((r) => r.id));
   const freshReceipts = data.receipts.filter((r) => !knownReceipts.has(r.id));
+  // 만든 직무도 같은 id는 이 기기 것을 두고 없는 것만 더한다.
+  const currentJobs = current.customJobs ?? [];
+  const knownJobs = new Set(currentJobs.map((j) => j.id));
+  const freshJobs = (data.customJobs ?? []).filter((j) => !knownJobs.has(j.id)).slice(0, Math.max(0, MAX_CUSTOM_JOBS - currentJobs.length));
+  const jobsAfter = [...currentJobs, ...freshJobs];
   // 이미 고른 직무는 유지하고, 없는 기기에만 복원한다.
-  const targetJobAdded = current.targetJob === undefined && data.targetJob !== undefined;
+  const targetJobAdded =
+    current.targetJob === undefined && data.targetJob !== undefined && isTargetJob(data.targetJob, jobsAfter);
   // 직무 목록도 이 기기에서 바꾼 적이 없을 때만 받는다.
   const jobPicksAdded = current.jobPicks === undefined && data.jobPicks !== undefined;
   // 공부 시간 기준도 이 기기에서 정한 게 없을 때만 넣는다.
@@ -415,6 +430,7 @@ export function importBackup(data: BackupData) {
     GRADES_KEY,
     GRADING_KEY,
     RECEIPTS_KEY,
+    CUSTOM_JOBS_KEY,
     TARGET_JOB_KEY,
     SEMESTER_KEY,
     STUDY_HOURS_KEY,
@@ -439,6 +455,9 @@ export function importBackup(data: BackupData) {
       const receipts = [...current.receipts, ...freshReceipts].sort((a, b) => b.createdAt - a.createdAt);
       localStorage.setItem(RECEIPTS_KEY, JSON.stringify(receipts));
     }
+    if (freshJobs.length > 0) {
+      localStorage.setItem(CUSTOM_JOBS_KEY, JSON.stringify(jobsAfter.sort((a, b) => a.createdAt - b.createdAt)));
+    }
   } catch (error) {
     keys.forEach((key, index) => restore(key, previous[index]));
     throw error;
@@ -453,6 +472,7 @@ export function importBackup(data: BackupData) {
     addedGrading: grading.added,
     addedSemester: semester.added,
     addedReceipts: freshReceipts.length,
+    addedCustomJobs: freshJobs.length,
     targetJobAdded,
     jobPicksAdded,
     studyHoursAdded,
@@ -466,6 +486,7 @@ export function importBackup(data: BackupData) {
       grading.added > 0 ||
       semester.added > 0 ||
       freshReceipts.length > 0 ||
+      freshJobs.length > 0 ||
       deadlines.added > 0 ||
       activities.added > 0 ||
       focus.changed ||
@@ -485,6 +506,7 @@ export function describeImport(result: ReturnType<typeof importBackup>) {
     result.addedGrading > 0 && `평가 비율 ${result.addedGrading}과목`,
     result.addedSemester > 0 && `학기 결산 ${result.addedSemester}과목`,
     result.addedReceipts > 0 && `영수증 ${result.addedReceipts}장`,
+    result.addedCustomJobs > 0 && `만든 직무 ${result.addedCustomJobs}개`,
     result.timetableAdded && "시간표",
     result.targetJobAdded && "목표 직무",
     result.jobPicksAdded && "목표 직무 목록",
