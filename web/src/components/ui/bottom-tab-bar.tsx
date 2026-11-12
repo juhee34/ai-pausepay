@@ -10,6 +10,7 @@ import {
   Calculator,
   CalendarClock,
   Cookie,
+  FileUp,
   House,
   Mail,
   Map as MapIcon,
@@ -50,6 +51,7 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
   {
     title: "학교",
     tiles: [
+      { href: "/calendar", label: "강의계획서 올리기", sub: "시험·과제를 달력으로", Icon: FileUp, ready: true, cookie: true },
       { href: "/grades", label: "기말 필요 점수", sub: "목표까지 몇 점?", Icon: Calculator, ready: true },
       { href: "/risk", label: "학기 리스크 지도", sub: "몰리는 주 미리 보기", Icon: MapIcon, ready: true },
       { href: "/exam", label: "시험 대비", sub: "강의자료로 요약과 문제", Icon: NotebookPen, ready: true, cookie: true },

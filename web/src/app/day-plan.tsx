@@ -157,11 +157,11 @@ export default function DayPlan() {
       <div className="border-t border-divider p-1.5">
         <Button variant="ghost" className="w-full !text-muted" onClick={() => setActivityOpen(true)}>
           <Plus size={18} strokeWidth={1.8} aria-hidden="true" />
-          대외활동
+          대외활동 일정 넣기
         </Button>
       </div>
 
-      <BottomSheet open={activityOpen} onClose={() => setActivityOpen(false)} title="대외활동">
+      <BottomSheet open={activityOpen} onClose={() => setActivityOpen(false)} title="대외활동 일정">
         <Activities />
       </BottomSheet>
     </Block>

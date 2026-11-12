@@ -4,7 +4,7 @@ import { aiFetch } from "@/lib/ai-fetch";
 
 import { useRef, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
-import BrandLabel from "@/components/ui/brand-label";
+import BackLink from "@/components/ui/back-link";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import CookieNote from "@/components/ui/cookie-note";
@@ -250,7 +250,7 @@ export default function ExamPage() {
     <AppShell>
       {!pack ? (
         <>
-          <BrandLabel />
+          <BackLink href="/" label="홈" />
           <header className="mb-4 px-1">
             <h1 className="text-[22px] font-bold">강의자료로 요약과 문제 만들기</h1>
             <p className="mt-1 text-sm text-muted">
@@ -464,7 +464,7 @@ export default function ExamPage() {
       ) : (
         <>
           <div>
-          <BrandLabel />
+          <BackLink href="/" label="홈" />
           <header className="mb-4 px-1">
             <h1 className="text-[22px] font-bold">
               {graded ? "채점 결과예요" : "요약을 읽고 문제를 풀어 보세요"}

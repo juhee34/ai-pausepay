@@ -1,10 +1,12 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Minus, Plus, Timer } from "lucide-react";
+import { ChevronRight, Minus, Plus, Timer } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { getData, getServerData, subscribeData } from "@/app/focus/store";
 import AppShell from "@/components/ui/app-shell";
+import BackLink from "@/components/ui/back-link";
+import FormulaNote from "@/components/ui/formula-note";
 import Block from "@/components/ui/block";
 import { useToday } from "@/lib/briefing";
 import { useSavedDeadlines } from "@/lib/deadline-store";
@@ -271,10 +273,7 @@ export default function RiskPage() {
   return (
     <AppShell>
       <div className="flex min-h-7 items-center justify-between">
-        <Link href="/today" className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
-          <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-          우선순위
-        </Link>
+        <BackLink href="/" label="홈" />
         {today && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">
             예시 데이터
@@ -412,14 +411,14 @@ export default function RiskPage() {
         <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
       </Link>
 
-      <p className="mt-4 text-[11px] leading-relaxed text-muted">
+      <FormulaNote>
         표의 숫자는 그 주에 마감인 할 일 개수예요. 몰림은 그 주에 해야 할 공부 시간이 내 공부 시간(일주일에 공부할 수 있는 시간, 이번 주는
         남은 날 ÷ 7만큼)을 넘는 주예요. 공부 시간 = 예상 시간(할 일에 직접 넣은 값 &gt; 내가 정한 종류별 시간 &gt; 기본값 시험 8 · 과제 3 ·
         퀴즈·기타 1시간) − 집중 모드로 그 일정에 쓴 시간이고, 시작일을 넣은 할 일은 시작 주부터 나눠요. &apos;이번 주에 할 것&apos;은 몰린
         주의 시험·과제를 최대 4주 앞(시작일 이후)의 남는 시간으로 30분 단위로 당겨 나눈 결과이고, 시험 공부의 30%는 시험 주에 남겨요.
         {` ${SEMESTER.label}(${SEMESTER.week1Monday} 주가 1주차, ${SEMESTER.lastWeek}주차까지) 기준이고, 지난 일정·끝낸 일정·공고 일정은 빼요. 실제와 다를 수 있어요.`}
         {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
-      </p>
+      </FormulaNote>
     </AppShell>
   );
 }

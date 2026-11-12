@@ -4,6 +4,8 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
+import BackLink from "@/components/ui/back-link";
+import FormulaNote from "@/components/ui/formula-note";
 import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import {
@@ -139,8 +141,8 @@ export default function ReportPage() {
 
   return (
     <AppShell>
-      <div className="flex min-h-7 items-center justify-between px-1">
-        <p className="text-xs font-semibold text-brand">우니스</p>
+      <div className="flex min-h-7 items-center justify-between">
+        <BackLink href="/" label="홈" />
         {today && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">
             예시 데이터
@@ -273,12 +275,12 @@ export default function ReportPage() {
         <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
       </Link>
 
-      <p className="mt-4 text-[11px] leading-relaxed text-muted">
+      <FormulaNote>
         가성비 지수 = 예상 평점 ÷ 학점당 투입 시간 × 100. 과목 난이도와 평가 방식은 반영하지 않아요. 평점은 직접 입력한 예상 성적 기준이고, 집중 모드를 켠
         시간만 세어서 실제 공부 시간과 다를 수 있어요. 학점을 넣지 않은 과목은 {DEFAULT_CREDITS}학점으로 보고, 학점당 투입 시간에는 기록 없는 과목의 학점도
         들어가요.
         {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
-      </p>
+      </FormulaNote>
 
       {editing && editingValue && (
         <CourseSheet course={editing} value={editingValue} onClose={() => setEditing(null)} />

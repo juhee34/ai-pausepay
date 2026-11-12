@@ -115,7 +115,16 @@ export default function CareerPage() {
         <>
           <h2 className="mt-5 px-1 text-[15px] font-bold">대외활동</h2>
           <div className="mt-2">
-            <SegmentedTabs label="활동 단계" options={TABS} value={tab} onChange={setTab} />
+            {/* 단계마다 개수를 붙여 다른 탭에 있는 활동도 바로 보이게 한다. */}
+            <SegmentedTabs
+              label="활동 단계"
+              options={TABS.map((t) => {
+                const count = activities.filter((a) => stageOf(a) === t.value).length;
+                return { ...t, label: count > 0 ? `${t.label} ${count}` : t.label };
+              })}
+              value={tab}
+              onChange={setTab}
+            />
           </div>
 
           <Block padded={false} className="mt-2.5 divide-y divide-divider overflow-hidden">
