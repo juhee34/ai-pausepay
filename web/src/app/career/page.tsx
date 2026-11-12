@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, ChevronRight, Plus, Radar } from "lucide-react";
+import { Award, CalendarPlus, ChevronRight, Plus, Radar } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
@@ -27,6 +27,8 @@ const TABS: { value: ActivityStage; label: string }[] = ACTIVITY_STAGES.map((val
 }));
 
 // 탭바의 '취업'이 이 화면을 연다. 취업 준비의 다른 화면으로 여기서 이어 간다.
+// 활동을 넣는 길은 둘: 공고·자격증 캡처를 올리면 AI가 마감을 찾아 일정과 활동을 함께 만들고(공고·자격증 올리기),
+// 공고 없이 직접 적는 활동은 '직접 추가'로 넣는다.
 const CAREER_LINKS = [
   { href: "/career/receipts", label: "스펙 영수증", Icon: Award },
   { href: "/career/skills", label: "역량 공백 지도", Icon: Radar },
@@ -89,13 +91,21 @@ export default function CareerPage() {
     <AppShell>
       <BrandLabel />
       <header className="flex items-center justify-between gap-3 px-1">
-        <h1 className="text-[22px] font-bold">취업</h1>
-        <Button onClick={() => setSheet({ kind: "add" })} className="shrink-0 !px-3 text-sm">
-          <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
-          활동 추가
-        </Button>
+        <h1 className="text-[22px] font-bold">취업 준비</h1>
       </header>
-      <p className="mt-1 px-1 text-[13px] text-muted">대외활동, 스펙 영수증, 역량 공백 지도를 한곳에서 챙겨요.</p>
+      <p className="mt-1 px-1 text-[13px] text-muted">공고 마감부터 끝난 활동 정리까지 한곳에서 챙겨요.</p>
+
+      <Link
+        href="/career/posting"
+        className="mt-3 flex min-h-11 items-center gap-3 rounded-block bg-brand p-3.5 text-white active:bg-brand-strong"
+      >
+        <CalendarPlus size={22} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-bold">공고·자격증 올리기</span>
+          <span className="mt-0.5 block text-xs text-white/80">캡처나 글을 넣으면 마감을 찾아 일정·활동에 함께 넣어요</span>
+        </span>
+        <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
+      </Link>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         {CAREER_LINKS.map(({ href, label, Icon }) => (
@@ -113,7 +123,17 @@ export default function CareerPage() {
 
       {today && (
         <>
-          <h2 className="mt-5 px-1 text-[15px] font-bold">대외활동</h2>
+          <div className="mt-5 flex items-center justify-between gap-3 px-1">
+            <h2 className="text-[17px] font-bold">대외활동</h2>
+            <Button
+              variant="secondary"
+              onClick={() => setSheet({ kind: "add" })}
+              className="shrink-0 !min-h-10 !px-3 text-sm"
+            >
+              <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
+              직접 추가
+            </Button>
+          </div>
           <div className="mt-2">
             <SegmentedTabs label="활동 단계" options={TABS} value={tab} onChange={setTab} />
           </div>

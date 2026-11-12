@@ -100,7 +100,16 @@ export function ActivityFormSheet({
   }
 
   return (
-    <BottomSheet open onClose={onClose} title={activity ? "활동 고치기" : "활동 추가"}>
+    <BottomSheet open onClose={onClose} title={activity ? "활동 고치기" : "직접 추가"}>
+      {!activity && (
+        <p className="-mt-1 mb-3 rounded-callout bg-canvas p-3 text-[13px] leading-relaxed text-muted">
+          공고 없이 직접 적는 활동이에요. 공고·자격증 안내가 있으면{" "}
+          <Link href="/career/posting" className="font-semibold text-brand underline">
+            공고·자격증 올리기
+          </Link>
+          에서 마감을 찾아 일정까지 한 번에 넣을 수 있어요.
+        </p>
+      )}
       <form onSubmit={save} className="space-y-3.5">
         <label className="block text-[13px] font-semibold">
           이름

@@ -4,7 +4,6 @@ import { aiFetch } from "@/lib/ai-fetch";
 
 import { ChevronLeft, FileUp, Plus } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import BrandLabel from "@/components/ui/brand-label";
@@ -40,27 +39,12 @@ import ReviewList, { type Draft } from "./review-list";
 const inputClass =
   "mt-1.5 block min-h-11 w-full min-w-0 rounded-button border border-line bg-surface px-3 py-2.5 text-[16px] font-normal text-ink outline-none placeholder:text-muted focus:border-brand";
 
-// 강의계획서와 공고·자격증 중 고르는 칸. 주소로 나눠서 + 메뉴에서 바로 올 수 있다.
-export function UploadModeTabs({ value }: { value: "syllabus" | "posting" }) {
-  const router = useRouter();
-  return (
-    <SegmentedTabs
-      label="무엇을 올릴까요"
-      options={[
-        { value: "syllabus", label: "강의계획서" },
-        { value: "posting", label: "공고·자격증" },
-      ]}
-      value={value}
-      onChange={(next) => router.replace(next === "posting" ? "/calendar?type=posting" : "/calendar")}
-    />
-  );
-}
-
 function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
 // 공고·자격증 → 일정. 올리기 → AI가 찾은 일정 확인·수정 → 일정 저장 + 대외활동 카드 + .ics 내려받기.
+// 화면 주소는 /career/posting (취업 안). 옛 주소 /calendar?type=posting은 여기로 보낸다.
 export default function PostingFlow() {
   const today = useToday();
   const [source, setSource] = useState<"image" | "text">("image");
@@ -350,13 +334,11 @@ export default function PostingFlow() {
 
   return (
     <AppShell>
-      <Link href="/" className="-ml-1 mb-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
+      <Link href="/career" className="-ml-1 mb-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
         <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-        홈
+        취업
       </Link>
-      <div className="mb-3 px-1">
-        <UploadModeTabs value="posting" />
-      </div>
+      <p className="px-1 text-xs font-medium text-muted">공고·자격증 올리기</p>
       <h1 className="px-1 text-[22px] font-bold">공고 한 장으로 취준 일정</h1>
       <p className="mt-1 px-1 text-sm text-muted">
         대외활동·공모전·인턴·채용 공고나 자격증 안내를 넣으면 마감일을 찾아 드려요.

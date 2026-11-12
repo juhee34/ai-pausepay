@@ -58,7 +58,14 @@ export function countBackup(data: BackupData) {
     grading: Object.keys(data.grading).length,
     receipts: data.receipts.length,
     semester: Object.keys(data.semester ?? {}).length,
+    customJobs: data.customJobs?.length ?? 0,
   };
+}
+
+function targetJobName(data: BackupData) {
+  if (!data.targetJob) return undefined;
+  const custom = data.customJobs?.find((j) => `custom:${j.id}` === data.targetJob);
+  return custom?.name ?? data.targetJob;
 }
 
 export function describeBackup(data: BackupData) {
@@ -73,7 +80,8 @@ export function describeBackup(data: BackupData) {
     `평가 비율 ${c.grading}과목`,
     `영수증 ${c.receipts}`,
     ...(c.semester > 0 ? [`학기 결산 ${c.semester}과목`] : []),
-    ...(data.targetJob ? [`목표 직무 ${data.targetJob}`] : []),
+    ...(c.customJobs > 0 ? [`만든 직무 ${c.customJobs}`] : []),
+    ...(data.targetJob ? [`목표 직무 ${targetJobName(data)}`] : []),
   ].join(" · ");
 }
 
