@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Share } from "lucide-react";
+import { ChevronRight, Share } from "lucide-react";
 import Link from "next/link";
+import BackLink from "@/components/ui/back-link";
 import { useRef, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
@@ -147,10 +148,7 @@ export default function FlowPage() {
   return (
     <AppShell>
       <div className="flex min-h-7 items-center justify-between">
-        <Link href="/report" className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
-          <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-          결산서 요약
-        </Link>
+        <BackLink href="/report" label="결산서 요약" />
         {today && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">
             예시 데이터
