@@ -28,7 +28,7 @@ import {
   type ScoredTask,
 } from "@/lib/today-plan";
 
-import TaskFormSheet, { confirmRemoveTask } from "../task-form-sheet";
+import TaskFormSheet, { confirmRemoveCourse, confirmRemoveTask } from "../task-form-sheet";
 
 const LEVEL_CLASS: Record<EfficiencyLevel, string> = {
   높음: "bg-brand-soft text-brand",
@@ -359,6 +359,27 @@ export default function TodayPage() {
               );
             })}
           </ul>
+          {/* 저장한 할 일이 있는 과목만 통째로 지울 수 있다 (예시 데이터는 저장하지 않으므로 빼고). */}
+          {(() => {
+            const courseTasks = saved.filter((d) => d.course === openGroup.course);
+            if (isExample || courseTasks.length === 0) return null;
+            return (
+              <div className="mt-2 border-t border-divider pt-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    if (confirmRemoveCourse(openGroup.course, courseTasks.length)) setOpenCourse(null);
+                  }}
+                  className="w-full !text-review"
+                >
+                  이 과목 할 일 모두 지우기 ({courseTasks.length}개)
+                </Button>
+                <p className="mt-1.5 text-center text-[11px] text-muted">
+                  끝낸 일·시작 전인 일까지 지워요. 평가 비율·점수는 남아요.
+                </p>
+              </div>
+            );
+          })()}
         </BottomSheet>
       )}
 

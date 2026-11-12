@@ -9,6 +9,7 @@ import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import SegmentedTabs from "@/components/ui/segmented-tabs";
 import {
+  ACTIVITY_STAGES,
   STAGE_LABEL,
   stageOf,
   useActivities,
@@ -19,14 +20,11 @@ import { useToday } from "@/lib/briefing";
 import { dDay } from "@/lib/day-plan";
 import { ActivityDetailSheet, ActivityFormSheet, formatPeriod } from "./activity-sheets";
 
-type Tab = Exclude<ActivityStage, "rejected">;
-
-// 시간 순서. 불합격은 아래에 접어 둔다.
-const TABS: { value: Tab; label: string }[] = [
-  { value: "applied", label: STAGE_LABEL.applied },
-  { value: "active", label: STAGE_LABEL.active },
-  { value: "done", label: STAGE_LABEL.done },
-];
+// 시간 순서: 지원 중 → 불합격 → 활동 중 → 종료 (ACTIVITY_STAGES 순서)
+const TABS: { value: ActivityStage; label: string }[] = ACTIVITY_STAGES.map((value) => ({
+  value,
+  label: STAGE_LABEL[value],
+}));
 
 // 탭바의 '취업'이 이 화면을 연다. 취업 준비의 다른 화면으로 여기서 이어 간다.
 const CAREER_LINKS = [
@@ -75,22 +73,16 @@ function ActivityRow({
   );
 }
 
-// 취업 탭: 스펙 영수증·역량 공백 지도로 가는 길과 대외활동 목록(준비 중 → 활동 중 → 종료, + 불합격 보관).
+// 취업 탭: 스펙 영수증·역량 공백 지도로 가는 길과 대외활동 목록(지원 중 → 불합격 → 활동 중 → 종료).
 // AI 없이 이 기기 브라우저에만 저장한다.
 export default function CareerPage() {
   const today = useToday();
   const activities = useActivities();
-  const [tab, setTab] = useState<Tab>("active");
-  const [showRejected, setShowRejected] = useState(false);
+  const [tab, setTab] = useState<ActivityStage>("active");
   const [sheet, setSheet] = useState<Sheet | null>(null);
 
-  function showStage(stage: ActivityStage) {
-    if (stage === "rejected") setShowRejected(true);
-    else setTab(stage);
-  }
-
+  const showStage = setTab;
   const current = activities.filter((a) => stageOf(a) === tab);
-  const rejected = activities.filter((a) => stageOf(a) === "rejected");
   const opened = sheet && sheet.kind !== "add" ? activities.find((a) => a.id === sheet.id) : undefined;
 
   return (
@@ -142,28 +134,6 @@ export default function CareerPage() {
             )}
           </Block>
 
-          {rejected.length > 0 && (
-            <Block padded={false} className="mt-2.5 divide-y divide-divider overflow-hidden">
-              <button
-                type="button"
-                aria-expanded={showRejected}
-                onClick={() => setShowRejected((v) => !v)}
-                className="flex min-h-11 w-full items-center px-3.5 text-left text-sm text-muted"
-              >
-                불합격 {rejected.length}개 {showRejected ? "접기" : "보기"}
-              </button>
-              {showRejected &&
-                rejected.map((activity) => (
-                  <ActivityRow
-                    key={activity.id}
-                    activity={activity}
-                    today={today}
-                    onOpen={() => setSheet({ kind: "detail", id: activity.id })}
-                  />
-                ))}
-            </Block>
-          )}
-
           <p className="mt-3 px-1 text-xs leading-relaxed text-muted">
             대외활동은 이 기기에만 저장돼요. 다음 마감은 홈 달력에도 보여요.
           </p>
@@ -172,7 +142,7 @@ export default function CareerPage() {
 
       {sheet?.kind === "add" && (
         <ActivityFormSheet
-          // 새로 넣는 활동은 대부분 지원 전이라 준비 중에서 시작한다.
+          // 새로 넣는 활동은 대부분 지원하는 단계라 지원 중에서 시작한다.
           defaultStage="applied"
           onClose={() => setSheet(null)}
           onSaved={(stage) => {

@@ -5,6 +5,7 @@ import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
 import {
   addDeadlines,
+  removeCourseDeadlines,
   removeDeadline,
   updateDeadline,
   useSavedDeadlines,
@@ -34,6 +35,19 @@ function FieldError({ children }: { children?: ReactNode }) {
 }
 
 // 지우기 전에 한 번 묻는다. 할 일로 기록한 집중 시간은 그대로 남는다.
+// 과목의 할 일을 모두 지운다. 지웠으면 true.
+export function confirmRemoveCourse(course: string, count: number) {
+  const name = course || "과목 없음";
+  if (
+    !window.confirm(
+      `"${name}" 과목의 할 일 ${count}개를 모두 지울까요?\n홈 달력과 오늘의 한 가지에서도 사라지고 되돌릴 수 없어요.\n평가 비율·점수·공부 기록은 그대로 남아요.`,
+    )
+  )
+    return false;
+  removeCourseDeadlines(course);
+  return true;
+}
+
 export function confirmRemoveTask(task: SavedDeadline) {
   if (!window.confirm(`"${task.title}" 할 일을 지울까요? 되돌릴 수 없어요.`)) return false;
   removeDeadline(task.id);

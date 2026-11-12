@@ -17,6 +17,7 @@ import {
   ACTIVITY_KINDS,
   MAX_ACTIVITY_TEXT,
   MAX_ACTIVITY_TITLE,
+  STAGE_LABEL,
   addPostingCard,
   type ActivityKind,
 } from "@/lib/activity-store";
@@ -201,7 +202,7 @@ export default function PostingFlow() {
 
     let message = `일정 ${added}개를 새로 저장했어요.`;
     if (chosen.length > added) message += ` 이미 있던 ${chosen.length - added}개는 건너뛰었어요.`;
-    if (cardAdded) message += " 대외활동 목록에 '준비 중'으로 넣었어요.";
+    if (cardAdded) message += ` 대외활동 목록에 '${STAGE_LABEL.applied}'으로 넣었어요.`;
     try {
       downloadCalendarFile(saved);
       message += " 캘린더 파일을 내려받았어요.";

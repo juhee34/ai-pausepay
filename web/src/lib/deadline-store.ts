@@ -116,3 +116,12 @@ export function setDeadlineDone(id: string, done: boolean) {
 export function removeDeadline(id: string) {
   write(getSnapshot().filter((d) => d.id !== id));
 }
+
+// 한 과목의 할 일을 한 번에 지운다 (끝낸 일·시작 전인 일 포함). 지운 개수를 돌려준다.
+// 평가 비율·점수·공부 기록은 지우지 않는다.
+export function removeCourseDeadlines(course: string) {
+  const current = getSnapshot();
+  const kept = current.filter((d) => d.course !== course);
+  if (kept.length !== current.length) write(kept);
+  return current.length - kept.length;
+}

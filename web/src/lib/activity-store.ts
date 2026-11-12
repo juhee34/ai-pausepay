@@ -8,12 +8,12 @@ import { ACTIVITY_KINDS, type ActivityKind } from "./activity-kinds";
 
 export { ACTIVITY_KINDS, type ActivityKind };
 
-// 시간 순서: 지원 준비 → (불합격) → 활동 → 종료. 화면의 단계 고르기가 이 순서를 쓴다.
-// 저장 값은 옛 기록과 같게 두고 보이는 이름만 바꿨다 (applied = 준비 중, done = 종료).
+// 시간 순서: 지원 중 → (불합격) → 활동 중 → 종료. 화면의 단계 고르기와 취업 탭이 이 순서를 쓴다.
+// 저장 값은 옛 기록과 같게 두고 보이는 이름만 바꿨다 (applied = 지원 중, done = 종료).
 export const ACTIVITY_STAGES = ["applied", "rejected", "active", "done"] as const;
 export type ActivityStage = (typeof ACTIVITY_STAGES)[number];
 export const STAGE_LABEL: Record<ActivityStage, string> = {
-  applied: "준비 중",
+  applied: "지원 중",
   rejected: "불합격",
   active: "활동 중",
   done: "종료",
