@@ -69,7 +69,10 @@ test("목표 직무는 파일·계정 백업으로 복원하고 기존 선택과
   const data = backup.readBackupData();
   assert.equal(data.targetJob, "데이터 분석");
   assert.equal(backup.parseBackup(JSON.stringify({ app: "unis", version: 1, ...data })).targetJob, "데이터 분석");
-  assert.equal(backup.parseBackupData({ ...data, targetJob: "없는 직무" }), null);
+  // 알 수 없는 목표 직무는 그 칸만 빼고 나머지는 받는다 (11/12 변경).
+  const unknown = backup.parseBackupData({ ...data, targetJob: "없는 직무" });
+  assert.notEqual(unknown, null);
+  assert.equal(unknown.targetJob, undefined);
   await account.uploadAccountBackup("test-user");
   assert.equal(remote.data.targetJob, "데이터 분석");
   const restored = await account.readAccountBackup("test-user");
@@ -134,7 +137,7 @@ const RECEIPT = {
   action: "a",
   result: "r",
   oneLiner: "한 줄",
-  competencies: ["협업·리더십"],
+  competencies: ["협업", "리더십"],
   createdAt: 1,
 };
 
@@ -272,4 +275,47 @@ test("오류 코드를 쉬운 안내로 바꾼다", () => {
   assert.match(account.accountBackupErrorMessage({ code: "permission-denied" }), /다시 로그인/);
   assert.match(account.accountBackupErrorMessage({ code: "unavailable" }), /인터넷/);
   assert.match(account.accountBackupErrorMessage(new Error("x")), /처리하지 못했어요/);
+});
+
+test("직접 만든 직무는 백업에 넣고, 없는 기기에만 더하고, 목표 직무로 복원한다", async () => {
+  store.clear();
+  const job = { id: "job-1", name: "인사(HR)", competencies: ["소통", "협업", "갈등 조정", "문서 작성", "직업윤리", "꼼꼼함"], createdAt: 1 };
+  store.set("unis.customJobs.v1", JSON.stringify([job]));
+  store.set("unis.targetJob.v1", "custom:job-1");
+  const data = backup.readBackupData();
+  assert.deepEqual(data.customJobs, [job]);
+  assert.equal(data.targetJob, "custom:job-1");
+  assert.match(account.describeBackup(data), /만든 직무 1 · 목표 직무 인사\(HR\)/);
+  await account.uploadAccountBackup("test-user");
+  assert.deepEqual(remote.data.customJobs, [job]);
+
+  // 다른 기기: 만든 직무와 목표 직무가 함께 들어온다.
+  const restored = await account.readAccountBackup("test-user");
+  store.clear();
+  const result = backup.importBackup(restored.data);
+  assert.equal(result.addedCustomJobs, 1);
+  assert.equal(result.targetJobAdded, true);
+  assert.equal(store.get("unis.targetJob.v1"), "custom:job-1");
+  // 같은 직무는 다시 더하지 않는다.
+  assert.equal(backup.importBackup(restored.data).addedCustomJobs, 0);
+
+  // 목록에 없는 만든 직무를 가리키면 목표 직무만 뺀다.
+  const orphan = backup.parseBackupData({ ...restored.data, customJobs: [], targetJob: "custom:gone" });
+  assert.equal(orphan.targetJob, undefined);
+  // 만든 직무가 없으면 칸 자체를 넣지 않는다 (옛 계정 백업 규칙과 맞춤).
+  store.clear();
+  assert.equal("customJobs" in backup.readBackupData(), false);
+});
+
+test("옛 이름 영수증과 간단 기록도 백업 검사를 통과한다", () => {
+  store.clear();
+  const base = { id: "r1", title: "TOEIC", answers: { what: "", role: "", result: "", learned: "" }, situation: "", task: "", action: "", result: "", oneLiner: "", createdAt: 1 };
+  const receipts = [
+    { ...base, competencies: ["협업·리더십", "발표·설득"] },
+    { ...base, id: "r2", kind: "language", detail: { score: "TOEIC 870" }, competencies: ["외국어 활용"] },
+  ];
+  const parsed = backup.parseBackup(JSON.stringify({ app: "unis", version: 1, deadlines: [], activities: [], receipts }));
+  assert.equal(parsed.receipts.length, 2);
+  assert.equal(backup.parseBackup(JSON.stringify({ app: "unis", version: 1, deadlines: [], activities: [], receipts: [{ ...receipts[1], kind: "없는 구분" }] })), null);
+  assert.equal(backup.parseBackup(JSON.stringify({ app: "unis", version: 1, deadlines: [], activities: [], receipts: [{ ...receipts[1], detail: { hacker: "x" } }] })), null);
 });

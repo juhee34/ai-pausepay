@@ -3,24 +3,32 @@
 import { aiFetch } from "@/lib/ai-fetch";
 
 import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
+import BackLink from "@/components/ui/back-link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import CookieNote from "@/components/ui/cookie-note";
-import { useActivities } from "@/lib/activity-store";
+import { useActivities, type ActivityKind } from "@/lib/activity-store";
+import { ALL_COMPETENCIES, SPEC_KINDS, SPEC_KIND_IDS, type SpecKind } from "@/lib/competencies";
 import {
+  MAX_COMPETENCIES,
+  MAX_ONE_LINER,
   MAX_RECEIPT_ANSWER,
   MAX_RECEIPT_PERIOD,
   MAX_RECEIPT_TITLE,
+  specKindOf,
   type ReceiptAnswers,
   type ReceiptStar,
+  type SpecDetail,
 } from "@/lib/receipt";
-import { addReceipt } from "@/lib/receipt-store";
+import { addReceipt, addSimpleRecord, updateReceipt, useReceipts } from "@/lib/receipt-store";
 import { formatPeriod } from "../../activity-sheets";
-import ReceiptEditor, { receiptInputClass } from "../receipt-editor";
+import CompetencyPicker, { useJobGroups } from "../competency-picker";
+import { receiptInputClass } from "../input-class";
+import ReceiptEditor from "../receipt-editor";
+import SpecFields, { cleanDetail } from "../spec-fields";
 
 const QUESTIONS: { key: keyof ReceiptAnswers; label: string; placeholder: string }[] = [
   { key: "what", label: "무엇을 했나요?", placeholder: "어떤 상황이었고 목표가 무엇이었나요?" },
@@ -31,29 +39,88 @@ const QUESTIONS: { key: keyof ReceiptAnswers; label: string; placeholder: string
 
 const EMPTY_ANSWERS: ReceiptAnswers = { what: "", role: "", result: "", learned: "" };
 
+// 대외활동 카드의 종류 → 기록 구분
+const KIND_FROM_ACTIVITY: Record<ActivityKind, SpecKind> = {
+  대외활동: "activity",
+  동아리: "activity",
+  공모전: "project",
+  인턴: "work",
+  자격증: "license",
+  채용: "other",
+};
+
+type Step = "kind" | "simple" | "star";
 type Draft = ReceiptStar & { inventedNumbers: string[] };
+
+const backLinkClass = "-ml-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand";
 
 function NewReceipt() {
   const router = useRouter();
-  const activityParam = useSearchParams().get("activity");
+  const params = useSearchParams();
   const activities = useActivities();
+  const receipts = useReceipts();
 
-  // 건드리기 전(null)에는 연결한 활동의 이름·기간을 보여 준다.
+  // ?from=<영수증 id>: 간단 기록을 STAR로 자세히 정리한다. 저장하면 같은 영수증을 고친다.
+  const upgrading = receipts.find((r) => r.id === params.get("from"));
+  const activityParam = params.get("activity");
+  const kindParam = params.get("kind");
+  const skillParam = params.get("skill");
+
+  // 건드리기 전(null)에는 주소·연결한 활동·고치는 영수증에서 값을 가져온다.
   const [pickedId, setPickedId] = useState<string | null>(null);
+  const [pickedKind, setPickedKind] = useState<SpecKind | null>(null);
+  const [typedStep, setTypedStep] = useState<Step | null>(null);
   const [typedTitle, setTypedTitle] = useState<string | null>(null);
   const [typedPeriod, setTypedPeriod] = useState<string | null>(null);
-  const [answers, setAnswers] = useState(EMPTY_ANSWERS);
+  const [typedDetail, setTypedDetail] = useState<SpecDetail | null>(null);
+  const [memo, setMemo] = useState("");
+  const [picked, setPicked] = useState<string[] | null>(null);
+  const [answers, setAnswers] = useState<ReceiptAnswers | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
 
-  const activityId = pickedId ?? activityParam ?? "";
+  const activityId = pickedId ?? upgrading?.activityId ?? activityParam ?? "";
   const activity = activities.find((a) => a.id === activityId);
-  const title = typedTitle ?? activity?.title ?? "";
-  const period = typedPeriod ?? (activity ? formatPeriod(activity) : "");
+  const kind: SpecKind | undefined =
+    pickedKind ??
+    upgrading?.kind ??
+    ((SPEC_KIND_IDS as readonly string[]).includes(kindParam ?? "") ? (kindParam as SpecKind) : undefined) ??
+    (activity ? KIND_FROM_ACTIVITY[activity.kind ?? "대외활동"] : undefined);
+  const spec = specKindOf(kind);
+  const step: Step = typedStep ?? (upgrading ? "star" : kind ? "simple" : "kind");
+  const title = typedTitle ?? upgrading?.title ?? activity?.title ?? "";
+  const period = typedPeriod ?? upgrading?.period ?? (activity ? formatPeriod(activity) : "");
+  const detail = typedDetail ?? upgrading?.detail ?? {};
+  const skill = (ALL_COMPETENCIES as readonly string[]).includes(skillParam ?? "") ? [skillParam as string] : [];
+  const competencies = picked ?? upgrading?.competencies ?? skill;
+  const currentAnswers = answers ?? (upgrading ? { ...EMPTY_ANSWERS, what: upgrading.oneLiner } : EMPTY_ANSWERS);
+  const extraGroups = useJobGroups();
 
+  const canSaveSimple = title.trim() !== "" && competencies.length >= 1 && memo.length <= MAX_ONE_LINER;
   const canSubmit =
-    title.trim() !== "" && QUESTIONS.every(({ key }) => answers[key].trim() !== "") && !loading;
+    title.trim() !== "" && QUESTIONS.every(({ key }) => currentAnswers[key].trim() !== "") && !loading;
+
+  function saveSimple(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSaveSimple) return;
+    addSimpleRecord({
+      title: title.trim(),
+      period: period.trim() || undefined,
+      kind,
+      detail: cleanDetail(detail),
+      activityId: activity?.id,
+      competencies,
+      memo,
+    });
+    router.push("/career/receipts");
+  }
+
+  function goStar() {
+    if (answers === null && memo.trim()) setAnswers({ ...EMPTY_ANSWERS, what: memo.trim() });
+    setTypedStep("star");
+    window.scrollTo({ top: 0 });
+  }
 
   async function organize(e: React.FormEvent) {
     e.preventDefault();
@@ -64,7 +131,7 @@ function NewReceipt() {
       const res = await aiFetch("/api/receipt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, period: period || undefined, answers }),
+        body: JSON.stringify({ title, period: period || undefined, kind, answers: currentAnswers }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data) {
@@ -82,13 +149,11 @@ function NewReceipt() {
 
   if (draft) {
     const { inventedNumbers, ...star } = draft;
+    // 학생이 먼저 고른 역량을 앞에 두고 AI가 고른 역량으로 채운다.
+    const merged = [...new Set([...competencies, ...star.competencies])].slice(0, MAX_COMPETENCIES);
     return (
       <AppShell>
-        <button
-          type="button"
-          onClick={() => setDraft(null)}
-          className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-xs font-semibold text-brand"
-        >
+        <button type="button" onClick={() => setDraft(null)} className={backLinkClass}>
           <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
           답 고치기
         </button>
@@ -107,9 +172,17 @@ function NewReceipt() {
         )}
         <Block className="mt-3">
           <ReceiptEditor
-            initial={{ ...star, title, period: period || undefined }}
+            initial={{
+              ...star,
+              competencies: merged,
+              title,
+              period: period || undefined,
+              kind,
+              detail: cleanDetail(detail),
+            }}
             onSave={(fields) => {
-              addReceipt({ ...fields, activityId: activity?.id, answers });
+              if (upgrading) updateReceipt(upgrading.id, { ...fields, answers: currentAnswers });
+              else addReceipt({ ...fields, activityId: activity?.id, answers: currentAnswers });
               router.push("/career/receipts");
             }}
           />
@@ -118,50 +191,153 @@ function NewReceipt() {
     );
   }
 
+  if (step === "kind") {
+    return (
+      <AppShell>
+        <BackLink href="/career/receipts" label="스펙 영수증" />
+        <h1 className="mt-1 px-1 text-[22px] font-bold">어떤 기록인가요?</h1>
+        <p className="mt-1 px-1 text-[13px] leading-relaxed text-muted">
+          구분을 고르면 그에 맞는 칸만 나와요. 짧게 남기고, 필요할 때 STAR로 자세히 정리할 수 있어요.
+        </p>
+        <ul className="mt-4 grid grid-cols-2 gap-2">
+          {SPEC_KINDS.map((k) => (
+            <li key={k.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  setPickedKind(k.id);
+                  setTypedStep("simple");
+                }}
+                className="block min-h-[72px] w-full rounded-block bg-surface p-3.5 text-left active:bg-divider"
+              >
+                <span className="block text-[15px] font-bold break-keep">{k.label}</span>
+                <span className="mt-1 block text-[11px] leading-snug text-muted break-keep">
+                  {k.fields.map((f) => f.label).join(" · ")}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </AppShell>
+    );
+  }
+
+  if (step === "simple") {
+    return (
+      <AppShell>
+        <button type="button" onClick={() => setTypedStep("kind")} className={backLinkClass}>
+          <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
+          구분 바꾸기
+        </button>
+        <h1 className="mt-1 px-1 text-[22px] font-bold">{spec?.label ?? "경험"} 기록</h1>
+        <p className="mt-1 px-1 text-[13px] leading-relaxed text-muted">
+          AI 없이 바로 저장해요. 이 기록으로 어필할 역량을 고르면 역량 공백 지도에 반영돼요.
+        </p>
+
+        <form onSubmit={saveSimple} className="mt-4">
+          <Block className="space-y-3.5">
+            {activities.length > 0 && (
+              <label className="block text-[13px] font-semibold">
+                연결할 활동 <span className="text-xs font-medium text-muted">(선택)</span>
+                <select
+                  value={activity?.id ?? ""}
+                  onChange={(e) => {
+                    setPickedId(e.target.value);
+                    setTypedTitle(null);
+                    setTypedPeriod(null);
+                  }}
+                  className={receiptInputClass}
+                >
+                  <option value="">연결 안 함</option>
+                  {activities.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="block text-[13px] font-semibold">
+              {spec?.title ?? "활동 이름"}
+              <input
+                value={title}
+                maxLength={MAX_RECEIPT_TITLE}
+                onChange={(e) => setTypedTitle(e.target.value)}
+                placeholder={`예: ${spec?.example ?? "학생회 홍보팀"}`}
+                className={receiptInputClass}
+              />
+            </label>
+            <SpecFields
+              kind={kind}
+              period={period}
+              detail={detail}
+              onChange={(next) => {
+                setTypedPeriod(next.period);
+                setTypedDetail(next.detail);
+              }}
+            />
+            <label className="block text-[13px] font-semibold">
+              한 줄 메모 <span className="text-xs font-medium text-muted">(선택)</span>
+              <textarea
+                rows={2}
+                value={memo}
+                maxLength={MAX_ONE_LINER}
+                onChange={(e) => setMemo(e.target.value)}
+                placeholder="자소서에 쓸 한 줄이나 기억해 둘 점"
+                className={receiptInputClass}
+              />
+              <span className="mt-1 block text-right font-mono text-xs font-medium text-muted">
+                {memo.length}/{MAX_ONE_LINER}
+              </span>
+            </label>
+            <CompetencyPicker
+              legend="이 기록으로 어필할 역량"
+              value={competencies}
+              onChange={setPicked}
+              max={MAX_COMPETENCIES}
+              suggest={spec?.suggest}
+              extraGroups={extraGroups}
+            />
+          </Block>
+
+          <Button type="submit" disabled={!canSaveSimple} className="mt-3 w-full">
+            기록 저장
+          </Button>
+          <Button variant="secondary" onClick={goStar} disabled={title.trim() === ""} className="mt-2 w-full">
+            STAR로 자세히 정리하기 (AI)
+          </Button>
+          <p className="mt-2 px-1 text-xs leading-relaxed text-muted">
+            기록은 이 기기에만 저장돼요. 역량을 하나 이상 골라야 저장할 수 있어요.
+          </p>
+        </form>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
-      <Link
-        href="/career/receipts"
-        className="-ml-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand"
-      >
-        <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-        스펙 영수증
-      </Link>
-      <h1 className="mt-1 px-1 text-[22px] font-bold">영수증 쓰기</h1>
+      {upgrading ? (
+        <BackLink href="/career/receipts" label="스펙 영수증" />
+      ) : (
+        <button type="button" onClick={() => setTypedStep(kind ? "simple" : "kind")} className={backLinkClass}>
+          <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
+          간단 기록으로
+        </button>
+      )}
+      <h1 className="mt-1 px-1 text-[22px] font-bold">STAR로 정리하기</h1>
       <p className="mt-1 px-1 text-[13px] leading-relaxed text-muted">
         있었던 일만 적어 주세요. AI는 적은 내용으로만 정리해요. 다른 사람 이름은 빼고 적어 주세요.
       </p>
 
       <form onSubmit={organize} className="mt-4">
         <Block className="space-y-3.5">
-          {activities.length > 0 && (
-            <label className="block text-[13px] font-semibold">
-              연결할 활동 <span className="text-xs font-medium text-muted">(선택)</span>
-              <select
-                value={activity?.id ?? ""}
-                onChange={(e) => {
-                  setPickedId(e.target.value);
-                  setTypedTitle(null);
-                  setTypedPeriod(null);
-                }}
-                className={receiptInputClass}
-              >
-                <option value="">연결 안 함</option>
-                {activities.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <label className="block text-[13px] font-semibold">
-            활동 이름
+            {spec?.title ?? "활동 이름"}
             <input
               value={title}
               maxLength={MAX_RECEIPT_TITLE}
               onChange={(e) => setTypedTitle(e.target.value)}
-              placeholder="예: 학생회 홍보팀"
+              placeholder={`예: ${spec?.example ?? "학생회 홍보팀"}`}
               className={receiptInputClass}
             />
           </label>
@@ -180,14 +356,14 @@ function NewReceipt() {
               {label}
               <textarea
                 rows={3}
-                value={answers[key]}
+                value={currentAnswers[key]}
                 maxLength={MAX_RECEIPT_ANSWER}
-                onChange={(e) => setAnswers({ ...answers, [key]: e.target.value })}
+                onChange={(e) => setAnswers({ ...currentAnswers, [key]: e.target.value })}
                 placeholder={placeholder}
                 className={receiptInputClass}
               />
               <span className="mt-1 block text-right font-mono text-xs font-medium text-muted">
-                {answers[key].length}/{MAX_RECEIPT_ANSWER}
+                {currentAnswers[key].length}/{MAX_RECEIPT_ANSWER}
               </span>
             </label>
           ))}

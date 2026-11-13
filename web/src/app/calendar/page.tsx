@@ -4,8 +4,9 @@ import { aiFetch } from "@/lib/ai-fetch";
 
 import { ChevronLeft, FileUp } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import BackLink from "@/components/ui/back-link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
@@ -31,7 +32,6 @@ import { useTimetable } from "@/lib/timetable-store";
 import EditSheet from "./edit-sheet";
 import GradingReview, { SavedGrading } from "./grading-review";
 import MonthCalendar, { type DotKind } from "./month-calendar";
-import PostingFlow, { UploadModeTabs } from "./posting-flow";
 import ReviewList, { type Draft } from "./review-list";
 
 function formatSize(bytes: number) {
@@ -278,13 +278,7 @@ function SyllabusFlow() {
 
   return (
     <AppShell>
-      <Link href="/" className="-ml-1 mb-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
-        <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-        홈
-      </Link>
-      <div className="mb-3 px-1">
-        <UploadModeTabs value="syllabus" />
-      </div>
+      <BackLink href="/" label="홈" />
       <p className="px-1 text-xs font-medium text-muted">강의계획서 → 캘린더</p>
       <h1 className="px-1 text-[22px] font-bold">한 장으로 한 학기 일정</h1>
       <p className="mt-1 px-1 text-sm text-muted">
@@ -340,8 +334,13 @@ function SyllabusFlow() {
 }
 
 function CalendarByType() {
-  // ?type=posting이면 공고·자격증 올리기
-  return useSearchParams().get("type") === "posting" ? <PostingFlow /> : <SyllabusFlow />;
+  // 공고·자격증 올리기는 취업 화면(/career/posting)으로 옮겼다. 옛 주소로 오면 보낸다.
+  const posting = useSearchParams().get("type") === "posting";
+  const router = useRouter();
+  useEffect(() => {
+    if (posting) router.replace("/career/posting");
+  }, [posting, router]);
+  return posting ? null : <SyllabusFlow />;
 }
 
 export default function CalendarPage() {

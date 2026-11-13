@@ -52,6 +52,14 @@ describe("Firestore: 본인 백업만 허용하고 사용량은 서버만 쓴다
     await assertSucceeds(setDoc(doc(db, backup()), { ...payload(), data: { ...payload().data, jobPicks: { added: ["재무·회계"], removed: ["마케팅 기획"] } } }));
     await assertFails(setDoc(doc(db, backup()), { ...payload(), data: { ...payload().data, jobPicks: { added: "wrong", removed: [] } } }));
   });
+  test("직접 만든 직무는 custom:<id> 목표 직무와 20개 이하 목록으로만 백업할 수 있다", async () => {
+    const db = environment.authenticatedContext("alice").firestore();
+    const job = { id: "job-1", name: "HR 담당자", competencies: ["소통", "협업", "갈등 조정", "문서 작성", "직업윤리", "꼼꼼함"], createdAt: 1 };
+    await assertSucceeds(setDoc(doc(db, backup()), { ...payload(), data: { ...payload().data, customJobs: [job], targetJob: "custom:job-1" } }));
+    await assertFails(setDoc(doc(db, backup()), { ...payload(), data: { ...payload().data, targetJob: "custom:../x" } }));
+    await assertFails(setDoc(doc(db, backup()), { ...payload(), data: { ...payload().data, customJobs: "wrong" } }));
+    await assertFails(setDoc(doc(db, backup()), { ...payload(), data: { ...payload().data, customJobs: Array.from({ length: 21 }, (_, i) => ({ ...job, id: `job-${i}` })) } }));
+  });
   test("AI 사용량은 본인만 읽고 화면에서는 아무도 쓰지 못한다", async () => {
     await environment.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), "users/alice/usage/2026-11-03"), { total: 1 });

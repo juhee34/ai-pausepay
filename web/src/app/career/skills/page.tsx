@@ -10,7 +10,8 @@ import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import { stageOf, useActivities } from "@/lib/activity-store";
 import { useToday } from "@/lib/briefing";
-import { COMMON_COMPETENCIES, COMPETENCY_SOURCE_NOTE, JOB_COMPETENCIES } from "@/lib/competencies";
+import { COMPETENCY_SOURCE_NOTE, JOB_SKILLS, PRESET_JOBS, type PresetJob } from "@/lib/competencies";
+import { MAX_CUSTOM_JOBS, useCustomJobs } from "@/lib/custom-job-store";
 import { useReceipts } from "@/lib/receipt-store";
 import {
   FILLED_RECEIPTS,
@@ -26,14 +27,17 @@ import {
   type GapStatus,
 } from "@/lib/skill-gap";
 import {
-  TARGET_JOBS,
   addTargetJob,
+  customTargetJob,
+  isPresetJob,
   removeTargetJob,
+  resolveTargetJob,
   setTargetJob,
   useJobPicks,
   useSavedTargetJob,
   type TargetJob,
 } from "@/lib/target-job-store";
+import CustomJobSheet from "./custom-job-sheet";
 
 // 내 활동과 영수증이 없을 때 보여 주는 예시. 저장하지 않는다.
 const EXAMPLE_ACTIVITIES: GapActivity[] = [
@@ -42,13 +46,14 @@ const EXAMPLE_ACTIVITIES: GapActivity[] = [
   { id: "english", title: "영어회화 스터디", experience: true },
   { id: "team", title: "경영통계 팀과제", experience: true },
 ];
+// 마케팅 기획 기준 채움 4개 (시안 04와 같은 모양)
 const EXAMPLE_RECEIPTS: GapReceipt[] = [
   { activityId: "contest", competencies: ["시장·소비자 분석", "마케팅 전략 기획"] },
-  { activityId: "contest", competencies: ["시장·소비자 분석", "마케팅 전략 기획", "협업·리더십"] },
-  { activityId: "contest", competencies: ["소통"] },
+  { activityId: "contest", competencies: ["시장·소비자 분석", "마케팅 전략 기획", "협업"] },
+  { activityId: "contest", competencies: ["설득·발표"] },
   { activityId: "promo", competencies: ["콘텐츠 기획·제작", "소통"] },
-  { activityId: "promo", competencies: ["협업·리더십", "소통"] },
-  { activityId: "english", competencies: ["외국어"] },
+  { activityId: "promo", competencies: ["협업", "소통"] },
+  { activityId: "english", competencies: ["외국어 활용"] },
 ];
 const EXAMPLE_RECORDS: GapFocusRecord[] = [
   { activityId: "contest", minutes: 42 * 60 },
@@ -126,8 +131,12 @@ function CompetencyCell({ cell }: { cell: GapCell }) {
   );
 }
 
-function newReceiptHref(activityId?: string) {
-  return activityId ? `/career/receipts/new?activity=${encodeURIComponent(activityId)}` : "/career/receipts/new";
+function newReceiptHref(activityId?: string, skill?: string) {
+  const params = new URLSearchParams();
+  if (activityId) params.set("activity", activityId);
+  if (skill) params.set("skill", skill);
+  const query = params.toString();
+  return query ? `/career/receipts/new?${query}` : "/career/receipts/new";
 }
 
 export default function SkillGapPage() {
@@ -135,21 +144,37 @@ export default function SkillGapPage() {
   const activities = useActivities();
   const receipts = useReceipts();
   const focus = useSyncExternalStore(subscribeData, getData, getServerData);
+  const customJobs = useCustomJobs();
   const saved = useSavedTargetJob();
   const picks = useJobPicks();
+  const [sheet, setSheet] = useState<"new" | "edit" | null>(null);
   const [adding, setAdding] = useState(false);
 
-  const isExample = activities.length === 0 && receipts.length === 0;
-  // 내 영수증이 있으면 겹치는 직무를 추천하고, 없으면 마케팅 기획을 샘플로 보여 준다.
-  const recommended = isExample ? [] : (recommendJobs(JOB_COMPETENCIES, receipts, COMMON_COMPETENCIES) as TargetJob[]);
-  const base = recommended.length > 0 ? recommended : [TARGET_JOBS[0]];
-  const chips = jobChips(base, picks, TARGET_JOBS, saved ?? undefined) as TargetJob[];
-  const job = saved && chips.includes(saved) ? saved : chips[0];
-  const addable = TARGET_JOBS.filter((name) => !chips.includes(name));
+  // 내 직무를 만들었으면 추천 직무와 마케팅 기획 예시 데이터는 보여 주지 않고 내 직무로만 계산한다.
+  const hasCustom = customJobs.length > 0;
+  const isExample = !hasCustom && activities.length === 0 && receipts.length === 0;
+  // 만든 직무가 없으면: 내 영수증과 직무 전문 역량이 겹치는 직무를 추천하고, 없으면 마케팅 기획을 샘플로 보여 준다.
+  const recommended = hasCustom || isExample ? [] : (recommendJobs(JOB_SKILLS, receipts) as PresetJob[]);
+  const presetChips = jobChips(
+    recommended.length > 0 ? recommended : [PRESET_JOBS[0]],
+    picks,
+    PRESET_JOBS,
+    isPresetJob(saved) ? saved : undefined,
+  ) as PresetJob[];
+  const addable = PRESET_JOBS.filter((name) => !presetChips.includes(name));
+  const shown: TargetJob = hasCustom
+    ? (saved ?? customTargetJob(customJobs[0].id))
+    : isPresetJob(saved) && presetChips.includes(saved)
+      ? saved
+      : presetChips[0];
+  const target = resolveTargetJob(shown, customJobs);
+  const chips = hasCustom
+    ? customJobs.map((j) => ({ value: customTargetJob(j.id), label: j.name, preset: false }))
+    : presetChips.map((name) => ({ value: name as TargetJob, label: name, preset: true }));
   const map = isExample
-    ? buildGapMap(JOB_COMPETENCIES[job], EXAMPLE_ACTIVITIES, EXAMPLE_RECEIPTS, EXAMPLE_RECORDS)
+    ? buildGapMap(target.competencies, EXAMPLE_ACTIVITIES, EXAMPLE_RECEIPTS, EXAMPLE_RECORDS)
     : buildGapMap(
-        JOB_COMPETENCIES[job],
+        target.competencies,
         activities.map((a) => {
           const stage = stageOf(a);
           return { id: a.id, title: a.title, experience: !a.fromPosting && (stage === "active" || stage === "done") };
@@ -181,11 +206,13 @@ export default function SkillGapPage() {
 
           <h2 className="mt-4 text-xs font-semibold text-brand">목표 직무</h2>
           <div role="group" aria-label="목표 직무" className="mt-2 flex flex-wrap gap-2">
-            {chips.map((name) => {
-              const selected = name === job;
+            {chips.map(({ value, label, preset }) => {
+              const selected = value === target.job;
+              // 추천 직무는 2개 이상일 때 X로 뺄 수 있다. 내가 만든 직무는 '역량 고치기'에서 지운다.
+              const removable = preset && chips.length > 1;
               return (
                 <span
-                  key={name}
+                  key={value}
                   className={`flex min-h-10 items-center rounded-full border ${
                     selected ? "border-brand bg-brand text-white" : "border-line bg-surface text-ink"
                   }`}
@@ -193,16 +220,16 @@ export default function SkillGapPage() {
                   <button
                     type="button"
                     aria-pressed={selected}
-                    onClick={() => setTargetJob(name)}
-                    className={`min-h-10 pl-3.5 text-sm font-semibold ${chips.length > 1 ? "pr-0.5" : "pr-3.5"}`}
+                    onClick={() => setTargetJob(value)}
+                    className={`min-h-10 pl-3.5 text-sm font-semibold break-keep ${removable ? "pr-0.5" : "pr-3.5"}`}
                   >
-                    {name}
+                    {label}
                   </button>
-                  {chips.length > 1 && (
+                  {removable && (
                     <button
                       type="button"
-                      aria-label={`${name} 목표에서 빼기`}
-                      onClick={() => removeTargetJob(name)}
+                      aria-label={`${label} 목표에서 빼기`}
+                      onClick={() => removeTargetJob(value as PresetJob)}
                       className={`flex h-10 w-9 items-center justify-center rounded-r-full ${selected ? "text-white/80" : "text-muted"}`}
                     >
                       <X size={15} strokeWidth={2} aria-hidden="true" />
@@ -211,28 +238,39 @@ export default function SkillGapPage() {
                 </span>
               );
             })}
-            {addable.length > 0 && (
+            {customJobs.length < MAX_CUSTOM_JOBS && (
               <button
                 type="button"
-                onClick={() => setAdding(true)}
+                onClick={() => (hasCustom ? setSheet("new") : setAdding(true))}
                 className="flex min-h-10 items-center gap-1 rounded-full border border-dashed border-brand bg-surface px-3.5 text-sm font-semibold text-brand active:bg-brand-soft"
               >
                 <Plus size={16} strokeWidth={2} aria-hidden="true" />
-                직무 추가
+                {hasCustom ? "직무 만들기" : "직무 추가"}
               </button>
             )}
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-muted">
-            {isExample
-              ? "예시 직무예요. 스펙 영수증을 쓰면 내 기록에 맞는 직무를 추천해 드려요."
-              : recommended.length > 0
-                ? "내 영수증과 겹치는 직무를 골라 뒀어요. ＋로 더하고 X로 뺄 수 있어요."
-                : "영수증에 역량이 쌓이면 맞는 직무를 추천해 드려요. ＋로 직접 고를 수도 있어요."}
-          </p>
+          {target.custom ? (
+            <button
+              type="button"
+              onClick={() => setSheet("edit")}
+              className="mt-1 inline-flex min-h-11 items-center text-[13px] font-semibold text-brand"
+            >
+              &apos;{target.name}&apos; 역량 고치기
+            </button>
+          ) : (
+            <p className="mt-1.5 text-xs leading-relaxed text-muted">
+              {isExample
+                ? "예시 직무예요. 스펙 영수증을 쓰면 내 기록에 맞는 직무를 추천해 드려요."
+                : recommended.length > 0
+                  ? "내 영수증과 겹치는 직무를 골라 뒀어요. ＋로 더하고 X로 뺄 수 있어요."
+                  : "영수증에 역량이 쌓이면 맞는 직무를 추천해 드려요. ＋로 직접 고를 수도 있어요."}{" "}
+              목록에 없는 직무는 ＋에서 직접 만들 수 있고, 만들면 내 직무로만 계산해요.
+            </p>
+          )}
 
           <Block className="mt-3">
             <p className="text-sm font-bold">
-              {job}에 필요한 역량 <span className="font-mono">{map.cells.length}</span>개 중{" "}
+              {target.name}에 필요한 역량 <span className="font-mono">{map.cells.length}</span>개 중{" "}
               <span className="font-mono text-brand">{filled}개</span>를 채웠어요.
             </p>
             <SummaryBar cells={map.cells} />
@@ -273,7 +311,7 @@ export default function SkillGapPage() {
               {map.firstToFill.map((fill) => (
                 <li key={fill.name}>
                   <Link
-                    href={newReceiptHref(isExample ? undefined : fill.activityId)}
+                    href={newReceiptHref(isExample ? undefined : fill.activityId, isExample ? undefined : fill.name)}
                     className="block rounded-block bg-surface p-3.5 active:bg-divider"
                   >
                     <span className="flex items-center gap-2">
@@ -342,7 +380,7 @@ export default function SkillGapPage() {
                         href={newReceiptHref(isExample ? undefined : line.id)}
                         className="mt-2 inline-flex min-h-11 items-center rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
                       >
-                        STAR로 기록하기
+                        기록하기
                       </Link>
                     </>
                   )}
@@ -372,8 +410,12 @@ export default function SkillGapPage() {
 
           <p className="mt-4 text-[11px] leading-relaxed text-muted">
             그 역량이 적힌 영수증이 {FILLED_RECEIPTS}장 이상이면 채움, 1장이면 보강 필요, 없으면 비어 있음이에요. 시간은 그 영수증이
-            연결된 활동에 집중 모드로 기록한 시간의 합이고, 같은 활동은 한 번만 더해요. {COMPETENCY_SOURCE_NOTE}
-            {isExample && " 화면의 숫자는 모두 예시 데이터예요."} 추천 직무는 공통 역량(문제 해결·협업·리더십·소통)을 뺀 직무 역량 중 내 영수증이 있는 칸이 많은 순으로 최대 3개예요.
+            연결된 활동에 집중 모드로 기록한 시간의 합이고, 같은 활동은 한 번만 더해요.{" "}
+            {target.custom
+              ? "직접 만든 직무는 내가 고른 역량으로 계산해요. "
+              : "추천 직무는 직무 전문 역량 5개 중 내 영수증이 있는 칸이 많은 순으로 최대 3개예요. "}
+            {COMPETENCY_SOURCE_NOTE}
+            {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
           </p>
         </>
       )}
@@ -391,14 +433,33 @@ export default function SkillGapPage() {
                 className="w-full rounded-[14px] bg-canvas p-3 text-left active:bg-divider"
               >
                 <span className="text-sm font-bold">{name}</span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted">
-                  {JOB_COMPETENCIES[name].slice(0, 5).join(" · ")}
-                </span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted">{JOB_SKILLS[name].join(" · ")}</span>
               </button>
             </li>
           ))}
         </ul>
+        <button
+          type="button"
+          onClick={() => {
+            setAdding(false);
+            setSheet("new");
+          }}
+          className={`flex min-h-11 w-full items-center justify-center gap-1 rounded-button border border-dashed border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft ${addable.length > 0 ? "mt-3" : ""}`}
+        >
+          <Plus size={16} strokeWidth={2} aria-hidden="true" />
+          목록에 없는 직무 만들기
+        </button>
+        <p className="mt-2 px-1 text-[11px] leading-relaxed text-muted">
+          직무를 만들면 위 추천 직무 대신 내가 만든 직무로만 계산해요.
+        </p>
       </BottomSheet>
+      {sheet && (
+        <CustomJobSheet
+          key={sheet === "edit" ? target.custom?.id : "new"}
+          job={sheet === "edit" ? target.custom : undefined}
+          onClose={() => setSheet(null)}
+        />
+      )}
     </AppShell>
   );
 }
