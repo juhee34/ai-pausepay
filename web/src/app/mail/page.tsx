@@ -4,7 +4,7 @@ import { aiFetch } from "@/lib/ai-fetch";
 
 import { useRef, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
-import BrandLabel from "@/components/ui/brand-label";
+import BackLink from "@/components/ui/back-link";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import CookieNote from "@/components/ui/cookie-note";
@@ -156,7 +156,7 @@ export default function MailPage() {
 
   return (
     <AppShell>
-      <BrandLabel />
+      <BackLink href="/" label="홈" />
       <header className="mb-4 px-1">
         <h1 className="text-[22px] font-bold">교수님께 보낼 메일 초안</h1>
         <p className="mt-1 text-sm text-muted">

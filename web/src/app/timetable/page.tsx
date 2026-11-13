@@ -2,8 +2,8 @@
 
 import { aiFetch } from "@/lib/ai-fetch";
 
-import { ChevronLeft, ImageUp } from "lucide-react";
-import Link from "next/link";
+import { ImageUp } from "lucide-react";
+import BackLink from "@/components/ui/back-link";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import Block from "@/components/ui/block";
@@ -96,10 +96,7 @@ export default function TimetablePage() {
 
   return (
     <AppShell>
-      <Link href="/" className="-ml-1 mb-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
-        <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-        홈
-      </Link>
+      <BackLink href="/" label="홈" />
       <p className="px-1 text-xs font-medium text-muted">시간표</p>
       <h1 className="px-1 text-[22px] font-bold">KLAS 시간표 올리기</h1>
       <p className="mt-1 px-1 text-sm text-muted">

@@ -3,7 +3,7 @@
 import { aiFetch } from "@/lib/ai-fetch";
 
 import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
+import BackLink from "@/components/ui/back-link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import AppShell from "@/components/ui/app-shell";
@@ -194,10 +194,7 @@ function NewReceipt() {
   if (step === "kind") {
     return (
       <AppShell>
-        <Link href="/career/receipts" className={backLinkClass}>
-          <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-          스펙 영수증
-        </Link>
+        <BackLink href="/career/receipts" label="스펙 영수증" />
         <h1 className="mt-1 px-1 text-[22px] font-bold">어떤 기록인가요?</h1>
         <p className="mt-1 px-1 text-[13px] leading-relaxed text-muted">
           구분을 고르면 그에 맞는 칸만 나와요. 짧게 남기고, 필요할 때 STAR로 자세히 정리할 수 있어요.
@@ -320,10 +317,7 @@ function NewReceipt() {
   return (
     <AppShell>
       {upgrading ? (
-        <Link href="/career/receipts" className={backLinkClass}>
-          <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-          스펙 영수증
-        </Link>
+        <BackLink href="/career/receipts" label="스펙 영수증" />
       ) : (
         <button type="button" onClick={() => setTypedStep(kind ? "simple" : "kind")} className={backLinkClass}>
           <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />

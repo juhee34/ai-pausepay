@@ -4,6 +4,7 @@ import { aiFetch } from "@/lib/ai-fetch";
 
 import { ChevronLeft, FileUp, Plus } from "lucide-react";
 import Link from "next/link";
+import BackLink from "@/components/ui/back-link";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
 import BrandLabel from "@/components/ui/brand-label";
@@ -334,10 +335,7 @@ export default function PostingFlow() {
 
   return (
     <AppShell>
-      <Link href="/career" className="-ml-1 mb-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
-        <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-        취업
-      </Link>
+      <BackLink href="/career" label="취업" />
       <p className="px-1 text-xs font-medium text-muted">공고·자격증 올리기</p>
       <h1 className="px-1 text-[22px] font-bold">공고 한 장으로 취준 일정</h1>
       <p className="mt-1 px-1 text-sm text-muted">

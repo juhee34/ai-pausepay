@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { ChevronLeft, ChevronRight, FileUp, Pencil, Plus, X } from "lucide-react";
+import { ChevronRight, FileUp, Pencil, Plus, X } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
+import BackLink from "@/components/ui/back-link";
+import FormulaNote from "@/components/ui/formula-note";
 import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
@@ -613,14 +615,8 @@ export default function GradesPage() {
   return (
     <AppShell>
       <div className="flex min-h-7 items-center justify-between">
-        {/* 오늘의 한 가지 화면(/today)이 생기면 주소를 바꾼다. 지금은 홈의 추천 블록이 그 자리다. */}
-        <Link
-          href="/"
-          className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-xs font-semibold text-brand"
-        >
-          <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-          오늘의 한 가지
-        </Link>
+        {/* 학교 기능은 + 전체 기능 창에서 열리므로 홈으로 돌아간다. */}
+        <BackLink href="/" label="홈" />
         {hydrated && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">
             예시 데이터
@@ -666,6 +662,7 @@ export default function GradesPage() {
             </p>
           )}
 
+          {(isExample || items.length > 0) && (
           <Block className="mt-3">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-[15px] font-bold">희망 학점별 기말 필요 점수</h2>
@@ -727,6 +724,7 @@ export default function GradesPage() {
                 </button>
               )}
             </Block>
+          )}
 
           {showResult && (
             <ResultBlock
@@ -909,11 +907,11 @@ export default function GradesPage() {
             <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
           </Link>
 
-          <p className="mt-4 text-[11px] leading-relaxed text-muted">
+          <FormulaNote>
             필요 점수 = (목표 총점 − 기말 전까지 확보한 점수) ÷ 기말 배점 × 100이에요. 배점 합이 100이 아니면 목표를 같은 비율로 바꿔 계산해요. 85점 이상이면
             위험, 70점 이상이면 주의, 100점을 넘으면 목표 초과로 표시해요. 예상 컷 = 전체 평균 + z × 퍼진 정도예요. 점수가 정규 분포를
             따른다고 본 추정이라 실제 컷과 다를 수 있어요. 퍼진 정도는 점수표의 표준편차를 시험과 기말 배점으로 환산한 값이고, 없으면 임시 값 10점이에요. 학점 비율도 임시 값이에요. 파일은 AI가 숫자를 읽을 때만 쓰고, 계산은 코드로 해요. 전체 점수 목록은 저장하지 않아요.{isExample && " 화면의 숫자는 모두 예시 데이터예요."} 점수는 이 기기에만 저장돼요.
-          </p>
+          </FormulaNote>
         </>
       )}
 

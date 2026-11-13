@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { ChevronLeft, LogIn, LogOut, Smartphone, UserRound } from "lucide-react";
+import { LogIn, LogOut, Smartphone, UserRound } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
+import BrandLabel from "@/components/ui/brand-label";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import { logOut, signInWithGoogle, useAccount } from "@/lib/firebase-auth";
@@ -19,9 +19,7 @@ export default function MyPage() {
 
   return (
     <AppShell>
-      <Link href="/" className="-ml-1 mb-1 flex min-h-11 w-fit items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
-        <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />홈
-      </Link>
+      <BrandLabel />
       <header className="mb-4 px-1">
         <p className="text-xs font-medium text-muted">내 정보</p>
         <h1 className="text-[22px] font-bold">마이페이지</h1>

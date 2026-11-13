@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { ChevronRight, Plus, X } from "lucide-react";
 import Link from "next/link";
+import BackLink from "@/components/ui/back-link";
 import { useState, useSyncExternalStore } from "react";
 import { getData, getServerData, subscribeData } from "@/app/focus/store";
 import AppShell from "@/components/ui/app-shell";
@@ -187,10 +188,7 @@ export default function SkillGapPage() {
   return (
     <AppShell>
       <div className="flex min-h-7 items-center justify-between">
-        <Link href="/career" className="-ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-xs font-semibold text-brand">
-          <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
-          취업
-        </Link>
+        <BackLink href="/career" label="취업" />
         {today && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">
             예시 데이터

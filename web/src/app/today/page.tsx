@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight, Plus, Timer } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
+import FormulaNote from "@/components/ui/formula-note";
 import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
@@ -418,13 +419,13 @@ export default function TodayPage() {
         <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
       </Link>
 
-      <p className="mt-4 text-[11px] leading-relaxed text-muted">
+      <FormulaNote>
         효율 = 배점 × (목표 − 예상 득점률) ÷ 예상 소요시간이고, 마감이 3일 안이면 ×1.3, 7일 안이면 ×1.15를 곱해요. 배점은
         강의계획서의 평가 비율을 같은 종류 일정 수로 나눈 값이고, 없으면 중간·기말 30, 과제 10, 퀴즈·기타 5로 잡아요. 예상
         득점률은 시험 대비 팩의 퀴즈 정답률이나 0.6, 목표는 기말 필요 점수에서 정한 점수나 90점이에요. 예상 소요시간은 시험
         8시간, 과제 3시간, 퀴즈·기타 1시간이고, 직접 넣은 예상 시간이 있으면 그 값을 써요. 시작일이 아직 안 된 일은 순위에서 빼요. 오늘 마감인 일은 효율과 상관없이 맨 앞에 두고, 그다음은 효율 높은 순이에요. 오늘 시간은 앞에서부터 예상 소요시간만큼 나누고, 모자라면 남은 시간만큼만 넣어요. 이 값은 순서와 시간을 정하는 데만 쓰고 점수를 예측하지는 않아요.
         {isExample && " 화면의 숫자는 모두 예시 데이터예요."}
-      </p>
+      </FormulaNote>
 
       {taskSheet && (
         <TaskFormSheet
