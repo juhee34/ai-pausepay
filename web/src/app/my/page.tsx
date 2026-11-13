@@ -10,6 +10,7 @@ import AccountBackupCard from "./account-backup-card";
 import UsageCard from "./usage-card";
 import CalendarSubscriptionCard from "./calendar-subscription-card";
 import CookieCard from "./cookie-card";
+import NicknameCard from "./nickname-card";
 
 export default function MyPage() {
   const account = useAccount();
@@ -56,6 +57,8 @@ export default function MyPage() {
           {account.error && <p role="alert" className="mt-3 rounded-callout border border-review-line bg-review-soft p-3 text-sm text-review">{account.error}</p>}
         </div>
       </Block>
+
+      <NicknameCard />
 
       <CookieCard key={user?.uid ?? "guest"} uid={user?.uid ?? null} />
 
