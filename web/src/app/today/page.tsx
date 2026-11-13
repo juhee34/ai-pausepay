@@ -1,31 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ChevronRight, Plus, Timer } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
 import FormulaNote from "@/components/ui/formula-note";
 import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Button from "@/components/ui/button";
-import { useToday } from "@/lib/briefing";
-import { useSavedDeadlines, type SavedDeadline } from "@/lib/deadline-store";
-import { getLatestAccuracy } from "@/lib/exam-results";
-import { useGrades } from "@/lib/grades-store";
-import { useGrading } from "@/lib/grading-store";
+import { type SavedDeadline } from "@/lib/deadline-store";
 import { weekNumberOf } from "@/lib/risk";
+import { useScoredTasks } from "@/lib/use-scored-tasks";
 import {
   DEFAULT_AVAILABLE_HOURS,
   MAX_AVAILABLE_HOURS,
   MIN_AVAILABLE_HOURS,
-  exampleTasks,
   formatHours,
   groupByCourse,
   parseAvailableHours,
   planToday,
-  scoreTasks,
   type EfficiencyLevel,
-  type PlanTask,
   type ScoredTask,
 } from "@/lib/today-plan";
 
@@ -78,10 +72,7 @@ function headerDate(today: string) {
 }
 
 export default function TodayPage() {
-  const today = useToday();
-  const saved = useSavedDeadlines();
-  const grading = useGrading();
-  const grades = useGrades();
+  const { today, saved, isExample, scored } = useScoredTasks();
   const [hoursText, setHoursText] = useState(String(DEFAULT_AVAILABLE_HOURS));
   // 입력하는 도중이나 잘못 넣었을 때는 마지막으로 맞게 넣은 시간을 계속 쓴다.
   const [available, setAvailable] = useState<number>(DEFAULT_AVAILABLE_HOURS);
@@ -95,39 +86,6 @@ export default function TodayPage() {
     const hours = parseAvailableHours(text);
     if (hours !== null) setAvailable(hours);
   }
-
-  const isExample = saved.length === 0;
-
-  const scored = useMemo(() => {
-    if (!today) return [];
-    const tasks: PlanTask[] = isExample
-      ? exampleTasks(today)
-      : saved
-          .filter((d) => !d.done)
-          .map((d) => ({
-            id: d.id,
-            course: d.course,
-            title: d.title,
-            date: d.date,
-            kind: d.kind,
-            hours: d.hours,
-            startDate: d.startDate,
-          }));
-    const courses = [...new Set(tasks.map((t) => t.course))];
-    const accuracy: Record<string, number> = {};
-    for (const course of courses) {
-      const value = isExample ? null : getLatestAccuracy(course);
-      if (value !== null) accuracy[course] = value;
-    }
-    const targets: Record<string, number> = {};
-    if (!isExample) for (const [course, g] of Object.entries(grades)) targets[course] = g.target;
-    return scoreTasks(today, tasks, {
-      grading: isExample ? {} : grading,
-      targets,
-      accuracy,
-      allTasks: isExample ? [] : saved.map((d) => ({ course: d.course, kind: d.kind })),
-    });
-  }, [today, isExample, saved, grading, grades]);
 
   const plan = planToday(scored, available);
   const groups = groupByCourse(scored, plan.picks);
