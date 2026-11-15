@@ -3,6 +3,7 @@
 import { Minus, Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { useWakeLock } from "@/lib/wake-lock";
 import AppShell from "@/components/ui/app-shell";
 import BackLink from "@/components/ui/back-link";
 import Block from "@/components/ui/block";
@@ -517,6 +518,9 @@ function FocusContent() {
       : null;
   // 다른 과목을 고르고 시작했으면 목표를 보여 주지 않는다.
   const sessionGoal = session && session.subject === target?.subject ? goal : null;
+
+  // 집중·쉬는 시간이 도는 동안 폰 화면이 꺼지지 않게 한다 (꺼지면 끝 알림이 늦어진다).
+  useWakeLock(!!session && session.phase !== "done");
 
   useEffect(() => {
     if (session && session.phase !== "done" && now >= session.endsAt) {
