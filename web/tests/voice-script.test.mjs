@@ -1,19 +1,28 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
 import Module from "node:module";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
-// voice-script.ts는 다른 모듈에 기대지 않는 순수 함수라 TypeScript만 바꿔서 불러온다.
-const filename = fileURLToPath(new URL("../src/lib/voice-script.ts", import.meta.url));
-const loaded = new Module(filename);
-loaded._compile(
-  ts.transpileModule(fs.readFileSync(filename, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText,
-  filename,
-);
+// voice-script.ts와 옆 파일(./josa)은 순수 함수라 TypeScript만 바꿔서 불러온다.
+const root = fileURLToPath(new URL("../src/lib/", import.meta.url));
+function load(name) {
+  const filename = path.join(root, `${name}.ts`);
+  const mod = new Module(filename);
+  mod.filename = filename;
+  const original = mod.require.bind(mod);
+  mod.require = (id) => (id.startsWith("./") ? load(id.slice(2)) : original(id));
+  mod._compile(
+    ts.transpileModule(fs.readFileSync(filename, "utf8"), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText,
+    filename,
+  );
+  return mod.exports;
+}
+const loaded = { exports: load("voice-script") };
 const { voiceScript, josa, speakHours, hasBatchim, timeGreeting, TIME_GREETINGS, matchIntent, intentReply, VOICE_CHOICES, dayWord } =
   loaded.exports;
 
