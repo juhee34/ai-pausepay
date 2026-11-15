@@ -12,6 +12,7 @@ import { useNowMinutes } from "@/lib/briefing";
 import { buildDayPlan, freeMinutesUntilNextClass } from "@/lib/day-plan";
 import { useAccount } from "@/lib/firebase-auth";
 import { useNickname } from "@/lib/nickname-store";
+import { currentVoices, loadVoices } from "@/lib/speech-voices";
 import { useTimetable } from "@/lib/timetable-store";
 import { DEFAULT_AVAILABLE_HOURS, planToday } from "@/lib/today-plan";
 import { useScoredTasks } from "@/lib/use-scored-tasks";
@@ -263,6 +264,8 @@ export default function VoiceCall({ className, children }: { className?: string;
   // 새로 읽기 시작하면 앞선 읽기의 끝 신호는 무시한다.
   const speechToken = useRef(0);
   const recognition = useRef<Recognition | null>(null);
+  // 지금 읽는 문장 객체들 (speak 안의 2번 설명)
+  const utterances = useRef<SpeechSynthesisUtterance[]>([]);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -306,17 +309,27 @@ export default function VoiceCall({ className, children }: { className?: string;
 
   // 문장을 차례로 읽고 끝나면 onDone. 아이폰은 누른 그 순간에 읽기를 시작해야 소리가 나서, 모두 한꺼번에 줄 세운다.
   function speak(texts: string[], onDone: () => void) {
+    const synth = window.speechSynthesis;
+    // 앞의 읽기가 아직 남아 있었는지 (멈춘 직후에 바로 읽으면 사파리가 끝 신호를 놓친다, 아래 1)
+    const wasBusy = !!synth && (synth.speaking || synth.pending);
     stopSpeech();
     const token = speechToken.current;
     setCaption(texts[0] ?? "");
-    const synth = window.speechSynthesis;
     if (!synth || typeof SpeechSynthesisUtterance === "undefined") {
       captionsOnly(texts, token, onDone);
       return;
     }
-    const voice = pickVoice(synth.getVoices());
+    const voice = pickVoice(currentVoices());
     let started = false;
-    texts.forEach((text, i) => {
+    let finished = false;
+    const finish = () => {
+      if (finished || token !== speechToken.current) return;
+      finished = true;
+      speakingRef.current = false;
+      utterances.current = [];
+      onDone();
+    };
+    const queue = texts.map((text, i) => {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "ko-KR";
       if (voice) u.voice = voice;
@@ -333,21 +346,45 @@ export default function VoiceCall({ className, children }: { className?: string;
       u.onend = () => {
         if (token !== speechToken.current) return;
         speakingRef.current = false;
-        if (i === texts.length - 1) onDone();
+        if (i === texts.length - 1) finish();
       };
       u.onerror = () => {
         if (token !== speechToken.current) return;
         speakingRef.current = false;
-        if (i === texts.length - 1) onDone();
+        if (i === texts.length - 1) finish();
       };
-      synth.speak(u);
+      return u;
     });
+    // 2) 읽는 동안 문장 객체를 쥐고 있는다. 크롬이 객체를 먼저 치워 버리면 끝 신호(onend)가 오지 않는다.
+    //    참고: Chromium 'Fix crash if utterance is garbage-collected before speech ends'(codereview.chromium.org/228133002)
+    utterances.current = queue;
+    const enqueue = () => {
+      if (token !== speechToken.current) return;
+      queue.forEach((u) => synth.speak(u));
+    };
+    // 1) 앞의 읽기를 멈춘 직후라면 10ms 뒤에 읽는다. 처음 누를 때(아무것도 안 읽는 중)는 아이폰 때문에 바로 읽는다.
+    //    방식 출처: EasySpeech speak() — cancel() 뒤 setTimeout 10ms
+    //    (https://github.com/leaonline/easy-speech, MIT License, Copyright (c) 2021 Jan Küster)
+    //    사파리 버그: WebKit Bug 238189 (cancel() 바로 뒤에 줄 세운 문장의 시작·끝 신호가 오지 않음)
+    if (wasBusy) later(enqueue, 10);
+    else enqueue();
+
     // 2.5초 안에 읽기가 시작되지 않으면(막힌 브라우저) 자막만 보여 준다.
     later(() => {
-      if (started || token !== speechToken.current) return;
+      if (started || finished || token !== speechToken.current) return;
+      finished = true;
       synth.cancel();
       captionsOnly(texts, token, onDone);
     }, 2500);
+    // 3) 읽기가 실제로 멈췄는데 끝 신호가 1초 동안 오지 않으면 끝난 것으로 본다 (위 사파리 버그 대비).
+    let quietTicks = 0;
+    const watch = () => {
+      if (finished || token !== speechToken.current) return;
+      quietTicks = started && !synth.speaking && !synth.pending ? quietTicks + 1 : 0;
+      if (quietTicks >= 4) return finish();
+      later(watch, 250);
+    };
+    later(watch, 500);
   }
 
   function toAsk() {
@@ -468,6 +505,11 @@ export default function VoiceCall({ className, children }: { className?: string;
     // close는 매번 새로 만들어지지만 하는 일이 같다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // 로고를 누르기 전에 목소리 목록을 미리 불러 둔다 (크롬은 목록을 늦게 채운다).
+  useEffect(() => {
+    void loadVoices();
+  }, []);
 
   // 화면을 떠나면 읽기·듣기를 멈춘다.
   useEffect(
