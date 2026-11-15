@@ -16,8 +16,8 @@ import { dDay, formatKoreanDate } from "@/lib/day-plan";
 
 const INPUT = "min-h-11 w-full rounded-button border border-line bg-surface px-3 text-[16px] text-ink";
 
-// 동아리·공모전처럼 강의계획서에 없는 일정을 직접 적는 곳. 홈의 '+ 대외활동' 창 안에 들어간다.
-// 적은 일정은 홈의 그날 목록에 같이 보인다. 지난 일정은 숨긴다.
+// 동아리·공모전처럼 강의계획서에 없는 일정을 직접 적는 곳. 오늘·일정 탭의 '대외활동 일정 넣기' 창 안에 들어간다.
+// 적은 일정은 그날 일정 목록에 같이 보인다. 지난 일정은 숨긴다.
 export default function Activities() {
   const today = useToday();
   const activities = useActivities();
