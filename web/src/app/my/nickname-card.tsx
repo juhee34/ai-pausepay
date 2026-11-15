@@ -7,7 +7,7 @@ import Button from "@/components/ui/button";
 import { saveNickname, useNickname } from "@/lib/nickname-store";
 import { MAX_NICKNAME } from "@/lib/voice-script";
 
-// 홈 로고를 눌렀을 때 우니스가 불러 줄 이름. 이 기기에만 저장한다.
+// 탭 첫 화면 오른쪽 위의 우니스 버튼을 눌렀을 때 불러 줄 이름. 이 기기에만 저장한다.
 export default function NicknameCard() {
   const saved = useNickname();
   const [draft, setDraft] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export default function NicknameCard() {
         <h2 className="text-[15px] font-bold">불러 줄 이름</h2>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        홈의 UNIS 로고를 누르면 우니스가 이 이름을 부르고 오늘 할 일을 말로 알려 줘요. 비워 두면 Google 계정 이름으로 불러요.
+        오늘·일정·취업·내 정보 화면 오른쪽 위의 우니스 버튼을 누르면 이 이름을 부르고 오늘 할 일을 말로 알려 줘요. 비워 두면 Google 계정 이름으로 불러요.
       </p>
       <form
         className="mt-3 flex items-center gap-2"

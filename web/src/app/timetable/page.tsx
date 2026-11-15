@@ -96,11 +96,11 @@ export default function TimetablePage() {
 
   return (
     <AppShell>
-      <BackLink href="/" label="홈" />
+      <BackLink href="/schedule" label="일정" />
       <p className="px-1 text-xs font-medium text-muted">시간표</p>
-      <h1 className="px-1 text-[22px] font-bold">KLAS 시간표 올리기</h1>
+      <h1 className="px-1 text-[24px] leading-tight font-extrabold tracking-tight">KLAS 시간표 올리기</h1>
       <p className="mt-1 px-1 text-sm text-muted">
-        KLAS 시간표 화면을 캡쳐해서 올리면 수업 시간을 읽어 홈에 보여 드려요.
+        KLAS 시간표 화면을 캡쳐해서 올리면 수업 시간을 읽어 오늘 화면에 보여 드려요.
       </p>
 
       {!drafts && (

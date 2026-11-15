@@ -616,7 +616,7 @@ export default function GradesPage() {
     <AppShell>
       <div className="flex min-h-7 items-center justify-between">
         {/* 학교 기능은 + 전체 기능 창에서 열리므로 홈으로 돌아간다. */}
-        <BackLink href="/" label="홈" />
+        <BackLink href="/" label="오늘" />
         {hydrated && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">
             예시 데이터
@@ -624,7 +624,7 @@ export default function GradesPage() {
         )}
       </div>
 
-      <h1 className="mt-1 text-[22px] font-bold">최소 점수 계산</h1>
+      <h1 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight">최소 점수 계산</h1>
       <p className="mt-1 text-[13px] leading-relaxed text-muted">
         시험 평균과 내 점수로 학점별 컷을 어림잡아, 기말에 몇 점이 필요한지 거꾸로 계산해요.
       </p>
@@ -901,7 +901,7 @@ export default function GradesPage() {
 
           <Link
             href="/risk"
-            className="mt-4 flex min-h-11 w-full items-center justify-between rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
+            className="mt-4 flex min-h-11 w-full items-center justify-between rounded-full border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
           >
             부담이 몰리는 주 보기
             <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />

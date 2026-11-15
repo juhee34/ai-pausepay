@@ -491,7 +491,7 @@ export default function VoiceCall({ className, children }: { className?: string;
         type="button"
         onClick={start}
         aria-label="우니스 부르기: 오늘 할 일을 말로 들려줘요"
-        className={`-m-1 rounded-button p-1 text-left active:opacity-70 ${className ?? ""}`}
+        className={className}
       >
         {children}
       </button>

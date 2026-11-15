@@ -250,9 +250,9 @@ export default function ExamPage() {
     <AppShell>
       {!pack ? (
         <>
-          <BackLink href="/" label="홈" />
+          <BackLink href="/" label="오늘" />
           <header className="mb-4 px-1">
-            <h1 className="text-[22px] font-bold">강의자료로 요약과 문제 만들기</h1>
+            <h1 className="text-[24px] leading-tight font-extrabold tracking-tight">강의자료로 요약과 문제 만들기</h1>
             <p className="mt-1 text-sm text-muted">
               5줄 요약, 어려운 말 풀이, 객관식·OX·단답형 문제가 나오고 틀린 문제만 다시 풀 수
               있어요.
@@ -464,9 +464,9 @@ export default function ExamPage() {
       ) : (
         <>
           <div>
-          <BackLink href="/" label="홈" />
+          <BackLink href="/" label="오늘" />
           <header className="mb-4 px-1">
-            <h1 className="text-[22px] font-bold">
+            <h1 className="text-[24px] leading-tight font-extrabold tracking-tight">
               {graded ? "채점 결과예요" : "요약을 읽고 문제를 풀어 보세요"}
             </h1>
             <p className="mt-1 text-xs leading-relaxed text-muted">

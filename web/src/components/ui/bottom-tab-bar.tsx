@@ -5,35 +5,36 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Award,
+  LayoutGrid,
   BriefcaseBusiness,
+  CalendarDays,
   CalendarPlus,
   Calculator,
   CalendarClock,
   Cookie,
   FileUp,
-  House,
   Mail,
   Map as MapIcon,
   NotebookPen,
-  Plus,
   Radar,
   ScrollText,
   Sparkles,
+  Sun,
   Timer,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { DAILY_AI_LIMIT } from "@/lib/ai-usage";
 import { COOKIES_PER_AI_USE } from "@/lib/cookies";
+import { setFeatureSheetOpen, useFeatureSheetOpen } from "@/lib/feature-sheet-store";
 import BottomSheet from "./bottom-sheet";
 
-const LEFT_TABS = [
-  { href: "/", label: "홈", Icon: House },
-  { href: "/today", label: "우선순위", Icon: Sparkles },
-];
-const RIGHT_TABS = [
-  { href: "/career", label: "취업", Icon: BriefcaseBusiness },
-  { href: "/my", label: "마이페이지", Icon: UserRound },
+// also: 그 탭에서 들어가는 화면. 그 화면에서도 탭이 켜져 보인다.
+const TABS = [
+  { href: "/", label: "오늘", Icon: Sun, also: ["/today"] },
+  { href: "/schedule", label: "일정", Icon: CalendarDays, also: ["/calendar"] },
+  { href: "/career", label: "취업", Icon: BriefcaseBusiness, also: [] as string[] },
+  { href: "/my", label: "나", Icon: UserRound, also: [] as string[] },
 ];
 
 type FeatureTile = {
@@ -45,12 +46,13 @@ type FeatureTile = {
   cookie?: boolean; // AI를 써서 무료 횟수 뒤에 쿠키가 필요한 기능
 };
 
-// 가운데 + 를 누르면 나오는 전체 기능 창. 새 기능은 탭을 늘리지 않고 여기에 더한다.
+// 탭바 오른쪽 버튼을 누르면 나오는 전체 기능 창. 새 기능은 탭을 늘리지 않고 여기에 더한다.
 // 화면이 생기면 그 타일의 ready를 true로 바꾼다.
 const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
   {
     title: "학교",
     tiles: [
+      { href: "/today", label: "오늘의 한 가지", sub: "쓸 시간으로 순서 정하기", Icon: Sparkles, ready: true },
       { href: "/calendar", label: "강의계획서 올리기", sub: "시험·과제를 달력으로", Icon: FileUp, ready: true, cookie: true },
       { href: "/grades", label: "기말 필요 점수", sub: "목표까지 몇 점?", Icon: Calculator, ready: true },
       { href: "/risk", label: "학기 리스크 지도", sub: "몰리는 주 미리 보기", Icon: MapIcon, ready: true },
@@ -77,28 +79,30 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
 ];
 
 const TILE_CLASS =
-  "flex h-full min-h-16 w-full items-start gap-2.5 rounded-[14px] bg-canvas p-3 text-left active:bg-divider";
+  "flex h-full min-h-16 w-full items-start gap-2.5 rounded-[18px] bg-surface p-3 text-left active:bg-divider";
 
-// 화면 아래에 고정되는 탭바 5칸. 가운데 + 는 전체 기능 창을 연다.
+// 화면 아래에 떠 있는 탭바. 유리 질감 알약 안에 탭 4칸, 그 오른쪽에 우니스를 부르는 둥근 버튼(음성 안내).
+// 전체 기능 창도 여기서 그린다. 여는 버튼은 탭바 오른쪽의 둥근 버튼이다. 우니스 부르기는 탭 첫 화면의 머리(ScreenHeader)에 있다.
 export default function BottomTabBar() {
   const pathname = usePathname();
-  const [moreOpen, setMoreOpen] = useState(false);
+  const moreOpen = useFeatureSheetOpen();
   const [soonHref, setSoonHref] = useState<string | null>(null);
 
   function closeMore() {
-    setMoreOpen(false);
+    setFeatureSheetOpen(false);
     setSoonHref(null);
   }
 
-  const tab = ({ href, label, Icon }: (typeof LEFT_TABS)[number]) => {
-    const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const tab = ({ href, label, Icon, also }: (typeof TABS)[number]) => {
+    const active =
+      (href === "/" ? pathname === "/" : pathname.startsWith(href)) || also.some((p) => pathname.startsWith(p));
     return (
-      <li key={href} className="flex-1">
+      <li key={href} className="min-w-0">
         <Link
           href={href}
           aria-current={active ? "page" : undefined}
-          className={`flex min-h-11 flex-col items-center justify-center gap-1 text-[11px] font-semibold ${
-            active ? "text-brand" : "text-muted"
+          className={`flex h-full flex-col items-center justify-center gap-0.5 rounded-full text-[11px] tracking-tight whitespace-nowrap ${
+            active ? "bg-brand/10 font-bold text-brand" : "font-semibold text-ink/80"
           }`}
         >
           <Icon size={22} strokeWidth={1.8} aria-hidden="true" />
@@ -125,7 +129,7 @@ export default function BottomTabBar() {
           {soonHref === href ? "곧 열려요" : sub}
         </span>
         {!ready && (
-          <span className="mt-1 inline-block rounded-md bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-muted">
+          <span className="mt-1 inline-block rounded-full bg-fill px-2 py-0.5 text-[11px] font-semibold text-ink/70">
             준비 중
           </span>
         )}
@@ -135,25 +139,25 @@ export default function BottomTabBar() {
 
   return (
     <>
+      {/* 탭바 옆 빈 곳으로는 뒤 화면을 누를 수 있게 nav는 누름을 받지 않는다 */}
       <nav
         aria-label="주요 메뉴"
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
       >
-        <ul className="mx-auto flex h-16 max-w-[480px] items-center">
-          {LEFT_TABS.map(tab)}
-          <li className="flex flex-1 justify-center">
-            <button
-              type="button"
-              aria-label="전체 기능"
-              aria-expanded={moreOpen}
-              onClick={() => setMoreOpen(true)}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white active:bg-brand-strong"
-            >
-              <Plus size={24} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-          </li>
-          {RIGHT_TABS.map(tab)}
-        </ul>
+        <div className="mx-auto flex max-w-[480px] items-center gap-2.5 px-4">
+          <ul className="glass pointer-events-auto grid h-16 min-w-0 flex-1 grid-cols-4 rounded-full p-1 shadow-float">
+            {TABS.map(tab)}
+          </ul>
+          <button
+            type="button"
+            aria-label="전체 기능"
+            aria-expanded={moreOpen}
+            onClick={() => setFeatureSheetOpen(true)}
+            className="glass pointer-events-auto flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-brand shadow-float active:opacity-70"
+          >
+            <LayoutGrid size={26} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
       </nav>
 
       {/* nav 밖에 두어야 창이 탭바를 덮는다 */}

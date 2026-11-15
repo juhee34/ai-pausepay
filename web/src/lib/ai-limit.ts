@@ -4,7 +4,7 @@ import type { NextRequest, NextResponse } from "next/server";
 // 기기당 하루 무료 쿠키(AI 사용 횟수). 자동 브리핑만 따로 센다 (ai-usage.ts).
 export { BRIEFING_DAILY_LIMIT, DAILY_AI_LIMIT } from "./ai-usage";
 import { DAILY_AI_LIMIT } from "./ai-usage";
-export const AI_LIMIT_MESSAGE = `오늘 무료 쿠키 ${DAILY_AI_LIMIT}개를 모두 썼어요. 내일 다시 쓰거나, 마이페이지에서 로그인하고 쿠키를 충전해 주세요.`;
+export const AI_LIMIT_MESSAGE = `오늘 무료 쿠키 ${DAILY_AI_LIMIT}개를 모두 썼어요. 내일 다시 쓰거나, 내 정보 화면에서 로그인하고 쿠키를 충전해 주세요.`;
 export const BRIEFING_LIMIT_MESSAGE = "오늘 브리핑을 모두 받았어요. 내일 다시 받아요.";
 
 // counter: 무료 쿠키(ai)와 자동 브리핑(briefing)을 다른 쿠키 이름으로 센다.

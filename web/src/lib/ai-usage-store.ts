@@ -51,7 +51,7 @@ export async function reserveUsage(db: Firestore, uid: string, feature: AiFeatur
     }
     const wallet = readWallet((await tx.get(walletRef)).data(), now.getTime());
     if (availableCookies(wallet) < COOKIES_PER_AI_USE) {
-      throw new AccountApiError(429, `오늘 무료 쿠키 ${DAILY_AI_LIMIT}개를 모두 썼어요. 내일 다시 쓰거나, 마이페이지에서 쿠키를 충전해 주세요.`);
+      throw new AccountApiError(429, `오늘 무료 쿠키 ${DAILY_AI_LIMIT}개를 모두 썼어요. 내일 다시 쓰거나, 내 정보 화면에서 쿠키를 충전해 주세요.`);
     }
     tx.set(walletRef, { ...wallet, pending: { ...wallet.pending, [id]: now.getTime() + LEASE_MS } });
     paid = true;

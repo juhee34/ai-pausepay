@@ -94,7 +94,7 @@ export default function CookieCard({ uid }: { uid: string | null }) {
       <p className="mt-2 text-sm leading-relaxed text-muted">
         AI 기능을 한 번 쓸 때마다 쿠키 {COOKIES_PER_AI_USE}개를 써요. 매일 무료 쿠키 {DAILY_AI_LIMIT}개로 시작하고, 다 쓰면 충전한 쿠키를 써요. 무료 쿠키는 매일 0시에 다시 채워져요.
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted">홈의 자동 브리핑과 계산 화면은 쿠키를 쓰지 않아요.</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">일정 탭의 자동 추천과 계산 화면은 쿠키를 쓰지 않아요.</p>
       {uid ? (
         <>
           {error && (

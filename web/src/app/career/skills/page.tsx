@@ -196,7 +196,7 @@ export default function SkillGapPage() {
         )}
       </div>
 
-      <h1 className="mt-1 text-[22px] font-bold">역량 공백 지도</h1>
+      <h1 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight">역량 공백 지도</h1>
       {today && (
         <>
           <p className="mt-1 text-[13px] text-muted">
@@ -378,7 +378,7 @@ export default function SkillGapPage() {
                       )}
                       <Link
                         href={newReceiptHref(isExample ? undefined : line.id)}
-                        className="mt-2 inline-flex min-h-11 items-center rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
+                        className="mt-2 inline-flex min-h-11 items-center rounded-full border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
                       >
                         기록하기
                       </Link>
@@ -402,7 +402,7 @@ export default function SkillGapPage() {
 
           <Link
             href="/career/receipts"
-            className="mt-4 flex min-h-11 w-full items-center justify-between rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
+            className="mt-4 flex min-h-11 w-full items-center justify-between rounded-full border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
           >
             스펙 영수증 보기
             <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
@@ -444,7 +444,7 @@ export default function SkillGapPage() {
             setAdding(false);
             setSheet("new");
           }}
-          className={`flex min-h-11 w-full items-center justify-center gap-1 rounded-button border border-dashed border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft ${addable.length > 0 ? "mt-3" : ""}`}
+          className={`flex min-h-11 w-full items-center justify-center gap-1 rounded-full border border-dashed border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft ${addable.length > 0 ? "mt-3" : ""}`}
         >
           <Plus size={16} strokeWidth={2} aria-hidden="true" />
           목록에 없는 직무 만들기

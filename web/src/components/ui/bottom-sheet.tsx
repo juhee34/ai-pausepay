@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 
-// 아래에서 올라오는 창. 뒤 배경을 어둡게 하고, 배경·손잡이를 누르거나 Esc를 누르면 닫힌다.
+// 아래에서 올라오는 창. 반투명 유리 질감, 위쪽 모서리 32px. 뒤 배경을 어둡게 하고, 배경·손잡이를 누르거나 Esc를 누르면 닫힌다.
 export default function BottomSheet({
   open,
   onClose,
@@ -35,13 +35,13 @@ export default function BottomSheet({
         type="button"
         aria-label="닫기"
         onClick={onClose}
-        className="absolute inset-0 animate-fade-in bg-black/40"
+        className="absolute inset-0 animate-fade-in bg-black/30"
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="absolute inset-x-0 bottom-0 mx-auto max-h-[85dvh] max-w-[480px] animate-sheet-up overflow-y-auto rounded-t-block bg-surface px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-ink"
+        className="absolute inset-x-0 bottom-0 mx-auto max-h-[85dvh] max-w-[480px] glass animate-sheet-up overflow-y-auto rounded-t-sheet border-b-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-ink"
       >
         <button
           type="button"
@@ -49,9 +49,9 @@ export default function BottomSheet({
           onClick={onClose}
           className="flex h-11 w-full items-center justify-center"
         >
-          <span aria-hidden="true" className="h-1 w-10 rounded-full bg-line" />
+          <span aria-hidden="true" className="h-[5px] w-9 rounded-full bg-muted/40" />
         </button>
-        {title && <h2 className="mb-3 text-[17px] font-bold">{title}</h2>}
+        {title && <h2 className="mb-3 text-xl font-bold">{title}</h2>}
         {children}
       </div>
     </div>

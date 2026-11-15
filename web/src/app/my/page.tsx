@@ -2,10 +2,11 @@
 
 import { LogIn, LogOut, Smartphone, UserRound } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
-import BrandLabel from "@/components/ui/brand-label";
+import ScreenHeader from "@/components/ui/screen-header";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import { logOut, signInWithGoogle, useAccount } from "@/lib/firebase-auth";
+import DataBackup from "../data-backup";
 import AccountBackupCard from "./account-backup-card";
 import UsageCard from "./usage-card";
 import CalendarSubscriptionCard from "./calendar-subscription-card";
@@ -20,12 +21,7 @@ export default function MyPage() {
 
   return (
     <AppShell>
-      <BrandLabel />
-      <header className="mb-4 px-1">
-        <p className="text-xs font-medium text-muted">내 정보</p>
-        <h1 className="text-[22px] font-bold">마이페이지</h1>
-        <p className="mt-1 text-sm text-muted">내 계정과 기록 보관 방법을 확인해요.</p>
-      </header>
+      <ScreenHeader title="내 정보" sub="내 계정과 기록 보관 방법을 확인해요." />
 
       <Block>
         <div className="flex items-center gap-3">
@@ -74,7 +70,12 @@ export default function MyPage() {
           <h2 className="text-[15px] font-bold">내 기록은 이 기기에</h2>
         </div>
         <p className="mt-2 text-sm leading-relaxed text-muted">일정·시간표·점수·공부 기록은 이 브라우저에 보관돼요. Google 로그인만으로 기록이 계정에 자동 저장되지는 않아요. 로그인한 뒤 계정 백업 버튼을 누를 때만 저장돼요.</p>
-        <p className="mt-2 text-xs leading-relaxed text-muted">다른 폰으로 옮길 때는 홈 오른쪽 위 메뉴의 내보내기·가져오기를 이용해 주세요.</p>
+        <p className="mt-2 text-xs leading-relaxed text-muted">다른 폰으로 옮길 때는 바로 아래 내보내기·가져오기를 이용해 주세요.</p>
+      </Block>
+
+      {/* 예전 홈 메뉴에 있던 내보내기·가져오기. 팀원(B) 부품 */}
+      <Block className="mt-2.5 [&>section]:mt-0">
+        <DataBackup />
       </Block>
     </AppShell>
   );

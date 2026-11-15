@@ -163,7 +163,7 @@ function SyllabusFlow() {
         downloadCalendarFile(saved);
         message += " 캘린더 파일을 내려받았어요.";
       } catch {
-        setError("일정은 저장했지만 캘린더 파일을 만들지 못했어요. 홈의 '다시 받기'를 눌러 주세요.");
+        setError("일정은 저장했지만 캘린더 파일을 만들지 못했어요. 일정 탭의 '다시 받기'를 눌러 주세요.");
       }
     }
     setNotice(message.trim());
@@ -196,7 +196,7 @@ function SyllabusFlow() {
             <ChevronLeft size={22} strokeWidth={1.8} aria-hidden="true" />
           </button>
           <div className="min-w-0 flex-1 pt-1">
-            <h1 className="text-[22px] font-bold leading-tight">찾은 일정 {drafts.length}개</h1>
+            <h1 className="text-[24px] leading-tight font-extrabold tracking-tight">찾은 일정 {drafts.length}개</h1>
             <p className="truncate text-xs text-muted">{fileName}</p>
           </div>
           <SegmentedTabs
@@ -245,9 +245,10 @@ function SyllabusFlow() {
         )}
 
         {/* 아래 고정 바가 마지막 내용을 가리지 않게 */}
-        <div className="h-24" aria-hidden="true" />
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 border-t border-line bg-surface">
-          <div className="mx-auto max-w-[480px] px-4 py-2.5">
+        <div className="h-32" aria-hidden="true" />
+        {/* 떠 있는 탭바 바로 위에 뜨는 저장 바 */}
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-10">
+          <div className="glass pointer-events-auto mx-4 max-w-[448px] rounded-[28px] p-2.5 shadow-float min-[480px]:mx-auto">
             <Button className="w-full" disabled={
               (checkedCount === 0 && gradingReview.items.length === 0) || gradingReview.invalid ||
               (gradingReview.items.length > 0 && !gradingCourse.trim())
@@ -278,9 +279,9 @@ function SyllabusFlow() {
 
   return (
     <AppShell>
-      <BackLink href="/" label="홈" />
+      <BackLink href="/schedule" label="일정" />
       <p className="px-1 text-xs font-medium text-muted">강의계획서 → 캘린더</p>
-      <h1 className="px-1 text-[22px] font-bold">한 장으로 한 학기 일정</h1>
+      <h1 className="px-1 text-[24px] leading-tight font-extrabold tracking-tight">한 장으로 한 학기 일정</h1>
       <p className="mt-1 px-1 text-sm text-muted">
         강의계획서 PDF나 KLAS 화면 캡쳐를 올리면 과제·퀴즈·시험 날짜와 성적 평가 비율을 찾아 드려요.
       </p>
@@ -323,8 +324,8 @@ function SyllabusFlow() {
       {notice && (
         <p role="status" className="mt-4 rounded-callout bg-brand-soft p-3.5 text-sm font-semibold text-brand">
           {notice}{" "}
-          <Link href="/" className="underline">
-            홈 달력에서 보기
+          <Link href="/schedule" className="underline">
+            일정 탭 달력에서 보기
           </Link>
         </p>
       )}

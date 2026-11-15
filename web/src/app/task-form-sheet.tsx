@@ -40,7 +40,7 @@ export function confirmRemoveCourse(course: string, count: number) {
   const name = course || "과목 없음";
   if (
     !window.confirm(
-      `"${name}" 과목의 할 일 ${count}개를 모두 지울까요?\n홈 달력과 오늘의 한 가지에서도 사라지고 되돌릴 수 없어요.\n평가 비율·점수·공부 기록은 그대로 남아요.`,
+      `"${name}" 과목의 할 일 ${count}개를 모두 지울까요?\n달력과 오늘의 한 가지에서도 사라지고 되돌릴 수 없어요.\n평가 비율·점수·공부 기록은 그대로 남아요.`,
     )
   )
     return false;
@@ -173,7 +173,7 @@ export default function TaskFormSheet({ task, onClose }: { task?: SavedDeadline;
         </div>
         <FieldError>{errors.startDate}</FieldError>
         <FieldError>{errors.date}</FieldError>
-        <p className="text-xs text-muted">시작일이 아직 안 됐으면 그날부터 우선순위에 들어가요.</p>
+        <p className="text-xs text-muted">시작일이 아직 안 됐으면 그날부터 오늘의 한 가지에 들어가요.</p>
 
         <label className="block text-[13px] font-semibold">
           예상 시간 <Optional />

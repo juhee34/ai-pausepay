@@ -117,7 +117,7 @@ export default function ReviewTable({
               {problem ? (
                 <p className="text-xs font-medium text-review">{problem}</p>
               ) : (
-                !d.start && <p className="text-xs text-muted">시간 미정 · 홈의 다음 수업에서는 빠져요</p>
+                !d.start && <p className="text-xs text-muted">시간 미정 · 오늘 화면의 다음 수업에서는 빠져요</p>
               )}
             </div>
           );

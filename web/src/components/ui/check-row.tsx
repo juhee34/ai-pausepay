@@ -21,7 +21,7 @@ export default function CheckRow({
   past?: boolean;
 }) {
   return (
-    <div className={`flex min-h-11 items-center gap-3 px-3.5 py-2.5 ${past ? "text-muted" : ""}`}>
+    <div className={`flex min-h-12 items-center gap-3 px-4 py-2.5 ${past ? "text-muted" : ""}`}>
       {checked !== undefined && (
         <Checkbox checked={checked} onChange={onCheckedChange} label={typeof title === "string" ? title : undefined} />
       )}
@@ -37,7 +37,7 @@ export default function CheckRow({
   );
 }
 
-// 둥근 네모 체크박스. 누르는 자리는 44px.
+// 동그란 체크박스. 누르는 자리는 44px.
 export function Checkbox({
   checked,
   onChange,
@@ -57,7 +57,7 @@ export function Checkbox({
       className="-m-2.5 flex h-11 w-11 shrink-0 items-center justify-center"
     >
       <span
-        className={`flex h-[22px] w-[22px] items-center justify-center rounded-md ${
+        className={`flex h-6 w-6 items-center justify-center rounded-full ${
           checked ? "bg-brand text-white" : "border-[1.5px] border-muted/40 bg-surface"
         }`}
       >

@@ -119,7 +119,7 @@ function CourseSheet({
       <button
         type="button"
         onClick={onClose}
-        className="mt-5 min-h-11 w-full rounded-button bg-brand text-sm font-semibold text-white active:bg-brand-strong"
+        className="mt-5 min-h-11 w-full rounded-full bg-brand text-sm font-semibold text-white active:bg-brand-strong"
       >
         닫기
       </button>
@@ -142,7 +142,7 @@ export default function ReportPage() {
   return (
     <AppShell>
       <div className="flex min-h-7 items-center justify-between">
-        <BackLink href="/" label="홈" />
+        <BackLink href="/" label="오늘" />
         {today && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">
             예시 데이터
@@ -150,7 +150,7 @@ export default function ReportPage() {
         )}
       </div>
 
-      <h1 className="mt-1 text-[22px] font-bold">학기 결산서</h1>
+      <h1 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight">학기 결산서</h1>
       <p className="mt-1 text-[13px] text-muted">
         {SEMESTER_LABEL} · 1~{lastWeek}주차 · 집중 모드 기록 기준
       </p>
@@ -269,7 +269,7 @@ export default function ReportPage() {
 
       <Link
         href="/report/flow"
-        className="mt-4 flex min-h-11 w-full items-center justify-between rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
+        className="mt-4 flex min-h-11 w-full items-center justify-between rounded-full border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
       >
         시간이 어디에 쓰였는지 보기
         <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />

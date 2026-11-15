@@ -192,7 +192,7 @@ export default function PostingFlow() {
       downloadCalendarFile(saved);
       message += " 캘린더 파일을 내려받았어요.";
     } catch {
-      setError("일정은 저장했지만 캘린더 파일을 만들지 못했어요. 홈의 '다시 받기'를 눌러 주세요.");
+      setError("일정은 저장했지만 캘린더 파일을 만들지 못했어요. 일정 탭의 '다시 받기'를 눌러 주세요.");
     }
     setNotice({ text: message, hasCard: cardAdded });
     setDrafts(null);
@@ -217,7 +217,7 @@ export default function PostingFlow() {
             <ChevronLeft size={22} strokeWidth={1.8} aria-hidden="true" />
           </button>
           <div className="min-w-0 flex-1 pt-1">
-            <h1 className="text-[22px] font-bold leading-tight">찾은 일정 {drafts.length}개</h1>
+            <h1 className="text-[24px] leading-tight font-extrabold tracking-tight">찾은 일정 {drafts.length}개</h1>
             <p className="text-xs text-muted">공고와 날짜를 비교해 주세요</p>
           </div>
         </header>
@@ -304,9 +304,10 @@ export default function PostingFlow() {
         )}
 
         {/* 아래 고정 바가 마지막 내용을 가리지 않게 */}
-        <div className="h-24" aria-hidden="true" />
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 border-t border-line bg-surface">
-          <div className="mx-auto max-w-[480px] px-4 py-2.5">
+        <div className="h-32" aria-hidden="true" />
+        {/* 떠 있는 탭바 바로 위에 뜨는 저장 바 */}
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-10">
+          <div className="glass pointer-events-auto mx-4 max-w-[448px] rounded-[28px] p-2.5 shadow-float min-[480px]:mx-auto">
             <Button className="w-full" disabled={checkedCount === 0 || !title.trim()} onClick={save}>
               <span>
                 <span className="font-mono">{checkedCount}</span>개 일정 캘린더에 추가
@@ -337,7 +338,7 @@ export default function PostingFlow() {
     <AppShell>
       <BackLink href="/career" label="취업" />
       <p className="px-1 text-xs font-medium text-muted">공고·자격증 올리기</p>
-      <h1 className="px-1 text-[22px] font-bold">공고 한 장으로 취준 일정</h1>
+      <h1 className="px-1 text-[24px] leading-tight font-extrabold tracking-tight">공고 한 장으로 취준 일정</h1>
       <p className="mt-1 px-1 text-sm text-muted">
         대외활동·공모전·인턴·채용 공고나 자격증 안내를 넣으면 마감일을 찾아 드려요.
       </p>
@@ -412,8 +413,8 @@ export default function PostingFlow() {
       {notice && (
         <p role="status" className="mt-4 rounded-callout bg-brand-soft p-3.5 text-sm font-semibold text-brand">
           {notice.text}{" "}
-          <Link href="/" className="underline">
-            홈 달력에서 보기
+          <Link href="/schedule" className="underline">
+            일정 탭 달력에서 보기
           </Link>
           {notice.hasCard && (
             <>

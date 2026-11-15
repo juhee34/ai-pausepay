@@ -8,7 +8,7 @@ export default function CookieNote() {
     <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted">
       <Cookie size={14} strokeWidth={1.8} aria-hidden="true" className="mt-0.5 shrink-0 text-brand" />
       <span>
-        한 번에 쿠키 {COOKIES_PER_AI_USE}개를 써요. 매일 무료 쿠키 {DAILY_AI_LIMIT}개를 먼저 쓰고, 충전은 마이페이지에서 해요.
+        한 번에 쿠키 {COOKIES_PER_AI_USE}개를 써요. 매일 무료 쿠키 {DAILY_AI_LIMIT}개를 먼저 쓰고, 충전은 내 정보 화면에서 해요.
       </span>
     </p>
   );

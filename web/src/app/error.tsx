@@ -19,7 +19,7 @@ export default function ErrorPage({ retry }: { error: unknown; retry: () => void
           href="/"
           className="mt-1 flex min-h-11 items-center justify-center text-[15px] font-semibold text-brand"
         >
-          홈으로 가기
+          오늘 화면으로 가기
         </Link>
       </Block>
     </AppShell>

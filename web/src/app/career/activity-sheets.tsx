@@ -130,7 +130,7 @@ export function ActivityFormSheet({
             className={inputClass}
           />
           <span className="mt-1 block text-xs font-normal text-muted">
-            홈 달력과 그날 일정에도 보여요.
+            일정 탭 달력과 그날 일정에도 보여요.
           </span>
         </label>
 
@@ -273,7 +273,7 @@ export function ActivityDetailSheet({
           <p className="mt-0.5 text-xs text-muted">끝난 활동은 잊기 전에 정리해 두면 좋아요.</p>
           <Link
             href={`/career/receipts/new?activity=${encodeURIComponent(activity.id)}`}
-            className="mt-2.5 flex min-h-11 w-full items-center justify-center rounded-button bg-brand px-4 text-[15px] font-semibold text-white active:bg-brand-strong"
+            className="mt-2.5 flex min-h-11 w-full items-center justify-center rounded-full bg-brand px-4 text-[15px] font-semibold text-white active:bg-brand-strong"
           >
             영수증 쓰기
           </Link>
@@ -287,7 +287,7 @@ export function ActivityDetailSheet({
         <Button
           variant="secondary"
           onClick={() => {
-            if (!confirm(`'${activity.title}'을(를) 지울까요? 홈 일정에서도 사라져요.`)) return;
+            if (!confirm(`'${activity.title}'을(를) 지울까요? 일정에서도 사라져요.`)) return;
             removeActivity(activity.id);
             onClose();
           }}

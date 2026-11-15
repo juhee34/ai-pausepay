@@ -82,7 +82,7 @@ function ReceiptSheet({ receipt, onClose }: { receipt: Receipt; onClose: () => v
       {simple ? (
         <Link
           href={`/career/receipts/new?from=${encodeURIComponent(receipt.id)}`}
-          className="mt-3 flex min-h-11 items-center justify-center rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
+          className="mt-3 flex min-h-11 items-center justify-center rounded-full border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
         >
           STAR로 자세히 정리하기 (AI)
         </Link>
@@ -150,10 +150,10 @@ export default function ReceiptsPage() {
     <AppShell>
       <BackLink href="/career" label="취업" />
       <header className="mt-1 flex items-center justify-between gap-3 px-1">
-        <h1 className="text-[22px] font-bold">스펙 영수증</h1>
+        <h1 className="text-[24px] leading-tight font-extrabold tracking-tight">스펙 영수증</h1>
         <Link
           href="/career/receipts/new"
-          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-button bg-brand px-3 text-sm font-semibold text-white active:bg-brand-strong"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-brand px-3 text-sm font-semibold text-white active:bg-brand-strong"
         >
           <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
           쓰기

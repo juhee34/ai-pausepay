@@ -33,9 +33,10 @@ function formatHm(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-// 홈의 큰 달력 → 고른 날의 일정 목록. 강의계획서에서 저장한 일정이 달력에 바로 점으로 찍힌다.
+// 일정 탭: 큰 달력 → 고른 날의 일정 목록. 강의계획서에서 저장한 일정이 달력에 바로 점으로 찍힌다.
 // 오늘이면 현재 시각 선과 지금 할 일 추천이 끼어든다.
-export default function DayPlan() {
+// 오늘 탭(calendar={false}): 달력 없이 오늘 일정만 보여 준다. 할 일 추천은 위의 큰 카드(오늘의 한 가지)가 맡으므로 넣지 않는다.
+export default function DayPlan({ calendar = true }: { calendar?: boolean }) {
   const today = useToday();
   const now = useNowMinutes();
   const timetable = useTimetable();
@@ -47,7 +48,7 @@ export default function DayPlan() {
 
   if (!today || now === null) return <Block className="mt-2.5 min-h-64" />;
 
-  const selected = picked ?? today;
+  const selected = calendar ? (picked ?? today) : today;
   const isToday = selected === today;
   const { untimed, timed } = buildDayPlan(selected, timetable, deadlines, activities);
   const total = untimed.length + timed.length;
@@ -78,7 +79,7 @@ export default function DayPlan() {
 
   return (
     <>
-    <div className="mt-2.5">
+    {calendar && (
       <MonthCalendar
         month={month ?? today.slice(0, 7)}
         today={today}
@@ -87,7 +88,7 @@ export default function DayPlan() {
         onMonthChange={setMonth}
         onSelectDate={setPicked}
       />
-    </div>
+    )}
 
     <Block padded={false} className="mt-2.5">
       <div className="flex min-h-11 items-center justify-between gap-2 px-3.5 pt-2">
@@ -125,7 +126,9 @@ export default function DayPlan() {
         ))}
         {timed.map((item, i) => [
           i === nowAt && nowLine,
-          i === nowAt && <PickCallout key="pick" today={today} freeMinutes={freeMinutesUntilNextClass(now, timed)} />,
+          i === nowAt && calendar && (
+            <PickCallout key="pick" today={today} freeMinutes={freeMinutesUntilNextClass(now, timed)} />
+          ),
           <CheckRow
             key={item.key}
             time={item.slot.start}
@@ -136,7 +139,7 @@ export default function DayPlan() {
         ])}
         {nowAt === timed.length && [
           nowLine,
-          <PickCallout key="pick" today={today} freeMinutes={freeMinutesUntilNextClass(now, timed)} />,
+          calendar && <PickCallout key="pick" today={today} freeMinutes={freeMinutesUntilNextClass(now, timed)} />,
         ]}
         {total === 0 && (
           <p className="px-3.5 py-4 text-sm text-muted">
@@ -242,7 +245,7 @@ function PickCallout({ today, freeMinutes }: { today: string; freeMinutes: numbe
           {isExam ? (
             <Link
               href="/exam"
-              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-button bg-brand px-4 text-[15px] font-semibold text-white active:bg-brand-strong"
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-brand px-4 text-[15px] font-semibold text-white active:bg-brand-strong"
             >
               시험 대비
             </Link>
