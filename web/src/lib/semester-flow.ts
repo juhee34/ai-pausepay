@@ -6,6 +6,7 @@
 // 3) 조언은 정해진 규칙으로만 만든다 (아래 adviceFor)
 
 import { daysUntil, toYmd } from "./briefing";
+import { josa } from "./josa";
 import { LAST_WEEK, weekNumberOf } from "./risk";
 import type { SemesterReport } from "./semester-report";
 
@@ -148,7 +149,7 @@ export function adviceFor(report: SemesterReport, flow: SemesterFlow): Advice[] 
   if (worst) {
     const mostHours = report.courses.every((course) => course.hours <= worst.hours);
     advice.push({
-      strong: `${worst.course}는 과제와 시험 준비를 더 일찍 시작해 보세요.`,
+      strong: `${josa(worst.course, "은", "는")} 과제와 시험 준비를 더 일찍 시작해 보세요.`,
       rest: mostHours
         ? `시간은 가장 많이 썼는데(${hoursText(worst.hours)}시간) 가성비는 가장 낮았어요.`
         : `가성비가 가장 낮았어요(가성비 ${worst.value}).`,

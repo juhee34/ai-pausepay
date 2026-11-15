@@ -185,7 +185,7 @@ export default function TodayPage() {
             <div className="mt-3 rounded-button bg-white/10 p-3">
               <p className="text-xs font-semibold text-white/80">오늘 미루는 일</p>
               <p className="mt-1 text-[13px] leading-relaxed">
-                {plan.deferred.course} {plan.deferred.title} ({formatHours(plan.deferred.hours)} 필요)이 오늘 미루는 일 중
+                오늘 미루는 일 중에서는 {plan.deferred.course} {plan.deferred.title}({formatHours(plan.deferred.hours)} 필요)의
                 효율이 가장 높아요.
               </p>
             </div>

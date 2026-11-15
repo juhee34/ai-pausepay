@@ -24,18 +24,9 @@ export type VoiceInput = {
 
 export const MAX_NICKNAME = 10;
 
-// 마지막 글자에 받침이 있는지. 한글이 아니면 받침 없는 것으로 본다. 숫자는 읽는 소리로 본다.
-export function hasBatchim(word: string) {
-  const last = word.trim().slice(-1);
-  const code = last.charCodeAt(0) - 0xac00;
-  if (code < 0 || code > 11171) return /[0-9]$/.test(last) ? "013678".includes(last) : false;
-  return code % 28 !== 0;
-}
-
-// 받침에 따라 조사를 고른다. josa("퀴즈 3", "이에요", "예요") → "퀴즈 3이에요"
-export function josa(word: string, withBatchim: string, without: string) {
-  return `${word}${hasBatchim(word) ? withBatchim : without}`;
-}
+// 조사 붙이기는 josa.ts로 옮겼다. 옛 코드가 쓰던 이름을 그대로 내보낸다.
+import { hasBatchim, josa } from "./josa";
+export { hasBatchim, josa };
 
 // 1.5 → "1시간 30분", 2 → "2시간", 0.5 → "30분"
 export function speakHours(hours: number) {
