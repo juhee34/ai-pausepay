@@ -39,7 +39,7 @@ function formatSize(bytes: number) {
 }
 
 // 강의계획서 → 캘린더. 올리기 → AI가 찾은 일정 확인·수정 → 이 폰에 저장 + .ics 내려받기.
-// 저장한 일정은 홈의 달력과 목록에서 본다.
+// 저장한 일정은 일정 탭의 달력과 목록에서 본다.
 function SyllabusFlow() {
   const today = useToday();
   const timetable = useTimetable();

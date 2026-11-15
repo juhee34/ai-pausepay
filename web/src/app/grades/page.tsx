@@ -615,7 +615,7 @@ export default function GradesPage() {
   return (
     <AppShell>
       <div className="flex min-h-7 items-center justify-between">
-        {/* 학교 기능은 + 전체 기능 창에서 열리므로 홈으로 돌아간다. */}
+        {/* 학교 기능은 전체 기능 창에서 열리므로 오늘 탭으로 돌아간다. */}
         <BackLink href="/" label="오늘" />
         {hydrated && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">

@@ -13,7 +13,7 @@ import { removeDeadline, useSavedDeadlines, type SavedDeadline } from "@/lib/dea
 import TaskFormSheet from "../task-form-sheet";
 import { shortDate } from "./review-list";
 
-// 홈에 보이는 저장된 일정 전체: 목록, 지우기, 캘린더 파일(.ics) 다시 받기.
+// 일정 탭에 보이는 저장된 일정 전체: 목록, 지우기, 캘린더 파일(.ics) 다시 받기.
 export default function SavedList() {
   const today = useToday();
   const saved = useSavedDeadlines();

@@ -32,7 +32,7 @@ export function shiftMonth(month: string, delta: number) {
 }
 
 // 한 달 달력 블록. 오늘은 포인트색 원, 일정 있는 날은 숫자 아래 종류별 색 점(최대 3개).
-// selected를 주면(홈) 모든 날을 고를 수 있고 고른 날을 표시한다. 없으면 일정 있는 날만 누를 수 있다.
+// selected를 주면(일정 탭) 모든 날을 고를 수 있고 고른 날을 표시한다. 없으면 일정 있는 날만 누를 수 있다.
 export default function MonthCalendar({
   month,
   today,
