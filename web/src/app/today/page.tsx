@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight, Plus, Timer } from "lucide-react";
 import AppShell from "@/components/ui/app-shell";
+import BackLink from "@/components/ui/back-link";
 import FormulaNote from "@/components/ui/formula-note";
 import Block from "@/components/ui/block";
 import BottomSheet from "@/components/ui/bottom-sheet";
@@ -102,8 +103,8 @@ export default function TodayPage() {
 
   return (
     <AppShell>
-      <div className="flex min-h-7 items-center justify-between">
-        <span className="text-xs font-semibold text-brand">우니스</span>
+      <div className="flex min-h-11 items-center justify-between">
+        <BackLink href="/" label="오늘" />
         {today && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">
             예시 데이터
@@ -111,7 +112,7 @@ export default function TodayPage() {
         )}
       </div>
 
-      <h1 className="mt-1 text-[22px] font-bold">오늘의 한 가지</h1>
+      <h1 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight">오늘의 한 가지</h1>
       <p className="mt-1 min-h-5 text-[13px] text-muted">{today ? headerDate(today) : ""}</p>
       <p className="mt-1 text-[13px] text-ink/80">시간은 한정돼 있으니, 어디에 쓸지가 곧 학점이에요.</p>
 
@@ -175,7 +176,7 @@ export default function TodayPage() {
             </p>
             <Link
               href={focusHref(main.task, main.hours)}
-              className="flex min-h-11 shrink-0 items-center gap-1 rounded-button bg-surface px-3 text-[13px] font-semibold text-brand"
+              className="flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-surface px-3 text-[13px] font-semibold text-brand"
             >
               <Timer size={16} strokeWidth={1.8} aria-hidden="true" />
               집중 시작
@@ -371,7 +372,7 @@ export default function TodayPage() {
 
       <Link
         href="/grades"
-        className="mt-4 flex min-h-11 w-full items-center justify-between rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
+        className="mt-4 flex min-h-11 w-full items-center justify-between rounded-full border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
       >
         목표 점수까지 몇 점 필요한지 보기
         <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />

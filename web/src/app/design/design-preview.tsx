@@ -53,7 +53,7 @@ export default function DesignPreview() {
   return (
     <AppShell>
       <p className="px-1 text-xs font-medium text-muted">확인용 화면</p>
-      <h1 className="px-1 text-[22px] font-bold">우니스 디자인</h1>
+      <h1 className="px-1 text-[24px] leading-tight font-extrabold tracking-tight">우니스 디자인</h1>
       <p className="mt-1 px-1 text-xs text-muted">공통 부품을 모아 둔 곳이에요. 규칙은 docs/DESIGN.md</p>
 
       <Section title="색">
@@ -69,7 +69,7 @@ export default function DesignPreview() {
 
       <Section title="글꼴">
         <Block className="space-y-1.5">
-          <p className="text-[22px] font-bold">화면 제목 22 / 700</p>
+          <p className="text-[24px] leading-tight font-extrabold tracking-tight">화면 제목 28 / 800</p>
           <p className="text-[15px] font-bold">섹션 제목 15 / 700</p>
           <p className="text-[15px]">본문 15 — 강의계획서 한 장으로 한 학기를 챙겨요</p>
           <p className="text-xs text-muted">보조 12 — 경영정보시스템 · 비마관 304호</p>

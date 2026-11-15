@@ -4,7 +4,7 @@ import { Award, CalendarPlus, ChevronRight, Plus, Radar } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import AppShell from "@/components/ui/app-shell";
-import BrandLabel from "@/components/ui/brand-label";
+import ScreenHeader from "@/components/ui/screen-header";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
 import SegmentedTabs from "@/components/ui/segmented-tabs";
@@ -30,8 +30,8 @@ const TABS: { value: ActivityStage; label: string }[] = ACTIVITY_STAGES.map((val
 // 활동을 넣는 길은 둘: 공고·자격증 캡처를 올리면 AI가 마감을 찾아 일정과 활동을 함께 만들고(공고·자격증 올리기),
 // 공고 없이 직접 적는 활동은 '직접 추가'로 넣는다.
 const CAREER_LINKS = [
-  { href: "/career/receipts", label: "스펙 영수증", Icon: Award },
-  { href: "/career/skills", label: "역량 공백 지도", Icon: Radar },
+  { href: "/career/receipts", label: "스펙 영수증", sub: "경험을 한 줄로 정리해요", Icon: Award },
+  { href: "/career/skills", label: "역량 공백 지도", sub: "목표 직무에 부족한 역량을 찾아요", Icon: Radar },
 ];
 
 type Sheet = { kind: "add" } | { kind: "detail"; id: string } | { kind: "edit"; id: string };
@@ -55,7 +55,7 @@ function ActivityRow({
     <button
       type="button"
       onClick={onOpen}
-      className="flex min-h-11 w-full items-center gap-3 px-3.5 py-3 text-left active:bg-divider"
+      className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-divider"
     >
       <span className="min-w-0 flex-1">
         <span className="block break-words text-[15px] font-medium">{activity.title}</span>
@@ -89,15 +89,11 @@ export default function CareerPage() {
 
   return (
     <AppShell>
-      <BrandLabel />
-      <header className="flex items-center justify-between gap-3 px-1">
-        <h1 className="text-[22px] font-bold">취업 준비</h1>
-      </header>
-      <p className="mt-1 px-1 text-[13px] text-muted">공고 마감부터 끝난 활동 정리까지 한곳에서 챙겨요.</p>
+      <ScreenHeader title="취업" sub="공고 마감부터 끝난 활동 정리까지 한곳에서 챙겨요." />
 
       <Link
         href="/career/posting"
-        className="mt-3 flex min-h-11 items-center gap-3 rounded-block bg-brand p-3.5 text-white active:bg-brand-strong"
+        className="flex min-h-11 items-center gap-3 rounded-block bg-brand p-4 text-white active:bg-brand-strong"
       >
         <CalendarPlus size={22} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
         <span className="min-w-0 flex-1">
@@ -107,28 +103,29 @@ export default function CareerPage() {
         <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
       </Link>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {CAREER_LINKS.map(({ href, label, Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="flex min-h-11 items-center gap-1.5 rounded-[14px] bg-surface py-2.5 pl-3 pr-2 text-[13px] font-semibold active:bg-divider"
-          >
-            <Icon size={18} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-brand" />
-            <span className="min-w-0 flex-1">{label}</span>
-            <ChevronRight size={16} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-muted" />
+      <Block padded={false} className="mt-2.5 divide-y divide-divider overflow-hidden">
+        {CAREER_LINKS.map(({ href, label, sub, Icon }) => (
+          <Link key={href} href={href} className="flex min-h-14 items-center gap-3 px-4 py-2.5 active:bg-divider">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-brand-soft text-brand">
+              <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold">{label}</span>
+              <span className="mt-0.5 block text-xs text-muted">{sub}</span>
+            </span>
+            <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-muted/60" />
           </Link>
         ))}
-      </div>
+      </Block>
 
       {today && (
         <>
-          <div className="mt-5 flex items-center justify-between gap-3 px-1">
-            <h2 className="text-[17px] font-bold">대외활동</h2>
+          <div className="mt-6 flex items-center justify-between gap-3 px-1">
+            <h2 className="text-[20px] font-extrabold tracking-tight">대외활동</h2>
             <Button
-              variant="secondary"
+              variant="ghost"
               onClick={() => setSheet({ kind: "add" })}
-              className="shrink-0 !min-h-10 !px-3 text-sm"
+              className="-mr-2 shrink-0 !min-h-11 !px-3 text-[15px]"
             >
               <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
               직접 추가
@@ -164,7 +161,7 @@ export default function CareerPage() {
           </Block>
 
           <p className="mt-3 px-1 text-xs leading-relaxed text-muted">
-            대외활동은 이 기기에만 저장돼요. 다음 마감은 홈 달력에도 보여요.
+            대외활동은 이 기기에만 저장돼요. 다음 마감은 일정 탭 달력에도 보여요.
           </p>
         </>
       )}

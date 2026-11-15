@@ -273,7 +273,7 @@ export default function RiskPage() {
   return (
     <AppShell>
       <div className="flex min-h-7 items-center justify-between">
-        <BackLink href="/" label="홈" />
+        <BackLink href="/" label="오늘" />
         {today && isExample && (
           <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted">
             예시 데이터
@@ -281,7 +281,7 @@ export default function RiskPage() {
         )}
       </div>
 
-      <h1 className="mt-1 text-[22px] font-bold">학기 리스크 지도</h1>
+      <h1 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight">학기 리스크 지도</h1>
       {map && (
         <p className="mt-1 text-[13px] leading-relaxed text-muted">
           {map.weeks.length > 0
@@ -318,7 +318,7 @@ export default function RiskPage() {
                 <p className="mt-2 text-[13px] font-semibold leading-relaxed text-brand">
                   {spread && spread.shortage === 0
                     ? "앞 주로 미리 나누면 몰리지 않아요. 아래 '이번 주에 할 것'부터 시작해 보세요."
-                    : `미리 나눠도 약 ${round1(spread?.shortage ?? 0)}시간이 모자라요. 공부 시간을 늘리거나 우선순위에서 덜 중요한 일을 줄여야 해요.`}
+                    : `미리 나눠도 약 ${round1(spread?.shortage ?? 0)}시간이 모자라요. 공부 시간을 늘리거나 오늘의 한 가지에서 덜 중요한 일을 줄여야 해요.`}
                 </p>
               </>
             ) : busiest ? (
@@ -352,7 +352,7 @@ export default function RiskPage() {
                       </div>
                       <Link
                         href={focusHref(item)}
-                        className="flex min-h-11 shrink-0 items-center gap-1 rounded-button bg-brand px-3 text-[13px] font-semibold text-white"
+                        className="flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-brand px-3 text-[13px] font-semibold text-white"
                       >
                         <Timer size={16} strokeWidth={1.8} aria-hidden="true" />
                         집중 시작
@@ -405,9 +405,9 @@ export default function RiskPage() {
 
       <Link
         href="/today"
-        className="mt-4 flex min-h-11 w-full items-center justify-between rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
+        className="mt-4 flex min-h-11 w-full items-center justify-between rounded-full border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
       >
-        우선순위에서 오늘 할 일 보기
+        오늘의 한 가지 보기
         <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />
       </Link>
 

@@ -156,7 +156,7 @@ export default function FlowPage() {
         )}
       </div>
 
-      <h1 className="mt-1 text-[22px] font-bold">시간 흐름</h1>
+      <h1 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight">시간 흐름</h1>
       <p className="mt-1 text-[13px] text-muted">집중 모드 기록으로 본 {LAST_WEEK}주</p>
 
       <Block className="mt-3 p-4">
@@ -204,7 +204,7 @@ export default function FlowPage() {
         type="button"
         onClick={share}
         disabled={sharing}
-        className="mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-button bg-brand text-[15px] font-semibold text-white active:bg-brand-strong disabled:opacity-60"
+        className="mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-brand text-[15px] font-semibold text-white active:bg-brand-strong disabled:opacity-60"
       >
         <Share size={18} strokeWidth={1.8} aria-hidden="true" />
         {sharing ? "이미지 만드는 중…" : "이미지로 공유하기"}
@@ -217,7 +217,7 @@ export default function FlowPage() {
 
       <Link
         href="/career/skills"
-        className="mt-2.5 flex min-h-14 w-full items-center justify-between rounded-button border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
+        className="mt-2.5 flex min-h-14 w-full items-center justify-between rounded-full border border-brand bg-surface px-4 text-sm font-semibold text-brand active:bg-brand-soft"
       >
         역량 공백 지도 보기
         <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" />

@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "수업 일정과 취업 준비를 한곳에서, 대학생 AI 비서",
     start_url: "/",
     display: "standalone",
-    background_color: "#F2F1F4",
+    background_color: "#F2F2F7",
     theme_color: ACCENT,
     icons: [{ src: "/icon", sizes: "512x512", type: "image/png", purpose: "any" }],
   };

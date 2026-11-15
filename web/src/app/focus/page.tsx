@@ -339,31 +339,45 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
   const progress = ((totalSeconds - remaining) / totalSeconds) * 100;
   const elapsed = elapsedFocusMinutes(session, now);
 
+  // 원 둘레를 따라 지난 만큼 채운다.
+  const ring = 2 * Math.PI * 108;
+
+  // 집중하는 동안은 어두운 카드로 바꿔 타이머만 눈에 들어오게 한다.
   return (
-    <Block className="text-center">
-      <p className="text-sm font-semibold text-brand">
-        {isFocus ? "집중하는 중" : "쉬는 중"}
-      </p>
-      <p className="mt-0.5 break-words text-sm text-muted">{session.subject}</p>
-      <p role="timer" className="mt-3 font-mono text-6xl font-semibold tabular-nums">
-        {formatClock(remaining)}
-      </p>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-divider">
-        <div className="h-full bg-brand" style={{ width: `${progress}%` }} />
+    <div className="rounded-block bg-night px-5 py-7 text-center text-white">
+      <p className="text-sm font-semibold text-brand-glow">{isFocus ? "집중하는 중" : "쉬는 중"}</p>
+      <p className="mt-0.5 break-words text-[15px] font-semibold text-white/70">{session.subject}</p>
+
+      <div className="relative mx-auto mt-5 flex aspect-square w-full max-w-64 items-center justify-center">
+        <svg viewBox="0 0 240 240" aria-hidden="true" className="absolute inset-0 h-full w-full -rotate-90">
+          <circle cx="120" cy="120" r="108" fill="none" strokeWidth="12" className="stroke-white/10" />
+          <circle
+            cx="120"
+            cy="120"
+            r="108"
+            fill="none"
+            strokeWidth="12"
+            strokeLinecap="round"
+            strokeDasharray={ring}
+            strokeDashoffset={ring * (1 - progress / 100)}
+            className="stroke-brand-bright"
+          />
+        </svg>
+        <p role="timer" className="font-mono text-[46px] leading-none font-light tabular-nums">
+          {formatClock(remaining)}
+        </p>
       </div>
 
       {goal && (
-        <div className="mt-3.5">
+        <div className="mt-5 text-ink">
           <GoalCard goal={goal} />
         </div>
       )}
 
-      {isFocus && (
-        <p className="mt-3.5 text-left text-xs leading-relaxed text-muted">{ALERT_NOTICE}</p>
-      )}
+      {isFocus && <p className="mt-4 text-left text-xs leading-relaxed text-white/60">{ALERT_NOTICE}</p>}
 
       {!isFocus && (
-        <Button variant="secondary" onClick={skipBreak} className="mt-3.5 w-full">
+        <Button variant="secondary" onClick={skipBreak} className="mt-4 w-full !bg-white/15 !text-white active:!bg-white/25">
           휴식 건너뛰기
         </Button>
       )}
@@ -372,30 +386,34 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
         <Button
           variant="secondary"
           onClick={() => setConfirmingStop(true)}
-          className="mt-3.5 w-full"
+          className="mt-4 w-full !bg-white/15 !text-white active:!bg-white/25"
         >
           그만두기
         </Button>
       )}
 
       {isFocus && confirmingStop && (
-        <div className="mt-3.5">
-          <p className="text-sm text-muted">
+        <div className="mt-4">
+          <p className="text-sm text-white/70">
             {elapsed >= MIN_RECORD_MINUTES
               ? `지금 그만두면 ${formatMinutes(elapsed)}이 기록돼요.`
               : `${MIN_RECORD_MINUTES}분이 안 돼서 이번 시간은 기록되지 않아요.`}
           </p>
           <div className="mt-2.5 flex gap-2">
-            <Button onClick={() => setConfirmingStop(false)} className="flex-1">
+            <Button onClick={() => setConfirmingStop(false)} className="flex-1 !bg-brand-bright">
               계속하기
             </Button>
-            <Button variant="secondary" onClick={() => endSession()} className="flex-1">
+            <Button
+              variant="secondary"
+              onClick={() => endSession()}
+              className="flex-1 !bg-white/15 !text-white active:!bg-white/25"
+            >
               그만두기
             </Button>
           </div>
         </div>
       )}
-    </Block>
+    </div>
   );
 }
 
@@ -532,9 +550,9 @@ function FocusContent() {
 
   return (
     <AppShell>
-      <BackLink href="/" label="홈" />
+      <BackLink href="/" label="오늘" />
       <header className="mb-4 px-1">
-        <h1 className="text-[22px] font-bold">
+        <h1 className="text-[24px] leading-tight font-extrabold tracking-tight">
           <span className="font-mono font-semibold">30</span>분 단위로 집중해요
         </h1>
         <p className="mt-1 text-sm text-muted">

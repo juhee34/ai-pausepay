@@ -156,9 +156,9 @@ export default function MailPage() {
 
   return (
     <AppShell>
-      <BackLink href="/" label="홈" />
+      <BackLink href="/" label="오늘" />
       <header className="mb-4 px-1">
-        <h1 className="text-[22px] font-bold">교수님께 보낼 메일 초안</h1>
+        <h1 className="text-[24px] leading-tight font-extrabold tracking-tight">교수님께 보낼 메일 초안</h1>
         <p className="mt-1 text-sm text-muted">
           상황을 고르고 내용을 적으면 예의 바른 초안과 보내기 전 체크리스트가 나와요.
         </p>
@@ -328,7 +328,7 @@ export default function MailPage() {
       {toast && (
         <div
           role="status"
-          className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mx-auto max-w-sm rounded-button bg-ink px-4 py-3 text-center text-sm font-semibold text-white"
+          className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mx-auto max-w-sm rounded-full bg-ink px-4 py-3 text-center text-sm font-semibold text-white shadow-float"
         >
           {toast}
         </div>

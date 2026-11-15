@@ -157,7 +157,7 @@ function NewReceipt() {
           <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
           답 고치기
         </button>
-        <h1 className="mt-1 px-1 text-[22px] font-bold">확인하고 저장해요</h1>
+        <h1 className="mt-1 px-1 text-[24px] leading-tight font-extrabold tracking-tight">확인하고 저장해요</h1>
         <p className="mt-1 px-1 text-[13px] leading-relaxed text-muted">
           AI가 정리한 글이라 틀릴 수 있어요. 내가 하지 않은 일이 있으면 고쳐 주세요.
         </p>
@@ -195,7 +195,7 @@ function NewReceipt() {
     return (
       <AppShell>
         <BackLink href="/career/receipts" label="스펙 영수증" />
-        <h1 className="mt-1 px-1 text-[22px] font-bold">어떤 기록인가요?</h1>
+        <h1 className="mt-1 px-1 text-[24px] leading-tight font-extrabold tracking-tight">어떤 기록인가요?</h1>
         <p className="mt-1 px-1 text-[13px] leading-relaxed text-muted">
           구분을 고르면 그에 맞는 칸만 나와요. 짧게 남기고, 필요할 때 STAR로 자세히 정리할 수 있어요.
         </p>
@@ -229,7 +229,7 @@ function NewReceipt() {
           <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" />
           구분 바꾸기
         </button>
-        <h1 className="mt-1 px-1 text-[22px] font-bold">{spec?.label ?? "경험"} 기록</h1>
+        <h1 className="mt-1 px-1 text-[24px] leading-tight font-extrabold tracking-tight">{spec?.label ?? "경험"} 기록</h1>
         <p className="mt-1 px-1 text-[13px] leading-relaxed text-muted">
           AI 없이 바로 저장해요. 이 기록으로 어필할 역량을 고르면 역량 공백 지도에 반영돼요.
         </p>
@@ -324,7 +324,7 @@ function NewReceipt() {
           간단 기록으로
         </button>
       )}
-      <h1 className="mt-1 px-1 text-[22px] font-bold">STAR로 정리하기</h1>
+      <h1 className="mt-1 px-1 text-[24px] leading-tight font-extrabold tracking-tight">STAR로 정리하기</h1>
       <p className="mt-1 px-1 text-[13px] leading-relaxed text-muted">
         있었던 일만 적어 주세요. AI는 적은 내용으로만 정리해요. 다른 사람 이름은 빼고 적어 주세요.
       </p>

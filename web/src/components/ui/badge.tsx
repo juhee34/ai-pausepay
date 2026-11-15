@@ -13,7 +13,7 @@ export type BadgeKind = keyof typeof KINDS;
 export default function Badge({ kind, children }: { kind: BadgeKind; children?: ReactNode }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${KINDS[kind].className}`}
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${KINDS[kind].className}`}
     >
       {children ?? KINDS[kind].label}
     </span>

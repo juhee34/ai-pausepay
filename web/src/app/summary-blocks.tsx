@@ -20,7 +20,7 @@ function SummaryLink({ href, filled = false, children }: { href: string; filled?
   );
 }
 
-// 홈 맨 위 요약 3칸: 다음 수업(포인트색) · 이번 주 마감 · 기말고사. 누르면 해당 화면으로 간다.
+// 오늘 화면 요약 3칸: 다음 수업(포인트색) · 이번 주 마감 · 기말고사. 누르면 해당 화면으로 간다.
 export default function SummaryBlocks() {
   const today = useToday();
   const now = useNowMinutes();
@@ -59,7 +59,7 @@ export default function SummaryBlocks() {
         )}
       </SummaryLink>
 
-      <SummaryLink href="/#saved-deadlines">
+      <SummaryLink href="/schedule#saved-deadlines">
         <span className="text-[11px] font-medium text-muted">이번 주 마감</span>
         {thisWeek.length > 0 ? (
           <>

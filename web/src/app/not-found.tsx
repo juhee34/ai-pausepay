@@ -11,9 +11,9 @@ export default function NotFound() {
         <p className="mt-1 text-[13px] text-muted">주소가 바뀌었거나 아직 없는 화면이에요.</p>
         <Link
           href="/"
-          className="mt-4 flex min-h-11 items-center justify-center rounded-button bg-brand px-4 text-[15px] font-semibold text-white active:bg-brand-strong"
+          className="mt-4 flex min-h-11 items-center justify-center rounded-full bg-brand px-4 text-[15px] font-semibold text-white active:bg-brand-strong"
         >
-          홈으로 가기
+          오늘 화면으로 가기
         </Link>
       </Block>
     </AppShell>
