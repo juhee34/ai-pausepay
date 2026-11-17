@@ -196,7 +196,7 @@ export default function TodayPage() {
 
       {today && !main && (
         <Block className="mt-4">
-          <p className="text-[15px] font-bold">{notStarted.length > 0 ? "오늘 할 수 있는 일이 없어요" : "남은 일정이 없어요"}</p>
+          <p className="text-[15px] font-bold">{saved.length === 0 ? "할 일을 추가하세요" : notStarted.length > 0 ? "오늘 할 수 있는 일이 없어요" : "남은 일정이 없어요"}</p>
           <p className="mt-1 text-[13px] text-muted">할 일을 직접 넣거나 강의계획서를 넣으면 마감 전 할 일 중에서 골라 드려요.</p>
           <Link href="/calendar" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brand">
             강의계획서 넣기 <ChevronRight size={16} strokeWidth={1.8} aria-hidden="true" />

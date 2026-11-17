@@ -1,4 +1,5 @@
 "use client";
+import { useExamplesAllowed } from "@/lib/use-examples-allowed";
 
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -533,6 +534,7 @@ function ItemsSheet({
 type Sheet = { kind: "course" } | { kind: "items" } | { kind: "estimate" } | { kind: "upload" } | { kind: "score"; item: GradingItem };
 
 export default function GradesPage() {
+  const examplesAllowed = useExamplesAllowed();
   const deadlines = useSavedDeadlines();
   const timetable = useTimetable();
   const grades = useGrades();
@@ -555,9 +557,9 @@ export default function GradesPage() {
         .filter(Boolean),
     ),
   ];
-  const isExample = myCourses.length === 0;
+  const isExample = examplesAllowed && myCourses.length === 0;
   const courses = isExample ? Object.keys(EXAMPLE_SCORES) : myCourses;
-  const course = selected && courses.includes(selected) ? selected : courses[0];
+  const course = selected && courses.includes(selected) ? selected : (courses[0] ?? "");
 
   function itemsOf(name: string) {
     return isExample ? EXAMPLE_ITEMS : (ownValue(grading, name) ?? []);
@@ -580,6 +582,7 @@ export default function GradesPage() {
   }
 
   function changeSettings(settings: Partial<CourseGrades>) {
+    if (!course) return;
     if (isExample) setExampleSettings({ ...exampleSettings, [course]: { ...ownValue(exampleSettings, course), ...settings } });
     else setGradesSettings(course, settings);
   }
@@ -596,12 +599,30 @@ export default function GradesPage() {
 
   // 오늘의 한 가지가 읽는 목표도 추정한 컷에 맞춰 둔다.
   useEffect(() => {
-    if (!isExample && roundedPick !== null && roundedPick !== view.savedTarget) {
+    if (course && !isExample && roundedPick !== null && roundedPick !== view.savedTarget) {
       setGradesSettings(course, { target: roundedPick });
     }
   }, [isExample, course, roundedPick, view.savedTarget]);
 
   const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
+
+  if (hydrated && courses.length === 0) {
+    return (
+      <AppShell>
+        <BackLink href="/" label="오늘" />
+        <h1 className="mt-1 text-2xl font-extrabold">최소 점수 계산</h1>
+        <Block className="mt-4">
+          <p>과목과 점수를 입력하세요. 기말에 필요한 점수를 계산해 드려요.</p>
+          <Button className="mt-3 w-full" onClick={() => setSheet({ kind: "course" })}>과목 추가</Button>
+        </Block>
+        {sheet?.kind === "course" && <AddCourseSheet onClose={() => setSheet(null)} onAdd={(name) => {
+          addGradesCourse(name);
+          setSelected(name);
+          setSheet(null);
+        }} />}
+      </AppShell>
+    );
+  }
 
   const defenseLines = courses
     .map((name) => {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronRight, Sparkles, Timer } from "lucide-react";
 import { DEFAULT_AVAILABLE_HOURS, formatHours, planToday } from "@/lib/today-plan";
 import { useScoredTasks } from "@/lib/use-scored-tasks";
+import TaskActions from "./task-actions";
 
 function dDay(days: number) {
   return days === 0 ? "D-day" : `D-${days}`;
@@ -12,7 +13,7 @@ function dDay(days: number) {
 // 오늘 화면 맨 위의 큰 카드: 오늘의 한 가지. 순서는 오늘의 한 가지 화면(/today)과 같은 계산을 쓴다.
 // 쓸 시간을 바꾸거나 과목별 순서를 보려면 '자세히'로 그 화면에 간다.
 export default function TodayHero() {
-  const { today, scored } = useScoredTasks();
+  const { today, scored, saved } = useScoredTasks();
   if (!today) return <div className="h-64 rounded-block bg-surface shadow-card" />;
 
   const plan = planToday(scored, DEFAULT_AVAILABLE_HOURS);
@@ -60,16 +61,17 @@ export default function TodayHero() {
               <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
             </Link>
           </div>
+          {saved.filter((d) => d.id === main.task.id).map((d) => <TaskActions key={d.id} task={d} />)}
         </>
       ) : (
         <>
-          <p className="mt-3 text-[20px] leading-tight font-extrabold tracking-tight">오늘은 급한 마감이 없어요</p>
+          <p className="mt-3 text-[20px] leading-tight font-extrabold tracking-tight">{saved.length === 0 ? "할 일을 추가하세요" : "오늘은 급한 마감이 없어요"}</p>
           <p className="mt-1.5 text-[15px] leading-relaxed text-muted">할 일을 넣거나 강의계획서를 올리면 마감 전 할 일 중에서 골라 드려요.</p>
           <Link
-            href="/calendar"
+            href="/today"
             className="mt-4 flex min-h-12 items-center justify-center rounded-full bg-brand text-base font-bold text-white active:bg-brand-strong"
           >
-            강의계획서 올리기
+            할 일 추가하기
           </Link>
         </>
       )}

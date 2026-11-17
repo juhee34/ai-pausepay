@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import Block from "@/components/ui/block";
 import { formatHours } from "@/lib/today-plan";
 import { useScoredTasks } from "@/lib/use-scored-tasks";
+import TaskActions from "./task-actions";
 
 const MAX_ROWS = 4;
 
@@ -23,7 +24,7 @@ function dDay(days: number) {
 // 오늘 화면: 큰 카드(오늘의 한 가지) 다음 순서의 할 일 네 개까지. 순서는 오늘의 한 가지 화면과 같다.
 // 줄을 누르면 과목별 순서와 고치기가 있는 오늘의 한 가지 화면(/today)으로 간다.
 export default function TodayNext() {
-  const { today, scored, isExample } = useScoredTasks();
+  const { today, scored, isExample, saved } = useScoredTasks();
   const rest = scored.slice(1, 1 + MAX_ROWS);
   if (!today || rest.length === 0) return null;
 
@@ -42,7 +43,8 @@ export default function TodayNext() {
       </div>
       <Block padded={false} className="divide-y divide-divider overflow-hidden">
         {rest.map((task) => (
-          <Link key={task.id} href="/today" className="flex min-h-14 items-center gap-3 px-4 py-2.5 active:bg-divider">
+          <div key={task.id}>
+          <Link href="/today" className="flex min-h-14 items-center gap-3 px-4 py-2.5 active:bg-divider">
             <span
               aria-hidden="true"
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-sm font-extrabold ${colorOf(task.course)}`}
@@ -60,6 +62,8 @@ export default function TodayNext() {
             </span>
             <ChevronRight size={18} strokeWidth={2} aria-hidden="true" className="shrink-0 text-muted/50" />
           </Link>
+          {saved.filter((d) => d.id === task.id).map((d) => <TaskActions key={d.id} task={d} />)}
+          </div>
         ))}
       </Block>
       {isExample && (

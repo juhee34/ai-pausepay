@@ -9,6 +9,7 @@ import BackLink from "@/components/ui/back-link";
 import FormulaNote from "@/components/ui/formula-note";
 import Block from "@/components/ui/block";
 import { useToday } from "@/lib/briefing";
+import { useExamplesAllowed } from "@/lib/use-examples-allowed";
 import { useSavedDeadlines } from "@/lib/deadline-store";
 import {
   SEMESTER,
@@ -257,7 +258,8 @@ export default function RiskPage() {
   const focus = useSyncExternalStore(subscribeData, getData, getServerData);
   const studyHours = useStudyHours();
 
-  const isExample = deadlines.length === 0;
+  const examplesAllowed = useExamplesAllowed();
+  const isExample = examplesAllowed && deadlines.length === 0;
   const source: RiskDeadline[] = useMemo(
     () => (isExample ? (today ? exampleDeadlines(today) : []) : deadlines),
     [isExample, today, deadlines],
@@ -282,6 +284,12 @@ export default function RiskPage() {
       </div>
 
       <h1 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight">학기 리스크 지도</h1>
+      {today && !isExample && deadlines.length === 0 && (
+        <Block className="mt-3">
+          <p>할 일을 추가하세요. 시험과 과제 마감이 몰리는 주를 보여 드려요.</p>
+          <Link href="/schedule" className="mt-2 flex min-h-11 items-center font-semibold text-brand">할 일 추가하기</Link>
+        </Block>
+      )}
       {map && (
         <p className="mt-1 text-[13px] leading-relaxed text-muted">
           {map.weeks.length > 0

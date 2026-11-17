@@ -227,7 +227,10 @@ export default function ReportPage() {
       {!isExample && <p className="mt-1 px-1 text-xs text-muted">과목을 누르면 학점과 예상 성적을 고칠 수 있어요.</p>}
 
       {report.courses.length === 0 ? (
-        <Block className="mt-2 text-sm text-muted">결산에 넣을 과목이 없어요.</Block>
+        <Block className="mt-2 text-sm text-muted">
+          과목과 공부 기록을 추가하세요. 내 기록으로 학기 결산을 보여 드려요.
+          <Link href="/focus" className="mt-2 flex min-h-11 items-center font-semibold text-brand">공부 기록 시작하기</Link>
+        </Block>
       ) : (
         <ul className="mt-2 space-y-2">
           {report.courses.map((course) => {

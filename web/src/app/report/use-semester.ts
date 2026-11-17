@@ -1,4 +1,5 @@
 "use client";
+import { useExamplesAllowed } from "@/lib/use-examples-allowed";
 
 // 결산서와 시간 흐름 화면이 같이 쓰는 값. 기록이 짧으면 두 화면 모두 예시 데이터를 쓴다.
 
@@ -21,6 +22,7 @@ import { useSemesterData } from "@/lib/semester-store";
 import { useTimetable } from "@/lib/timetable-store";
 
 export function useSemesterSnapshot() {
+  const examplesAllowed = useExamplesAllowed();
   const today = useToday();
   const deadlines = useSavedDeadlines();
   const timetable = useTimetable();
@@ -29,7 +31,7 @@ export function useSemesterSnapshot() {
 
   const records = semesterRecords(focus.records, deadlines);
   const weeks = recordedWeeks(records);
-  const isExample = weeks < MIN_REPORT_WEEKS;
+  const isExample = examplesAllowed && weeks < MIN_REPORT_WEEKS;
   const report = buildCourseReport(
     isExample ? EXAMPLE_COURSES : collectCourseInputs(timetable, deadlines, records, settings),
   );
