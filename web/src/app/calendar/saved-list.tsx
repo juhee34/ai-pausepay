@@ -5,6 +5,7 @@ import { useState } from "react";
 import Badge from "@/components/ui/badge";
 import Block from "@/components/ui/block";
 import Button from "@/components/ui/button";
+import BottomSheet from "@/components/ui/bottom-sheet";
 import CheckRow from "@/components/ui/check-row";
 import { useToday } from "@/lib/briefing";
 import { downloadCalendarFile } from "@/lib/calendar-file";
@@ -20,6 +21,7 @@ export default function SavedList() {
   const [showPast, setShowPast] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<SavedDeadline | null>(null);
+  const [deleting, setDeleting] = useState<SavedDeadline | null>(null);
 
   if (!today || saved.length === 0) return null;
 
@@ -58,7 +60,7 @@ export default function SavedList() {
               <button
                 type="button"
                 aria-label={`${d.title} 지우기`}
-                onClick={() => removeDeadline(d.id)}
+                onClick={() => setDeleting(d)}
                 className="-mr-2 flex h-11 w-9 shrink-0 items-center justify-center text-muted"
               >
                 <X size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -74,7 +76,7 @@ export default function SavedList() {
     <section id="saved-deadlines" className="mt-6 scroll-mt-4">
       <div className="mb-2 px-1">
         <h2 className="text-[15px] font-bold">내 일정 {saved.length}개</h2>
-        <p className="text-xs text-muted">이 폰 브라우저에만 저장돼요</p>
+        <p className="text-xs text-muted">이 브라우저에 저장 중 · 계정 백업은 마이페이지에서</p>
       </div>
 
       <Block padded={false} className="divide-y divide-divider">
@@ -107,6 +109,11 @@ export default function SavedList() {
         </p>
       )}
       {editing && <TaskFormSheet task={editing} onClose={() => setEditing(null)} />}
+      <BottomSheet open={deleting !== null} onClose={() => setDeleting(null)} title="일정을 지울까요?">
+        <p className="mb-2 text-base font-semibold">{deleting?.title}</p>
+        <p className="mb-5 text-sm leading-6 text-muted">이 브라우저에서 삭제돼요. 이미 내려받은 캘린더 파일과 계정 백업에는 반영되지 않아요.</p>
+        <div className="flex gap-2"><Button variant="secondary" className="flex-1" onClick={() => setDeleting(null)}>취소</Button><Button className="flex-1" onClick={() => { if (deleting) removeDeadline(deleting.id); setDeleting(null); }}>일정 삭제</Button></div>
+      </BottomSheet>
     </section>
   );
 }

@@ -20,6 +20,7 @@ import { RECEIPTS_KEY, isReceipt, type Receipt } from "./receipt-store";
 import { DEADLINE_KINDS } from "./syllabus";
 import { isClassSlot, type ClassSlot } from "./timetable";
 import { TARGET_JOBS, TARGET_JOB_KEY, readTargetJob, type TargetJob } from "./target-job-store";
+import { ONBOARDING_KEY, readOnboardingSeen } from "./onboarding";
 
 const DEADLINES_KEY = "unis.deadlines.v1";
 const ACTIVITIES_KEY = "unis.activities.v1";
@@ -44,6 +45,7 @@ export type BackupData = {
   grading: GradingData;
   receipts: Receipt[];
   targetJob?: TargetJob;
+  onboardingSeen?: boolean;
 };
 
 const EMPTY_FOCUS: FocusBackup = { subjects: [], records: [] };
@@ -161,6 +163,7 @@ function readCurrent(): BackupData {
     grades: readRecord(GRADES_KEY, isCourseGrades),
     grading: readRecord(GRADING_KEY, isGradingList),
     receipts: readList(RECEIPTS_KEY, isReceipt),
+    onboardingSeen: readOnboardingSeen(),
     ...(targetJob ? { targetJob } : {}),
   };
 }
@@ -259,8 +262,9 @@ export function parseBackup(text: string): BackupData | null {
   if (!timetable || !examResults || !grades || !grading || !receipts) return null;
 
   const targetJob = file.targetJob;
+  if (file.onboardingSeen !== undefined && typeof file.onboardingSeen !== "boolean") return null;
   if (targetJob !== undefined && !TARGET_JOBS.includes(targetJob as TargetJob)) return null;
-  return { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, ...(targetJob !== undefined ? { targetJob: targetJob as TargetJob } : {}) };
+  return { deadlines, activities, focus, timetable, examResults, grades, grading, receipts, ...(typeof file.onboardingSeen === "boolean" ? { onboardingSeen: file.onboardingSeen } : {}), ...(targetJob !== undefined ? { targetJob: targetJob as TargetJob } : {}) };
 }
 
 // 계정 백업에서 받은 값을 파일과 똑같이 검사한다.
@@ -356,6 +360,7 @@ export function importBackup(data: BackupData) {
   const freshReceipts = data.receipts.filter((r) => !knownReceipts.has(r.id));
   // 이미 고른 직무는 유지하고, 없는 기기에만 복원한다.
   const targetJobAdded = current.targetJob === undefined && data.targetJob !== undefined;
+  const onboardingAdded = !current.onboardingSeen && data.onboardingSeen === true;
 
   // 시간표는 학기당 하나라 섞지 않는다. 이 기기에 없을 때만 파일 것을 넣는다.
   const timetableAdded = current.timetable.length === 0 && data.timetable.length > 0;
@@ -374,9 +379,11 @@ export function importBackup(data: BackupData) {
     GRADING_KEY,
     RECEIPTS_KEY,
     TARGET_JOB_KEY,
+    ONBOARDING_KEY,
   ];
   const previous = keys.map((key) => localStorage.getItem(key));
   try {
+    if (onboardingAdded) localStorage.setItem(ONBOARDING_KEY, "true");
     if (targetJobAdded) localStorage.setItem(TARGET_JOB_KEY, data.targetJob!);
     localStorage.setItem(DEADLINES_KEY, JSON.stringify(deadlines.merged));
     localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(activities.merged));
@@ -408,6 +415,7 @@ export function importBackup(data: BackupData) {
     timetableAdded,
     timetableKept,
     changed:
+      onboardingAdded ||
       targetJobAdded ||
       grades.added > 0 ||
       grading.added > 0 ||

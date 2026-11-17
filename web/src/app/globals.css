@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F4F6FB;
-  --foreground: #181A22;
-  --accent: #C6660A;
-  --accent-soft: #FBE9D3;
+  color-scheme: light;
+  --background: #F2F1F4;
+  --foreground: #1C1A1E;
+  --accent: #8C1D40;
+  --accent-soft: #F8EEF1;
 }
 
 @theme inline {
@@ -61,17 +62,19 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #111219;
-    --foreground: #EDEFF6;
-    --accent: #F0A94E;
-    --accent-soft: #3A2A12;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), a { touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 4px; }
+::selection { background: var(--color-brand-soft); color: var(--color-brand-strong); }
+.tour-target { outline: 3px solid var(--color-brand); outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

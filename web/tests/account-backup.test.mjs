@@ -130,7 +130,7 @@ test("올리는 문서는 firestore.rules의 형식과 같고 진행 중인 타�
   assert.equal(remote.updatedAt, "SERVER_TIME");
   assert.deepEqual(
     Object.keys(remote.data).sort(),
-    ["activities", "deadlines", "examResults", "focus", "grades", "grading", "receipts", "timetable"],
+    ["activities", "deadlines", "examResults", "focus", "grades", "grading", "onboardingSeen", "receipts", "timetable"],
   );
   assert.deepEqual(Object.keys(remote.data.focus).sort(), ["records", "subjects"]);
   assert.equal(remote.data.deadlines.length, 1, "형식이 틀린 일정은 올리지 않는다");
@@ -213,4 +213,39 @@ test("오류 코드를 쉬운 안내로 바꾼다", () => {
   assert.match(account.accountBackupErrorMessage({ code: "permission-denied" }), /다시 로그인/);
   assert.match(account.accountBackupErrorMessage({ code: "unavailable" }), /인터넷/);
   assert.match(account.accountBackupErrorMessage(new Error("x")), /처리하지 못했어요/);
+});
+
+test("안내 완료 여부는 파일·계정 백업으로 복원하고 옛 백업은 완료 상태를 지우지 않는다", async () => {
+  store.set("unis.onboarding.v1", "true");
+  store.set("unis.deadlines.v1", JSON.stringify([DEADLINE]));
+  const data = backup.readBackupData();
+  assert.equal(data.onboardingSeen, true);
+  assert.equal(backup.parseBackup(JSON.stringify({app: "unis", version: 1, ...data})).onboardingSeen, true);
+  assert.equal(backup.parseBackupData({...data, onboardingSeen: "true"}), null);
+  await account.uploadAccountBackup("alice");
+  assert.equal(remote.data.onboardingSeen, true);
+  const restored = await account.readAccountBackup("alice");
+  store.clear();
+  backup.importBackup(restored.data);
+  assert.equal(store.get("unis.onboarding.v1"), "true");
+  const old = {...data};
+  delete old.onboardingSeen;
+  const parsed = backup.parseBackupData(old);
+  assert.ok(parsed);
+  backup.importBackup(parsed);
+  assert.equal(store.get("unis.onboarding.v1"), "true");
+  assert.equal(backup.readBackupData().deadlines[0].id, DEADLINE.id);
+});
+
+test("복원 실패 시 안내 완료 여부도 이전 상태로 되돌린다", () => {
+  const data = {...backup.readBackupData(), onboardingSeen: true};
+  const original = localStorage.setItem;
+  let fail = true;
+  localStorage.setItem = (key, value) => {
+    if (key === "unis.deadlines.v1" && fail) { fail = false; throw new Error("storage full"); }
+    original(key, value);
+  };
+  try { assert.throws(() => backup.importBackup(data)); }
+  finally { localStorage.setItem = original; }
+  assert.equal(store.has("unis.onboarding.v1"), false);
 });

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#8c1d40">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="우니스 서비스 소개서와 팀 개발 가이드, 직접 체크하는 개발 로드맵">
+  <title>UNIS — 팀 핸드북</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <a class="skip" href="#main">본문으로 이동</a>
+  <header class="topbar">
+    <a class="wordmark" href="#service"><span>UNIfied Student</span><strong>UNIS<i></i></strong></a>
+    <span class="edition">TEAM HANDBOOK <b>2026 / 11</b></span>
+    <a class="app-link" href="/">우니스 열기 <span aria-hidden="true">↗</span></a>
+  </header>
+  <div class="workspace">
+    <aside class="sidebar" aria-label="문서 탐색">
+      <p class="eyebrow">OUR STUDENT COMPANION</p>
+      <nav class="document-nav" aria-label="문서 선택">
+        <a data-view="service" href="#service"><span class="nav-icon">01</span><span>서비스 소개서<small>왜 만들고, 무엇을 돕는지</small></span><span class="nav-arrow">↗</span></a>
+        <a data-view="guide" href="#guide"><span class="nav-icon">02</span><span>개발 가이드<small>우리 팀이 함께 만드는 방법</small></span><span class="nav-arrow">↗</span></a>
+        <a data-view="roadmap" href="#roadmap"><span class="nav-icon">03</span><span>개발 순서<small>완료한 일과 다음 할 일</small></span><span class="nav-arrow">↗</span></a>
+      </nav>
+      <div class="contents"><p class="eyebrow">이 문서의 목차</p><nav id="toc" aria-label="현재 문서 목차"></nav></div>
+      <div class="side-note"><span class="small-dot"></span> 11월 20일, 기능 동결<p>새 기능보다 실제 폰에서<br>잘 돌아가는 경험을 먼저.</p><small>11/21–11/30 시범 운영</small></div>
+      <p class="side-foot">만드는 사람들<br><b>A · juhee34 &nbsp; B · jhk05love-debug</b></p>
+    </aside>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <footer class="footer"><span>UNIS · 흩어진 대학 생활을 하나로</span><span>2026.11.04 기준 · PRD 우선</span></footer>
+  <div id="message" role="status" aria-live="polite"></div>
+  <noscript><p>문서와 체크리스트를 보려면 JavaScript를 켜 주세요. 원문은 저장소의 docs/소개서.md와 docs/개발가이드.md에 있습니다.</p></noscript>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

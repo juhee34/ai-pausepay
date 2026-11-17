@@ -17,7 +17,7 @@ export default function HomeHeader() {
   const [addingTask, setAddingTask] = useState(false);
 
   return (
-    <header className="mb-4 flex items-center justify-between gap-2 px-1">
+    <header className="mb-6 flex items-center justify-between gap-2 px-1">
       <div className={logoFont.className}>
         <p className="text-[11px] leading-none text-muted">
           <span className="text-brand">UNI</span>fied <span className="text-brand">S</span>tudent
@@ -40,6 +40,7 @@ export default function HomeHeader() {
       <BottomSheet open={open} onClose={() => setOpen(false)} title="메뉴">
         <Link
           href="/calendar"
+          onClick={() => setOpen(false)}
           className="flex min-h-11 items-center gap-2 rounded-button bg-brand px-4 text-[15px] font-semibold text-white active:bg-brand-strong"
         >
           <FileUp size={18} strokeWidth={1.8} aria-hidden="true" />
@@ -60,6 +61,7 @@ export default function HomeHeader() {
         </button>
         <Link
           href="/timetable"
+          onClick={() => setOpen(false)}
           className="mt-2 flex min-h-11 items-center justify-between rounded-button bg-canvas px-4 text-[15px] font-semibold"
         >
           시간표 보기·다시 올리기
@@ -67,6 +69,10 @@ export default function HomeHeader() {
         </Link>
         {/* 팀원(B) 부품. 모양은 B가 새 디자인으로 옮길 예정 */}
         <DataBackup />
+        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-divider pt-3">
+          <Link href="/welcome" onClick={() => setOpen(false)} className="flex min-h-11 items-center justify-center rounded-button bg-canvas text-xs font-semibold">우니스 소개</Link>
+          <Link href="/?tour=1" onClick={() => setOpen(false)} className="flex min-h-11 items-center justify-center rounded-button bg-canvas text-xs font-semibold">사용 안내 다시 보기</Link>
+        </div>
       </BottomSheet>
       {addingTask && <TaskFormSheet onClose={() => setAddingTask(false)} />}
     </header>

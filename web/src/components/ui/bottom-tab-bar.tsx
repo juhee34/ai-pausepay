@@ -9,6 +9,7 @@ import {
   CalendarPlus,
   Calculator,
   CalendarClock,
+  FileUp,
   House,
   Mail,
   Map as MapIcon,
@@ -45,6 +46,7 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
   {
     title: "학교",
     tiles: [
+      { href: "/calendar", label: "강의계획서", sub: "시험·과제를 달력으로", Icon: FileUp, ready: true },
       { href: "/grades", label: "기말 필요 점수", sub: "목표까지 몇 점?", Icon: Calculator, ready: true },
       { href: "/risk", label: "학기 리스크 지도", sub: "몰리는 주 미리 보기", Icon: MapIcon, ready: true },
       { href: "/exam", label: "시험 대비", sub: "강의자료로 요약과 문제", Icon: NotebookPen, ready: true },
@@ -69,7 +71,7 @@ const FEATURE_GROUPS: { title: string; tiles: FeatureTile[] }[] = [
 ];
 
 const TILE_CLASS =
-  "flex h-full min-h-16 w-full items-start gap-2.5 rounded-[14px] bg-canvas p-3 text-left active:bg-divider";
+  "flex h-full min-h-[104px] w-full flex-col items-start gap-3 rounded-[16px] bg-canvas p-4 text-left transition-colors hover:bg-brand-soft active:bg-divider";
 
 // 화면 아래에 고정되는 탭바 5칸. 가운데 + 는 전체 기능 창을 연다.
 export default function BottomTabBar() {
@@ -102,7 +104,7 @@ export default function BottomTabBar() {
 
   const tileBody = ({ href, label, sub, Icon, ready }: FeatureTile) => (
     <>
-      <Icon size={22} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
+      <Icon size={23} strokeWidth={1.6} aria-hidden="true" className="shrink-0 text-brand" />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-bold">{label}</span>
         <span className="mt-0.5 block text-[11px] text-muted">
@@ -117,9 +119,12 @@ export default function BottomTabBar() {
     </>
   );
 
+  if (pathname === "/welcome") return null;
+
   return (
     <>
       <nav
+        id="main-navigation"
         aria-label="주요 메뉴"
         className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]"
       >
@@ -131,9 +136,10 @@ export default function BottomTabBar() {
               aria-label="전체 기능"
               aria-expanded={moreOpen}
               onClick={() => setMoreOpen(true)}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white active:bg-brand-strong"
+              className="flex min-h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-[18px] bg-brand text-white active:bg-brand-strong"
             >
               <Plus size={24} strokeWidth={1.8} aria-hidden="true" />
+              <span className="text-[9px] font-medium">전체 기능</span>
             </button>
           </li>
           {RIGHT_TABS.map(tab)}
@@ -142,6 +148,7 @@ export default function BottomTabBar() {
 
       {/* nav 밖에 두어야 창이 탭바를 덮는다 */}
       <BottomSheet open={moreOpen} onClose={closeMore} title="전체 기능">
+        <p className="mb-5 text-sm leading-6 text-muted">지금 필요한 도움을 골라 보세요.</p>
         <div className="space-y-4">
           {FEATURE_GROUPS.map(({ title, tiles }) => (
             <section key={title}>

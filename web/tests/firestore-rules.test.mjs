@@ -59,6 +59,14 @@ describe("Firestore: 본인 백업만 허용하고 사용량은 서버만 쓴다
     await assertFails(deleteDoc(doc(alice, path)));
     await assertFails(getDoc(doc(environment.authenticatedContext("bob").firestore(), path)));
   });
+  test("안내 완료 여부는 선택 boolean만 받고 다른 사용자 접근은 허용하지 않는다", async () => {
+    const data = { ...payload().data, onboardingSeen: true };
+    const alice = environment.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(alice, backup()), { ...payload(), data }));
+    await assertFails(setDoc(doc(alice, backup()), { ...payload(), data: { ...data, onboardingSeen: "true" } }));
+    const bob = environment.authenticatedContext("bob").firestore();
+    await assertFails(setDoc(doc(bob, backup()), { ...payload(), data }));
+  });
   test("원본 자료 필드·진행 중 타이머·임의 문서는 백업으로 받지 않는다", async () => {
     const db = environment.authenticatedContext("alice").firestore();
     await assertFails(setDoc(doc(db, backup()), { ...payload(), originalFile: "not-allowed" }));
