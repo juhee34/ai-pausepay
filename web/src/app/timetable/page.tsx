@@ -176,6 +176,18 @@ export default function TimetablePage() {
             ))}
           </Block>
           <Button
+            variant="secondary"
+            className="mt-3 w-full"
+            onClick={() => {
+              setError(null);
+              setNotice(null);
+              setFile(null);
+              setDrafts(saved.map((slot) => ({ ...slot, key: crypto.randomUUID() })));
+            }}
+          >
+            저장된 시간표 수정
+          </Button>
+          <Button
             variant="ghost"
             className="mt-2 w-full"
             onClick={() => {

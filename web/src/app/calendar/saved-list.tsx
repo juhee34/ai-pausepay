@@ -9,8 +9,8 @@ import CheckRow from "@/components/ui/check-row";
 import { useToday } from "@/lib/briefing";
 import { downloadCalendarFile } from "@/lib/calendar-file";
 import { BADGE_OF } from "@/lib/day-plan";
-import { removeDeadline, useSavedDeadlines, type SavedDeadline } from "@/lib/deadline-store";
-import TaskFormSheet from "../task-form-sheet";
+import { useSavedDeadlines, type SavedDeadline } from "@/lib/deadline-store";
+import TaskFormSheet, { confirmRemoveCourse, confirmRemoveTask } from "../task-form-sheet";
 import { shortDate } from "./review-list";
 
 // 일정 탭에 보이는 저장된 일정 전체: 목록, 지우기, 캘린더 파일(.ics) 다시 받기.
@@ -20,11 +20,15 @@ export default function SavedList() {
   const [showPast, setShowPast] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<SavedDeadline | null>(null);
+  const [course, setCourse] = useState<string | null>(null);
 
   if (!today || saved.length === 0) return null;
 
-  const upcoming = saved.filter((d) => d.date >= today);
-  const past = saved.filter((d) => d.date < today);
+  const courses = [...new Set(saved.map((d) => d.course))];
+  const selectedCourse = course !== null && courses.includes(course) ? course : null;
+  const filtered = selectedCourse === null ? saved : saved.filter((d) => d.course === selectedCourse);
+  const upcoming = filtered.filter((d) => d.date >= today);
+  const past = filtered.filter((d) => d.date < today);
 
   function download() {
     try {
@@ -58,7 +62,7 @@ export default function SavedList() {
               <button
                 type="button"
                 aria-label={`${d.title} 지우기`}
-                onClick={() => removeDeadline(d.id)}
+                onClick={() => confirmRemoveTask(d)}
                 className="-mr-2 flex h-11 w-9 shrink-0 items-center justify-center text-muted"
               >
                 <X size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -77,6 +81,22 @@ export default function SavedList() {
         <p className="text-xs text-muted">이 폰 브라우저에만 저장돼요</p>
       </div>
 
+      <label className="mb-3 block text-sm font-semibold">
+        과목·활동별로 보기
+        <select value={selectedCourse === null ? "" : String(courses.indexOf(selectedCourse))}
+          onChange={(e) => setCourse(e.target.value === "" ? null : courses[Number(e.target.value)])}
+          className="mt-1 min-h-11 w-full rounded-button border border-line bg-surface px-3 text-base">
+          <option value="">전체</option>
+          {courses.map((name, index) => <option key={name} value={String(index)}>{name || "과목 없음"}</option>)}
+        </select>
+      </label>
+      {selectedCourse !== null && (
+        <Button variant="secondary" className="mb-3 w-full !text-review" onClick={() => {
+          if (confirmRemoveCourse(selectedCourse, filtered.length)) setCourse(null);
+        }}>
+          선택한 과목·활동의 할 일 모두 삭제 ({filtered.length}개)
+        </Button>
+      )}
       <Block padded={false} className="divide-y divide-divider">
         {past.length > 0 && (
           <button

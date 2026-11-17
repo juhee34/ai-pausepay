@@ -1,4 +1,5 @@
 "use client";
+import { useExamplesAllowed } from "@/lib/use-examples-allowed";
 
 import { ChevronRight, Plus, X } from "lucide-react";
 import Link from "next/link";
@@ -140,6 +141,7 @@ function newReceiptHref(activityId?: string, skill?: string) {
 }
 
 export default function SkillGapPage() {
+  const examplesAllowed = useExamplesAllowed();
   const today = useToday();
   const activities = useActivities();
   const receipts = useReceipts();
@@ -152,7 +154,7 @@ export default function SkillGapPage() {
 
   // 내 직무를 만들었으면 추천 직무와 마케팅 기획 예시 데이터는 보여 주지 않고 내 직무로만 계산한다.
   const hasCustom = customJobs.length > 0;
-  const isExample = !hasCustom && activities.length === 0 && receipts.length === 0;
+  const isExample = examplesAllowed && !hasCustom && activities.length === 0 && receipts.length === 0;
   // 만든 직무가 없으면: 내 영수증과 직무 전문 역량이 겹치는 직무를 추천하고, 없으면 마케팅 기획을 샘플로 보여 준다.
   const recommended = hasCustom || isExample ? [] : (recommendJobs(JOB_SKILLS, receipts) as PresetJob[]);
   const presetChips = jobChips(
@@ -197,6 +199,12 @@ export default function SkillGapPage() {
       </div>
 
       <h1 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight">역량 공백 지도</h1>
+      {today && !isExample && receipts.length === 0 && (
+        <Block className="mt-3">
+          <p className="text-sm">경험을 기록하세요. 기록한 역량으로 목표 직무의 칸을 채워 드려요.</p>
+          <Link href="/career/receipts/new" className="mt-2 flex min-h-11 items-center font-semibold text-brand">경험 기록하기</Link>
+        </Block>
+      )}
       {today && (
         <>
           <p className="mt-1 text-[13px] text-muted">

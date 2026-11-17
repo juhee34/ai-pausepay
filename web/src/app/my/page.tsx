@@ -56,13 +56,13 @@ export default function MyPage() {
 
       <NicknameCard />
 
-      <CookieCard key={user?.uid ?? "guest"} uid={user?.uid ?? null} />
+      <CookieCard key={`cookies:${user?.uid ?? "guest"}`} uid={user?.uid ?? null} />
 
-      {user && <AccountBackupCard key={user.uid} uid={user.uid} />}
+      {user && <AccountBackupCard key={`backup:${user.uid}`} uid={user.uid} />}
 
-      {user && <CalendarSubscriptionCard key={user.uid} uid={user.uid} />}
+      {user && <CalendarSubscriptionCard key={`calendar:${user.uid}`} uid={user.uid} />}
 
-      <UsageCard key={user?.uid ?? "guest"} uid={user?.uid ?? null} />
+      <UsageCard key={`usage:${user?.uid ?? "guest"}`} uid={user?.uid ?? null} />
 
       <Block className="mt-2.5">
         <div className="flex items-center gap-2">

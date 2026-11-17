@@ -57,6 +57,8 @@ export default function MailPage() {
 
   const [submitted, setSubmitted] = useState<Submitted | null>(null);
   const [draft, setDraft] = useState("");
+  const [editedSubject, setEditedSubject] = useState<string | null>(null);
+  const [editedBody, setEditedBody] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState<string[]>([]);
@@ -72,6 +74,8 @@ export default function MailPage() {
     setLoading(true);
     setError(null);
     setDraft("");
+    setEditedSubject(null);
+    setEditedBody(null);
     setChecked([]);
     setSubmitted({
       situation,
@@ -132,7 +136,9 @@ export default function MailPage() {
   const filled = submitted
     ? draft.replaceAll(STUDENT_ID_PLACEHOLDER, submitted.studentId)
     : "";
-  const { subject, body } = splitDraft(filled);
+  const parsed = splitDraft(filled);
+  const subject = editedSubject ?? parsed.subject;
+  const body = editedBody ?? parsed.body;
   const done = Boolean(submitted && !loading && draft);
 
   const checklist = submitted
@@ -263,7 +269,10 @@ export default function MailPage() {
           <Block padded={false} className="divide-y divide-divider">
             <div className="p-3.5">
               <p className="text-xs font-medium text-muted">제목</p>
-              <p className="mt-1 text-[15px] font-semibold break-words">{subject}</p>
+              {done ? (
+                <input aria-label="메일 제목 수정" className={inputClass} value={subject}
+                  onChange={(e) => { setEditedSubject(e.target.value); setChecked([]); }} />
+              ) : <p className="mt-1 text-[15px] font-semibold break-words">{subject}</p>}
               {done && subject && (
                 <Button
                   variant="secondary"
@@ -277,9 +286,12 @@ export default function MailPage() {
 
             <div className="p-3.5">
               <p className="text-xs font-medium text-muted">본문</p>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
+              {done ? (
+                <textarea aria-label="메일 본문 수정" className={`${inputClass} min-h-64`} value={body}
+                  onChange={(e) => { setEditedBody(e.target.value); setChecked([]); }} />
+              ) : <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
                 {body}
-              </p>
+              </p>}
               {done && body && (
                 <Button
                   variant="secondary"

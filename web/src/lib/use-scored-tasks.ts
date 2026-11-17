@@ -1,7 +1,7 @@
 "use client";
 
 // 오늘의 한 가지 화면과 로고 음성 안내가 같은 순위를 쓰도록, 할 일 점수 계산을 한곳에 둔다.
-// 내 일정이 없으면 예시 일정으로 계산한다 (isExample).
+// 일정·시간표·평가 비율·점수를 아직 넣지 않은 첫 방문에만 예시를 보여 준다.
 
 import { useMemo } from "react";
 import { useToday } from "./briefing";
@@ -9,6 +9,7 @@ import { useSavedDeadlines } from "./deadline-store";
 import { getLatestAccuracy } from "./exam-results";
 import { useGrades } from "./grades-store";
 import { useGrading } from "./grading-store";
+import { useExamplesAllowed } from "./use-examples-allowed";
 import { exampleTasks, scoreTasks, type PlanTask } from "./today-plan";
 
 export function useScoredTasks() {
@@ -16,7 +17,9 @@ export function useScoredTasks() {
   const saved = useSavedDeadlines();
   const grading = useGrading();
   const grades = useGrades();
-  const isExample = saved.length === 0;
+  const examplesAllowed = useExamplesAllowed();
+  const isExample = examplesAllowed && saved.length === 0 &&
+    Object.keys(grading).length === 0 && Object.keys(grades).length === 0;
 
   const scored = useMemo(() => {
     if (!today) return [];
