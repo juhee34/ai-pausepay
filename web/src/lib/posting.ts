@@ -31,7 +31,7 @@ export type PostingResult = {
   events: PostingEvent[];
 };
 
-// 대외활동 목록에 카드를 기본으로 만드는 종류 (docs/프롬프트.md 11)
+// 대외활동 목록에 카드를 기본으로 만드는 종류 (docs/기록/프롬프트.md 11)
 export const CARD_KINDS: readonly ActivityKind[] = ["대외활동", "공모전", "인턴"];
 
 export function isPostingImage(type: string) {
