@@ -36,9 +36,15 @@ import {
   subscribeAlarm,
 } from "./alert";
 import {
+  BLOCK_MINUTES,
   BREAK_MINUTES,
   MIN_RECORD_MINUTES,
+  blockMinutesOf,
+  blockPosition,
+  continueFocus,
+  doneMinutesOf,
   elapsedFocusMinutes,
+  minutesIfStopped,
   MAX_SUBJECT_LENGTH,
   addSubject,
   endSession,
@@ -62,7 +68,7 @@ import { weeklyMinutes } from "./weekly";
 
 type Session = NonNullable<FocusData["session"]>;
 
-const ALERT_NOTICE = `폰 화면을 켜 두고 이 화면을 열어 두면 끝날 때 알람이 울려요. 화면을 누르면 꺼지고, 누르지 않아도 ${ALARM_SECONDS}초 뒤에 멈춰요. 화면이 꺼지면 울리지 않을 수 있고, 아이폰은 진동이 없고 무음 모드에서는 소리도 나지 않아요. 기록은 그대로 저장돼요.`;
+const ALERT_NOTICE = `폰 화면을 켜 두고 이 화면을 열어 두면 ${BLOCK_MINUTES}분마다, 그리고 다 끝났을 때 알람이 울려요. 화면을 누르면 꺼지고, 누르지 않아도 ${ALARM_SECONDS}초 뒤에 멈춰요. 화면이 꺼지면 울리지 않을 수 있고, 아이폰은 진동이 없고 무음 모드에서는 소리도 나지 않아요. 기록은 그대로 저장돼요.`;
 
 function formatClock(totalSeconds: number) {
   const hours = Math.floor(totalSeconds / 3600);
@@ -77,6 +83,16 @@ function formatMinutes(total: number) {
   const minutes = total % 60;
   if (hours === 0) return `${minutes}분`;
   return minutes === 0 ? `${hours}시간` : `${hours}시간 ${minutes}분`;
+}
+
+// 고른 시간을 30분 조각으로 나눠 설명한다. 90분이면 "30분씩 3번 집중해요."
+function blockSummary(totalMinutes: number) {
+  const full = Math.floor(totalMinutes / BLOCK_MINUTES);
+  const rest = totalMinutes % BLOCK_MINUTES;
+  if (full === 0) return `${rest}분 집중해요.`;
+  return rest === 0
+    ? `${BLOCK_MINUTES}분씩 ${full}번 집중해요.`
+    : `${BLOCK_MINUTES}분씩 ${full}번, 마지막 ${rest}분 집중해요.`;
 }
 
 function summarize(records: FocusData["records"], now: number) {
@@ -308,7 +324,7 @@ function SubjectPicker({ data, goal }: { data: FocusData; goal: FocusGoal | null
           </p>
         ) : (
           <p id="focus-hours-help" className="mt-2 text-xs text-muted">
-            30분 단위로 정해요. 지금은 {formatMinutes(hours * 60)}이에요.
+            {blockSummary(hours * 60)} 30분마다 멈추고, 이어서 할지 골라요.
           </p>
         )}
       </Block>
@@ -331,13 +347,16 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
   const [confirmingStop, setConfirmingStop] = useState(false);
 
   const isFocus = session.phase === "focus";
-  const totalSeconds = (isFocus ? sessionMinutes(session) : BREAK_MINUTES) * 60;
+  const totalSeconds = (isFocus ? blockMinutesOf(session) : BREAK_MINUTES) * 60;
   const remaining = Math.min(
     totalSeconds,
     Math.max(0, Math.floor((session.endsAt - now) / 1000)),
   );
   const progress = ((totalSeconds - remaining) / totalSeconds) * 100;
   const elapsed = elapsedFocusMinutes(session, now);
+  const stopMinutes = minutesIfStopped(session, now);
+  const done = doneMinutesOf(session);
+  const position = blockPosition(session);
 
   // 원 둘레를 따라 지난 만큼 채운다.
   const ring = 2 * Math.PI * 108;
@@ -345,7 +364,12 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
   // 집중하는 동안은 어두운 카드로 바꿔 타이머만 눈에 들어오게 한다.
   return (
     <div className="rounded-block bg-night px-5 py-7 text-center text-white">
-      <p className="text-sm font-semibold text-brand-glow">{isFocus ? "집중하는 중" : "쉬는 중"}</p>
+      <p className="text-sm font-semibold text-brand-glow">
+        {isFocus ? "집중하는 중" : "쉬는 중"}
+        {isFocus && position.total > 1 && (
+          <span className="font-mono"> · {position.current} / {position.total}</span>
+        )}
+      </p>
       <p className="mt-0.5 break-words text-[15px] font-semibold text-white/70">{session.subject}</p>
 
       <div className="relative mx-auto mt-5 flex aspect-square w-full max-w-64 items-center justify-center">
@@ -363,9 +387,16 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
             className="stroke-brand-bright"
           />
         </svg>
-        <p role="timer" className="font-mono text-[46px] leading-none font-light tabular-nums">
-          {formatClock(remaining)}
-        </p>
+        <div>
+          <p role="timer" className="font-mono text-[46px] leading-none font-light tabular-nums">
+            {formatClock(remaining)}
+          </p>
+          {isFocus && position.total > 1 && (
+            <p className="mt-2 text-xs text-white/60">
+              전체 {formatMinutes(sessionMinutes(session))} 중 {formatMinutes(done)} 기록
+            </p>
+          )}
+        </div>
       </div>
 
       {goal && (
@@ -395,9 +426,11 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
       {isFocus && confirmingStop && (
         <div className="mt-4">
           <p className="text-sm text-white/70">
-            {elapsed >= MIN_RECORD_MINUTES
-              ? `지금 그만두면 ${formatMinutes(elapsed)}이 기록돼요.`
-              : `${MIN_RECORD_MINUTES}분이 안 돼서 이번 시간은 기록되지 않아요.`}
+            {stopMinutes === 0
+              ? `${MIN_RECORD_MINUTES}분이 안 돼서 이번 시간은 기록되지 않아요.`
+              : elapsed >= MIN_RECORD_MINUTES
+                ? `지금 그만두면 그만둔 때까지 ${formatMinutes(stopMinutes)}만 기록돼요.`
+                : `이번 30분은 1분이 안 돼서 빼고, 앞서 한 ${formatMinutes(stopMinutes)}만 기록돼요.`}
           </p>
           <div className="mt-2.5 flex gap-2">
             <Button onClick={() => setConfirmingStop(false)} className="flex-1 !bg-brand-bright">
@@ -414,6 +447,41 @@ function RunningCard({ session, now, goal }: { session: Session; now: number; go
         </div>
       )}
     </div>
+  );
+}
+
+// 30분 하나를 마치고 멈춘 상태. 이어서 하거나 여기서 마친다. 기다리는 시간은 기록하지 않는다.
+function CheckpointCard({ session, goal }: { session: Session; goal: FocusGoal | null }) {
+  const done = doneMinutesOf(session);
+  const left = sessionMinutes(session) - done;
+  const next = Math.min(BLOCK_MINUTES, left);
+  const position = blockPosition(session);
+  return (
+    <Block className="text-center">
+      <p className="text-sm font-semibold text-brand">
+        <span className="font-mono">
+          {position.current - 1} / {position.total}
+        </span>{" "}
+        마쳤어요
+      </p>
+      <p className="mt-1 text-[17px] font-bold">{BLOCK_MINUTES}분 집중 끝! 잠깐 멈췄어요</p>
+      <p className="mt-1 break-words text-sm text-muted">
+        {session.subject} <span className="font-mono">{formatMinutes(done)}</span>을 기록했어요. 남은 시간은{" "}
+        <span className="font-mono">{formatMinutes(left)}</span>이에요.
+      </p>
+      {goal && (
+        <div className="mt-3">
+          <GoalCard goal={goal} />
+        </div>
+      )}
+      <Button onClick={() => continueFocus()} className="mt-3.5 w-full">
+        다음 {formatMinutes(next)} 시작
+      </Button>
+      <Button variant="secondary" onClick={() => endSession()} className="mt-2 w-full">
+        여기서 마치기
+      </Button>
+      <p className="mt-2.5 text-xs text-muted">멈춰 있는 동안은 기록되지 않아요.</p>
+    </Block>
   );
 }
 
@@ -520,10 +588,10 @@ function FocusContent() {
   const sessionGoal = session && session.subject === target?.subject ? goal : null;
 
   // 집중·쉬는 시간이 도는 동안 폰 화면이 꺼지지 않게 한다 (꺼지면 끝 알림이 늦어진다).
-  useWakeLock(!!session && session.phase !== "done");
+  useWakeLock(!!session && (session.phase === "focus" || session.phase === "break"));
 
   useEffect(() => {
-    if (session && session.phase !== "done" && now >= session.endsAt) {
+    if (session && (session.phase === "focus" || session.phase === "break") && now >= session.endsAt) {
       const current = Date.now();
       const focusEndedAt = settleSession(current);
       if (focusEndedAt !== null && current - focusEndedAt <= ALERT_WINDOW_MS) {
@@ -556,7 +624,8 @@ function FocusContent() {
           <span className="font-mono font-semibold">30</span>분 단위로 집중해요
         </h1>
         <p className="mt-1 text-sm text-muted">
-          과목과 시간을 고르고 시작하세요. 집중한 시간이 기록되고, 끝까지 마치면 {BREAK_MINUTES}분 쉬어요.
+          {BLOCK_MINUTES}분이 끝날 때마다 알람과 함께 멈추고, 이어서 할지 골라요. 중간에 그만두면 그때까지 한
+          시간만 기록되고, 끝까지 마치면 {BREAK_MINUTES}분 쉬어요.
         </p>
       </header>
 
@@ -578,9 +647,10 @@ function FocusContent() {
         )}
 
         {!session && <SubjectPicker data={data} goal={goal} />}
-        {session && session.phase !== "done" && (
+        {session && (session.phase === "focus" || session.phase === "break") && (
           <RunningCard key={session.endsAt} session={session} now={now} goal={sessionGoal} />
         )}
+        {session?.phase === "checkpoint" && <CheckpointCard session={session} goal={sessionGoal} />}
         {session?.phase === "done" && <DoneCard session={session} goal={sessionGoal} />}
       </div>
 
