@@ -122,9 +122,11 @@ function isFocusSession(value: unknown): value is NonNullable<FocusData["session
   const s = value as Record<string, unknown>;
   return (
     typeof s.subject === "string" &&
-    (s.phase === "focus" || s.phase === "break" || s.phase === "done") &&
+    (s.phase === "focus" || s.phase === "checkpoint" || s.phase === "break" || s.phase === "done") &&
     typeof s.endsAt === "number" &&
-    (s.minutes === undefined || (typeof s.minutes === "number" && s.minutes > 0))
+    (s.minutes === undefined || (typeof s.minutes === "number" && s.minutes > 0)) &&
+    (s.blockMinutes === undefined || (typeof s.blockMinutes === "number" && s.blockMinutes > 0)) &&
+    (s.doneMinutes === undefined || (typeof s.doneMinutes === "number" && s.doneMinutes >= 0))
   );
 }
 

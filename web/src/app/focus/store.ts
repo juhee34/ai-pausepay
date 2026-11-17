@@ -7,6 +7,8 @@ export const MIN_RECORD_MINUTES = 1;
 // minutes가 없는 옛 타이머는 25분짜리였다.
 const LEGACY_FOCUS_MINUTES = 25;
 export const BREAK_MINUTES = 5;
+// 집중은 30분씩 끊어서 한다. 30분이 끝날 때마다 알람이 울리고, 이어서 할지 마칠지 고른다.
+export const BLOCK_MINUTES = 30;
 export const MAX_SUBJECT_LENGTH = 30;
 
 const STORAGE_KEY = "unis-focus";
@@ -26,11 +28,16 @@ const focusDataSchema = z.object({
   session: z
     .object({
       subject: z.string(),
-      phase: z.enum(["focus", "break", "done"]),
-      // 남은 초를 세지 않고 끝나는 시각을 저장한다. 화면이 꺼져 있어도 시간이 어긋나지 않는다.
+      // checkpoint: 30분 하나를 마치고 다음 30분을 기다리는 중. 기다리는 시간은 기록하지 않는다.
+      phase: z.enum(["focus", "checkpoint", "break", "done"]),
+      // 남은 초를 세지 않고 지금 30분이 끝나는 시각을 저장한다. 화면이 꺼져 있어도 시간이 어긋나지 않는다.
       endsAt: z.number(),
-      // 고른 집중 시간. 옛 타이머에는 없다.
+      // 고른 집중 시간 전체. 옛 타이머에는 없다.
       minutes: z.number().positive().optional(),
+      // 지금 30분의 길이. 마지막 조각은 30분보다 짧을 수 있다. 옛 타이머에는 없어서 남은 시간 전체를 한 조각으로 본다.
+      blockMinutes: z.number().positive().optional(),
+      // 이번 집중에서 이미 기록한 분. 30분을 마칠 때마다 바로 기록하므로 그만둬도 사라지지 않는다.
+      doneMinutes: z.number().nonnegative().optional(),
       deadlineId: z.string().optional(),
       activityId: z.string().optional(),
     })
@@ -117,16 +124,44 @@ export function sessionMinutes(session: { minutes?: number }) {
   return session.minutes ?? LEGACY_FOCUS_MINUTES;
 }
 
+// 이번 집중에서 이미 기록한 분.
+export function doneMinutesOf(session: { doneMinutes?: number }) {
+  return session.doneMinutes ?? 0;
+}
+
+// 지금 돌고 있는(또는 방금 마친) 30분 조각의 길이.
+export function blockMinutesOf(session: { minutes?: number; blockMinutes?: number; doneMinutes?: number }) {
+  return session.blockMinutes ?? sessionMinutes(session) - doneMinutesOf(session);
+}
+
+// 다음 조각의 길이. 남은 시간이 30분보다 적으면 남은 만큼만.
+function nextBlockMinutes(session: { minutes?: number; doneMinutes?: number }) {
+  return Math.min(BLOCK_MINUTES, sessionMinutes(session) - doneMinutesOf(session));
+}
+
+// 몇 번째 30분인지와 모두 몇 번인지. 화면에 "2 / 4"처럼 보여 준다.
+export function blockPosition(session: { minutes?: number; doneMinutes?: number }) {
+  const total = Math.max(1, Math.ceil(sessionMinutes(session) / BLOCK_MINUTES));
+  const current = Math.min(total, Math.floor(doneMinutesOf(session) / BLOCK_MINUTES) + 1);
+  return { current, total };
+}
+
 // 초 단위로 끊어서 1초에 한 번만 화면을 다시 그리게 한다.
 export const getNow = () => Math.floor(Date.now() / 1000) * 1000;
 export const getServerNow = () => 0;
 
-// 집중을 시작한 뒤 지난 시간. 다 채운 분만 센다. 집중 중이 아니면 0이다.
+// 지금 30분 조각에서 지난 시간. 다 채운 분만 센다. 집중 중이 아니면 0이다.
 export function elapsedFocusMinutes(session: NonNullable<FocusData["session"]>, now: number) {
   if (session.phase !== "focus") return 0;
-  const total = sessionMinutes(session);
-  const elapsed = Math.floor(total - (session.endsAt - now) / 60000);
-  return Math.min(total, Math.max(0, elapsed));
+  const block = blockMinutesOf(session);
+  const elapsed = Math.floor(block - (session.endsAt - now) / 60000);
+  return Math.min(block, Math.max(0, elapsed));
+}
+
+// 지금 그만두면 이번 집중으로 남는 분. 앞서 마친 30분들과 지금 조각에서 1분 이상 한 시간을 더한다.
+export function minutesIfStopped(session: NonNullable<FocusData["session"]>, now: number) {
+  const elapsed = elapsedFocusMinutes(session, now);
+  return doneMinutesOf(session) + (elapsed >= MIN_RECORD_MINUTES ? elapsed : 0);
 }
 
 function recordOf(session: NonNullable<FocusData["session"]>, minutes: number, finishedAt: number) {
@@ -149,13 +184,20 @@ export function settleSession(now: number) {
   let focusEndedAt: number | null = null;
   if (session.phase === "focus" && now >= session.endsAt) {
     focusEndedAt = session.endsAt;
-    records = [...records, recordOf(session, sessionMinutes(session), session.endsAt)];
-    // 휴식은 돌아온 시각이 아니라 집중이 끝난 시각부터 센다.
-    session = {
-      ...session,
-      phase: "break",
-      endsAt: session.endsAt + BREAK_MINUTES * 60 * 1000,
-    };
+    const block = blockMinutesOf(session);
+    const done = doneMinutesOf(session) + block;
+    records = [...records, recordOf(session, block, session.endsAt)];
+    session =
+      done >= sessionMinutes(session)
+        ? {
+            // 고른 시간을 다 채웠다. 휴식은 돌아온 시각이 아니라 집중이 끝난 시각부터 센다.
+            ...session,
+            doneMinutes: done,
+            phase: "break",
+            endsAt: session.endsAt + BREAK_MINUTES * 60 * 1000,
+          }
+        : // 30분 하나를 마쳤다. 사용자가 이어서 하기를 누를 때까지 멈춰 있는다.
+          { ...session, doneMinutes: done, phase: "checkpoint" };
   }
   if (session.phase === "break" && now >= session.endsAt) {
     session = { ...session, phase: "done" };
@@ -172,10 +214,25 @@ export function startFocus(subject: string, link: FocusLink = {}, hours: number 
     session: {
       subject,
       phase: "focus",
-      endsAt: Date.now() + hours * 60 * 60 * 1000,
+      endsAt: Date.now() + Math.min(BLOCK_MINUTES, hours * 60) * 60 * 1000,
       minutes: hours * 60,
+      blockMinutes: Math.min(BLOCK_MINUTES, hours * 60),
+      doneMinutes: 0,
       ...link,
     },
+  });
+}
+
+// 30분을 마치고 멈춰 있을 때 다음 30분을 시작한다. 다음 조각은 누른 시각부터 센다.
+export function continueFocus(now: number = Date.now()) {
+  settleSession(now);
+  const data = readData();
+  const session = data.session;
+  if (session?.phase !== "checkpoint") return;
+  const block = nextBlockMinutes(session);
+  writeData({
+    ...data,
+    session: { ...session, phase: "focus", blockMinutes: block, endsAt: now + block * 60 * 1000 },
   });
 }
 
@@ -190,7 +247,8 @@ export function endSession(now: number = Date.now()) {
   // 이미 정한 시간이 지났다면 그만두기 전에 기록부터 남긴다.
   settleSession(now);
   const data = readData();
-  // 중간에 그만두면 집중한 시간만 기록한다. 1분이 안 되면 잘못 누른 것으로 보고 남기지 않는다.
+  // 중간에 그만두면 지금 30분에서 집중한 시간만 더 기록한다. 앞서 마친 30분들은 이미 기록돼 있다.
+  // 1분이 안 되면 잘못 누른 것으로 보고 남기지 않는다.
   const minutes = data.session ? elapsedFocusMinutes(data.session, now) : 0;
   const records =
     data.session && minutes >= MIN_RECORD_MINUTES

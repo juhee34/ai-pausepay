@@ -66,44 +66,99 @@ test("옛 기록과 진행 중인 옛 타이머가 그대로 읽힌다", () => {
   assert.deepEqual(store.getData(), old);
 });
 
-test("고른 시간만큼 타이머가 돌고 그만큼 기록된다", () => {
+const MIN = 60 * 1000;
+
+test("고른 시간을 30분씩 끊어 돌고, 30분마다 멈춰서 기록한다", () => {
   const before = Date.now();
   store.startFocus("재무관리", {}, 2);
-  const { endsAt, minutes } = store.getData().session;
-  assert.equal(minutes, 120);
-  assert.ok(endsAt >= before + 2 * 60 * 60 * 1000);
-  store.settleSession(endsAt);
-  assert.equal(saved().records[0].minutes, 120);
+  let session = store.getData().session;
+  assert.equal(session.minutes, 120);
+  assert.equal(session.blockMinutes, 30);
+  assert.ok(session.endsAt >= before + 30 * MIN && session.endsAt < before + 31 * MIN);
+  assert.deepEqual(store.blockPosition(session), { current: 1, total: 4 });
+
+  store.settleSession(session.endsAt);
+  session = saved().session;
+  assert.equal(session.phase, "checkpoint");
+  assert.equal(session.doneMinutes, 30);
+  assert.deepEqual(saved().records.map((r) => r.minutes), [30]);
+  assert.deepEqual(store.blockPosition(session), { current: 2, total: 4 });
 });
 
-test("중간에 그만두면 집중한 시간만 기록하고 일정 연결도 남는다", () => {
+test("멈춰 있는 동안은 기록하지 않고, 이어서 하면 누른 시각부터 다음 30분을 센다", () => {
+  store.startFocus("재무관리", {}, 1);
+  const first = store.getData().session.endsAt;
+  store.settleSession(first);
+  const resumedAt = first + 15 * MIN; // 15분 동안 멈춰 있었다
+  store.continueFocus(resumedAt);
+  const session = saved().session;
+  assert.equal(session.phase, "focus");
+  assert.equal(session.endsAt, resumedAt + 30 * MIN);
+  store.settleSession(session.endsAt);
+  assert.deepEqual(saved().records.map((r) => r.minutes), [30, 30]);
+  assert.equal(saved().session.phase, "break");
+});
+
+test("끝까지 마치면 고른 시간 전체가 기록되고 쉬는 시간이 된다", () => {
+  store.startFocus("재무관리", {}, 1.5);
+  assert.equal(store.getData().session.minutes, 90);
+  for (let i = 0; i < 3; i += 1) {
+    const { endsAt } = store.getData().session;
+    store.settleSession(endsAt);
+    if (i < 2) store.continueFocus(endsAt);
+  }
+  const total = saved().records.reduce((sum, r) => sum + r.minutes, 0);
+  assert.equal(total, 90);
+  assert.equal(saved().session.phase, "break");
+});
+
+test("중간에 그만두면 그만둔 때까지만 기록하고 일정 연결도 남는다", () => {
   store.startFocus("재무관리", { deadlineId: "d1" }, 2);
+  const first = store.getData().session.endsAt;
+  store.settleSession(first);
+  store.continueFocus(first);
   const { endsAt } = store.getData().session;
-  store.endSession(endsAt - 10 * 60 * 1000); // 2시간 중 1시간 50분
-  const [record] = saved().records;
-  assert.equal(record.minutes, 110);
-  assert.equal(record.deadlineId, "d1");
-  assert.equal(record.finishedAt, endsAt - 10 * 60 * 1000);
+  const stopAt = endsAt - 10 * MIN; // 두 번째 30분에서 20분
+  assert.equal(store.minutesIfStopped(store.getData().session, stopAt), 50);
+  store.endSession(stopAt);
+  const records = saved().records;
+  assert.deepEqual(records.map((r) => r.minutes), [30, 20]);
+  assert.ok(records.every((r) => r.deadlineId === "d1"));
+  assert.equal(records[1].finishedAt, stopAt);
   assert.equal(saved().session, null);
 });
 
 test("다 채운 분만 세고, 1분이 안 되면 기록하지 않는다", () => {
   store.startFocus("재무관리", {}, 1);
   let { endsAt } = store.getData().session;
-  store.endSession(endsAt - 59 * 60 * 1000 - 1000); // 59초 지남
+  store.endSession(endsAt - 29 * MIN - 1000); // 59초 지남
   assert.deepEqual(saved().records, []);
   store.startFocus("재무관리", {}, 1);
   ({ endsAt } = store.getData().session);
-  store.endSession(endsAt - 58 * 60 * 1000 - 30 * 1000); // 1분 30초 지남
+  store.endSession(endsAt - 28 * MIN - 30 * 1000); // 1분 30초 지남
   assert.equal(saved().records[0].minutes, 1);
 });
 
-test("시간이 다 지난 뒤 그만두면 한 번만 고른 시간으로 기록한다", () => {
-  store.startFocus("재무관리", {}, 1);
+test("30분을 마치고 멈춰 있을 때 마치면 이미 남긴 기록만 남는다", () => {
+  store.startFocus("재무관리", {}, 2);
   const { endsAt } = store.getData().session;
-  store.endSession(endsAt + 1000);
-  assert.equal(saved().records.length, 1);
-  assert.equal(saved().records[0].minutes, 60);
+  store.endSession(endsAt + 60 * MIN); // 30분 뒤 한참 있다가 마침
+  assert.deepEqual(saved().records.map((r) => r.minutes), [30]);
+  assert.equal(saved().session, null);
+});
+
+test("마지막 조각은 남은 시간만큼만 돈다", () => {
+  memory.set(
+    "unis-focus",
+    JSON.stringify({
+      subjects: [],
+      records: [],
+      session: { subject: "통계", phase: "checkpoint", endsAt: 1, minutes: 45, blockMinutes: 30, doneMinutes: 30 },
+    }),
+  );
+  store.continueFocus(1000);
+  assert.equal(saved().session.blockMinutes, 15);
+  assert.equal(saved().session.endsAt, 1000 + 15 * MIN);
 });
 
 test("쉬는 중이나 끝난 뒤에 그만두면 기록을 더하지 않는다", () => {
@@ -129,13 +184,6 @@ test("시간을 고르지 않으면 1시간이고, 바로 그만두면 기록하
   assert.equal(store.getData().session.minutes, 60);
   store.endSession();
   assert.deepEqual(saved().records, []);
-});
-
-test("30분 단위로 고른 시간도 그대로 기록된다", () => {
-  store.startFocus("재무관리", {}, 1.5);
-  assert.equal(store.getData().session.minutes, 90);
-  store.settleSession(store.getData().session.endsAt);
-  assert.equal(saved().records[0].minutes, 90);
 });
 
 test("진행 중이던 옛 타이머는 25분으로 기록된다", () => {
